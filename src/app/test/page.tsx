@@ -3,21 +3,82 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const options = [
+type TestOption = {
+  code: "O" | "D";
+  title: string;
+  description: string;
+};
+
+type TestQuestion = {
+  id: number;
+  axis: "O / D";
+  question: string;
+  options: TestOption[];
+};
+
+const questions: TestQuestion[] = [
   {
-    code: "O",
-    title: "먼저 전체 분위기와 방향을 정한다",
-    description: "오늘 표현하고 싶은 이미지와 전체 인상을 먼저 생각하는 편이다.",
+    id: 1,
+    axis: "O / D",
+    question: "메이크업을 시작할 때 나는 보통 어떻게 접근하나요?",
+    options: [
+      {
+        code: "O",
+        title: "먼저 전체 분위기와 방향을 정한다",
+        description: "오늘 표현하고 싶은 이미지와 전체 인상을 먼저 생각하는 편이다.",
+      },
+      {
+        code: "D",
+        title: "필요한 단계와 제품부터 정한다",
+        description: "오늘 필요한 기능과 사용할 제품을 먼저 정하는 편이다.",
+      },
+    ],
   },
   {
-    code: "D",
-    title: "필요한 단계와 제품부터 정한다",
-    description: "오늘 필요한 기능과 사용할 제품을 먼저 정하는 편이다.",
+    id: 2,
+    axis: "O / D",
+    question: "새로운 메이크업을 시도할 때 나는 어느 쪽에 더 가깝나요?",
+    options: [
+      {
+        code: "O",
+        title: "완성될 전체 이미지를 떠올리며 시도한다",
+        description: "색감과 분위기가 서로 어울리는지를 중심으로 선택하는 편이다.",
+      },
+      {
+        code: "D",
+        title: "단계별 방법과 제품 기능을 확인하며 시도한다",
+        description: "각 단계가 어떤 역할을 하는지 확인한 뒤 적용하는 편이다.",
+      },
+    ],
   },
 ];
 
 export default function TestPage() {
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, "O" | "D">>({});
+
+  const currentQuestion = questions[currentIndex];
+  const selectedCode = answers[currentQuestion.id] ?? null;
+  const progress = (currentQuestion.id / 20) * 100;
+  const isFirstQuestion = currentIndex === 0;
+  const isLastAvailableQuestion = currentIndex === questions.length - 1;
+
+  const selectAnswer = (code: "O" | "D") => {
+    setAnswers((previous) => ({
+      ...previous,
+      [currentQuestion.id]: code,
+    }));
+  };
+
+  const moveNext = () => {
+    if (!selectedCode || isLastAvailableQuestion) return;
+    setCurrentIndex((index) => index + 1);
+  };
+
+  const movePrevious = () => {
+    if (isFirstQuestion) return;
+    setCurrentIndex((index) => index - 1);
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f2ed] px-5 py-6 text-[#241f1b] sm:px-8">
@@ -31,34 +92,39 @@ export default function TestPage() {
               BEAUTY CODE
             </p>
           </Link>
-          <p className="text-sm font-medium text-[#8a7d75]">1 / 20</p>
+          <p className="text-sm font-medium text-[#8a7d75]">
+            {currentQuestion.id} / 20
+          </p>
         </header>
 
         <section className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-12 sm:py-14">
           <div className="mx-auto w-full max-w-2xl">
             <div className="h-2 overflow-hidden rounded-full bg-[#eee6e0]">
-              <div className="h-full w-[5%] rounded-full bg-[#9b6c55]" />
+              <div
+                className="h-full rounded-full bg-[#9b6c55] transition-[width] duration-300"
+                style={{ width: `${progress}%` }}
+              />
             </div>
 
             <p className="mt-8 text-xs font-semibold tracking-[0.22em] text-[#9b6c55]">
-              QUESTION 01 · O / D
+              QUESTION {String(currentQuestion.id).padStart(2, "0")} · {currentQuestion.axis}
             </p>
             <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.03em] sm:text-4xl">
-              메이크업을 시작할 때 나는 보통 어떻게 접근하나요?
+              {currentQuestion.question}
             </h1>
             <p className="mt-4 text-base leading-7 text-[#776a62]">
               평소 나와 더 가까운 선택지를 하나 골라주세요. 정답은 없습니다.
             </p>
 
             <div className="mt-8 grid gap-4">
-              {options.map((option) => {
+              {currentQuestion.options.map((option) => {
                 const selected = selectedCode === option.code;
 
                 return (
                   <button
                     key={option.code}
                     type="button"
-                    onClick={() => setSelectedCode(option.code)}
+                    onClick={() => selectAnswer(option.code)}
                     aria-pressed={selected}
                     className={`rounded-3xl border p-5 text-left transition sm:p-6 ${
                       selected
@@ -91,25 +157,41 @@ export default function TestPage() {
             </div>
 
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Link
-                href="/"
-                className="inline-flex h-12 items-center justify-center rounded-full px-5 text-sm font-medium text-[#71645d] transition hover:bg-[#f7f2ed]"
-              >
-                처음 화면으로
-              </Link>
+              {isFirstQuestion ? (
+                <Link
+                  href="/"
+                  className="inline-flex h-12 items-center justify-center rounded-full px-5 text-sm font-medium text-[#71645d] transition hover:bg-[#f7f2ed]"
+                >
+                  처음 화면으로
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={movePrevious}
+                  className="inline-flex h-12 items-center justify-center rounded-full px-5 text-sm font-medium text-[#71645d] transition hover:bg-[#f7f2ed]"
+                >
+                  이전 질문
+                </button>
+              )}
+
               <button
                 type="button"
-                disabled={!selectedCode}
+                onClick={moveNext}
+                disabled={!selectedCode || isLastAvailableQuestion}
                 className="inline-flex h-12 items-center justify-center rounded-full bg-[#2d2521] px-7 text-sm font-semibold text-white transition enabled:hover:-translate-y-0.5 enabled:hover:bg-black disabled:cursor-not-allowed disabled:bg-[#c9bfba]"
               >
-                {selectedCode ? "선택 완료" : "선택지를 골라주세요"}
+                {!selectedCode
+                  ? "선택지를 골라주세요"
+                  : isLastAvailableQuestion
+                    ? "2번 응답 저장 완료"
+                    : "다음 질문"}
               </button>
             </div>
 
-            {selectedCode && (
+            {isLastAvailableQuestion && selectedCode && (
               <p className="mt-5 text-center text-sm text-[#8a7d75]">
-                1번 선택이 저장되었습니다. 다음 질문 연결은 다음 개발 단계에서
-                진행합니다.
+                1번과 2번 응답이 화면 내에서 유지됩니다. 3번 질문과 점수 계산은
+                다음 단계에서 연결합니다.
               </p>
             )}
           </div>
