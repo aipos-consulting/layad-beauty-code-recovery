@@ -50,7 +50,7 @@ create table public.test_answers (
   selected_code char(1) not null,
   created_at timestamptz not null default now(),
   constraint valid_question_id check (question_id between 1 and 20),
-  constraint valid_selected_code check (selected_code ~ '^[ODG MPCVE]$' and selected_code <> ' '),
+  constraint valid_selected_code check (selected_code ~ '^[ODGMPCVE]$'),
   unique (session_id, question_id)
 );
 
