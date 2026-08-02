@@ -97,7 +97,7 @@ export default function SelectTypePage() {
                   setConfirmed(false);
                   setRequests([]);
                 }}
-                className={`rounded-xl border px-2 py-3 text-center text-xs font-semibold transition sm:text-sm ${
+                className={`rounded-xl border px-2 py-3 text-center text-[11px] font-semibold transition sm:text-xs ${
                   active
                     ? "border-[#d88c9c] bg-[#fff0f2] text-[#a85f6e] shadow-sm"
                     : "border-[#ead7db] bg-white text-[#7f7073] hover:border-[#dca7b1] hover:bg-[#fffafa]"
