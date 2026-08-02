@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#f7f2ed] px-5 py-6 text-[#241f1b] sm:px-8">
@@ -38,12 +40,12 @@ export default function Home() {
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
+              <Link
+                href="/test"
                 className="inline-flex h-14 items-center justify-center rounded-full bg-[#2d2521] px-8 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-black"
               >
                 테스트 시작
-              </button>
+              </Link>
               <p className="text-sm text-[#8a7d75]">
                 약 3분 · 가입 없이 바로 시작
               </p>
