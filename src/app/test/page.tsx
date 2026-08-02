@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
+import { BEAUTY_TYPES, type BeautyTypeCode } from "@/lib/review-product-fit";
 import {
-  getFitsForUserType,
-  SAMPLE_PRODUCTS,
-  SAMPLE_REVIEW_EVIDENCES,
-  type BeautyTypeCode,
-} from "@/lib/review-product-fit";
+  createProductAnalysisRequest,
+  validateProductInput,
+  type ProductAnalysisRequest,
+} from "@/lib/product-analysis-request";
 
 type Code = "O" | "D" | "G" | "M" | "P" | "C" | "V" | "E";
 type AxisKey = "OD" | "GM" | "PC" | "VE";
@@ -237,17 +237,22 @@ const axisNames: Record<AxisKey, string> = {
   VE: "Variable / Even",
 };
 
-const axisLabels: Record<AxisKey, string> = {
-  OD: "유분형 / 건성형",
-  GM: "글로우 / 매트",
-  PC: "정교함 / 편의성",
-  VE: "변화형 / 안정형",
-};
+const formatRequestTime = (iso: string) =>
+  new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
 
 export default function TestPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, Code>>({});
   const [completed, setCompleted] = useState(false);
+  const [productInput, setProductInput] = useState("");
+  const [productError, setProductError] = useState("");
+  const [analysisRequests, setAnalysisRequests] = useState<ProductAnalysisRequest[]>([]);
 
   const current = questions[currentIndex];
   const selected = answers[current.id] ?? null;
@@ -271,11 +276,6 @@ export default function TestPage() {
       .join("") as BeautyTypeCode;
   }, [scores]);
 
-  const productFits = useMemo(
-    () => getFitsForUserType(finalCode, SAMPLE_PRODUCTS, SAMPLE_REVIEW_EVIDENCES),
-    [finalCode],
-  );
-
   const choose = (code: Code) => {
     setAnswers((previous) => ({ ...previous, [current.id]: code }));
   };
@@ -287,6 +287,35 @@ export default function TestPage() {
       return;
     }
     setCurrentIndex((index) => index + 1);
+  };
+
+  const submitProduct = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const validation = validateProductInput(productInput);
+    if (!validation.valid) {
+      setProductError(validation.message ?? "입력값을 확인해 주세요.");
+      return;
+    }
+
+    const normalized = productInput.trim();
+    if (analysisRequests[0]?.inputValue === normalized) {
+      setProductError("같은 상품이 이미 분석 준비 중입니다.");
+      return;
+    }
+
+    const request = createProductAnalysisRequest(normalized, finalCode);
+    setAnalysisRequests((previous) => [request, ...previous]);
+    setProductInput("");
+    setProductError("");
+  };
+
+  const resetTest = () => {
+    setAnswers({});
+    setCurrentIndex(0);
+    setCompleted(false);
+    setProductInput("");
+    setProductError("");
+    setAnalysisRequests([]);
   };
 
   if (completed) {
@@ -315,85 +344,108 @@ export default function TestPage() {
 
           <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
             <div className="text-center">
-              <p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT BETA</p>
-              <h2 className="mt-3 text-2xl font-semibold">리뷰 기반 상품 적합도 Beta</h2>
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p>
+              <h2 className="mt-3 text-2xl font-semibold">내 상품 적합도 분석</h2>
               <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">
-                리뷰 맥락에서 축적한 상품 특성 코드로 상품별 16유형 적합도를 만들고,
-                그중 내 Beauty Code에 해당하는 결과를 보여줍니다.
+                궁금한 상품명 또는 상품 링크를 등록하면 리뷰 맥락 분석을 통해 나의 Beauty Code와의 적합도를 확인할 수 있습니다.
               </p>
             </div>
 
-            <div className="mt-8 grid gap-5 sm:grid-cols-2">
-              {productFits.map((fit) => {
-                const product = fit.product;
-                const hasVerifiedName = product.nameStatus === "verified" && Boolean(product.name);
-                const productLabel = hasVerifiedName ? product.name : product.productUrl ? "공식 상품 페이지" : "상품 정보 확인 중";
+            <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
+              <label htmlFor="product-input" className="text-sm font-semibold text-[#5f5053]">상품명 또는 상품 링크</label>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="product-input"
+                  type="text"
+                  value={productInput}
+                  onChange={(event) => {
+                    setProductInput(event.target.value);
+                    if (productError) setProductError("");
+                  }}
+                  placeholder="예: 프라이머 상품명 또는 https://..."
+                  maxLength={2000}
+                  className="min-w-0 flex-1 rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none transition placeholder:text-[#b8a8ab] focus:border-[#d88c9c] focus:ring-2 focus:ring-[#f4dce1]"
+                />
+                <button
+                  type="submit"
+                  disabled={!productInput.trim()}
+                  className="rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white transition enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]"
+                >
+                  적합도 분석하기
+                </button>
+              </div>
+              {productError ? <p className="mt-3 text-sm font-medium text-[#b84f63]">{productError}</p> : null}
+              <p className="mt-3 text-xs leading-6 text-[#806f72]">
+                상품명 또는 공개 상품 페이지 링크 중 하나만 입력해도 됩니다. 현재 단계에서는 분석 요청만 접수되며 임의 점수는 생성하지 않습니다.
+              </p>
+            </form>
 
-                return (
-                  <article
-                    key={product.id}
-                    className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6 shadow-[0_14px_35px_rgba(216,140,156,0.16)]"
-                  >
+            <div className="mt-7 space-y-5">
+              {analysisRequests.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#e3c7cd] px-5 py-8 text-center text-sm text-[#806f72]">
+                  분석할 상품을 등록해 주세요.
+                </div>
+              ) : (
+                analysisRequests.map((request) => (
+                  <article key={request.id} className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6 shadow-[0_14px_35px_rgba(216,140,156,0.14)]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="rounded-full bg-[#d88c9c] px-3 py-1 text-xs font-semibold text-white">내 유형</span>
-                      <span className="rounded-full border border-[#e6a8b5] bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">SAMPLE DATA</span>
+                      <span className="rounded-full bg-[#d88c9c] px-3 py-1 text-xs font-semibold text-white">내 유형 {request.userBeautyCode}</span>
+                      <span className="rounded-full border border-[#e6a8b5] bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">분석 준비 중</span>
                     </div>
+                    <h3 className="mt-5 text-lg font-semibold">상품 분석 요청이 접수되었습니다.</h3>
+                    <dl className="mt-4 grid gap-3 text-sm">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                        <dt className="text-[#806f72]">등록 유형</dt>
+                        <dd className="font-semibold">{request.inputType === "url" ? "상품 링크" : "상품명"}</dd>
+                      </div>
+                      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                        <dt className="text-[#806f72]">등록값</dt>
+                        <dd className="min-w-0 text-left font-semibold sm:text-right">
+                          {request.productUrl ? (
+                            <a href={request.productUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-[#d88c9c] underline-offset-4">
+                              등록한 상품 링크
+                            </a>
+                          ) : (
+                            <span><span className="font-normal text-[#9b7f84]">사용자 입력 상품명 · </span>{request.productName}</span>
+                          )}
+                        </dd>
+                      </div>
+                      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
+                        <dt className="text-[#806f72]">요청 시각</dt>
+                        <dd className="font-semibold">{formatRequestTime(request.createdAt)}</dd>
+                      </div>
+                    </dl>
 
-                    <p className="mt-5 text-xs font-semibold tracking-[0.14em] text-[#9b6b75]">
-                      {product.brand ?? product.sourceLabel ?? "상품 정보"}
-                    </p>
-                    {product.productUrl ? (
-                      <a
-                        href={product.productUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-block break-words text-lg font-semibold underline decoration-[#d88c9c] underline-offset-4"
-                      >
-                        {productLabel}
-                      </a>
-                    ) : (
-                      <p className="mt-2 text-lg font-semibold">{productLabel}</p>
-                    )}
-                    <p className="mt-1 text-sm text-[#806f72]">{product.category}</p>
-
-                    <div className="mt-5 rounded-2xl bg-white/85 p-5">
-                      <p className="text-sm font-semibold text-[#a85f6e]">내 유형 {fit.beautyCode}</p>
-                      <div className="mt-2 flex items-end justify-between gap-4">
-                        <p className="text-4xl font-bold text-[#c66f82]">{fit.fitScore}%</p>
-                        <p className="text-xs font-semibold text-[#8f747a]">{fit.confidenceLabel}</p>
+                    <div className="mt-6 border-t border-[#e9c7ce] pt-5">
+                      <p className="text-xs font-semibold tracking-[0.12em] text-[#9b6b75]">16유형 분석 상태</p>
+                      <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8">
+                        {BEAUTY_TYPES.map((code) => {
+                          const isMine = code === request.userBeautyCode;
+                          return (
+                            <div
+                              key={code}
+                              className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold ${isMine ? "border-[#d88c9c] bg-[#d88c9c] text-white shadow-sm" : "border-[#ead7db] bg-white/80 text-[#8d7b7f]"}`}
+                            >
+                              {code}
+                              {isMine ? <span className="mt-1 block text-[10px]">내 유형</span> : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <dl className="mt-5 grid gap-3 text-sm">
-                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">리뷰 근거</dt><dd className="font-semibold">{fit.reviewEvidenceCount}건</dd></div>
-                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">잘 맞는 축</dt><dd className="text-right font-semibold">{fit.matchedAxes.length ? fit.matchedAxes.map((axis) => axisLabels[axis]).join(", ") : "추가 분석 필요"}</dd></div>
-                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">주의 축</dt><dd className="text-right font-semibold">{fit.weakAxes.length ? fit.weakAxes.map((axis) => axisLabels[axis]).join(", ") : "없음"}</dd></div>
-                    </dl>
-
-                    <div className="mt-5 border-t border-[#e9c7ce] pt-4">
-                      <p className="text-xs font-semibold tracking-[0.12em] text-[#9b6b75]">대표 분석 근거</p>
-                      <ul className="mt-2 space-y-2 text-sm leading-6 text-[#695b5e]">
-                        {fit.representativeExcerpts.map((excerpt) => <li key={excerpt}>“{excerpt}”</li>)}
-                      </ul>
-                    </div>
+                    <p className="mt-5 rounded-2xl bg-white/80 p-4 text-xs leading-6 text-[#806f72]">
+                      현재는 분석 요청 접수 단계입니다. 리뷰 데이터 수집과 AI 맥락 분석이 완료되기 전에는 16유형 적합도 점수를 표시하지 않습니다.
+                    </p>
                   </article>
-                );
-              })}
+                ))
+              )}
             </div>
-
-            <p className="mt-6 rounded-2xl bg-[#fffafa] p-5 text-center text-xs leading-6 text-[#806f72]">
-              현재 결과는 리뷰 기반 분석 구조와 상품별 16유형 적합도 계산을 검증하기 위한 샘플 데이터 기반 Beta입니다.
-              실제 사용감은 피부 상태, 계절, 환경, 사용량에 따라 달라질 수 있습니다.
-            </p>
           </section>
 
           <button
             type="button"
-            onClick={() => {
-              setAnswers({});
-              setCurrentIndex(0);
-              setCompleted(false);
-            }}
+            onClick={resetTest}
             className="mt-9 inline-flex h-12 items-center justify-center rounded-full bg-[#d88c9c] px-7 text-sm font-semibold text-white transition hover:bg-[#c8798a]"
           >
             테스트 다시 하기
