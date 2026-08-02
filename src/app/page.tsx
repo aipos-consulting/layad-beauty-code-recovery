@@ -44,19 +44,9 @@ export default function Home() {
 
         <div className="relative mx-auto flex min-h-[650px] max-w-6xl items-center px-5 py-16 sm:px-8 sm:py-20">
           <div className="w-full text-center lg:max-w-4xl">
-            <p className="text-sm font-semibold tracking-[0.12em] text-[#cf7772] sm:text-base">20문항 · 4축 · 16유형</p>
+            <p className="text-sm font-semibold tracking-[0.12em] text-[#cf7772] sm:text-base">20문항 · 16유형</p>
             <h1 className="mt-7 text-4xl font-semibold tracking-[0.04em] sm:text-5xl lg:text-6xl">LAYAD BEAUTY CODE</h1>
             <p className="mt-5 text-lg text-[#5e5753] sm:text-xl">당신만의 메이크업 유형을 찾아보세요</p>
-
-            <div className="mx-auto mt-9 flex max-w-3xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full bg-[#fbefec] px-5 py-3 text-sm text-[#625a56]">
-              <span><b className="text-[#262220]">O/D</b> 유분형 / 건성형</span>
-              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">G/M</b> 글로우 / 매트</span>
-              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">P/C</b> 정교함 / 편의성</span>
-              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">V/E</b> 변화형 / 안정형</span>
-            </div>
 
             <div className="mx-auto mt-10 grid max-w-xl gap-3">
               <Link
