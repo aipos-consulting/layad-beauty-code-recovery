@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import {
+  getFitsForUserType,
+  SAMPLE_PRODUCTS,
+  SAMPLE_REVIEW_EVIDENCES,
+  type BeautyTypeCode,
+} from "@/lib/review-product-fit";
 
 type Code = "O" | "D" | "G" | "M" | "P" | "C" | "V" | "E";
 type AxisKey = "OD" | "GM" | "PC" | "VE";
@@ -214,7 +220,7 @@ const questions: TestQuestion[] = [
       { code: "D", title: "피부가 건조해져서 당긴다" },
       { code: "O", title: "피부에 유분이 많이 올라온다" },
     ],
-  }
+  },
 ];
 
 const axisPairs: Record<AxisKey, [Code, Code]> = {
@@ -229,6 +235,13 @@ const axisNames: Record<AxisKey, string> = {
   GM: "Glow / Matte",
   PC: "Precise / Convenient",
   VE: "Variable / Even",
+};
+
+const axisLabels: Record<AxisKey, string> = {
+  OD: "유분형 / 건성형",
+  GM: "글로우 / 매트",
+  PC: "정교함 / 편의성",
+  VE: "변화형 / 안정형",
 };
 
 export default function TestPage() {
@@ -255,8 +268,13 @@ export default function TestPage() {
         const [first, second] = axisPairs[axis];
         return scores[first] >= 3 ? first : second;
       })
-      .join("");
+      .join("") as BeautyTypeCode;
   }, [scores]);
+
+  const productFits = useMemo(
+    () => getFitsForUserType(finalCode, SAMPLE_PRODUCTS, SAMPLE_REVIEW_EVIDENCES),
+    [finalCode],
+  );
 
   const choose = (code: Code) => {
     setAnswers((previous) => ({ ...previous, [current.id]: code }));
@@ -274,7 +292,7 @@ export default function TestPage() {
   if (completed) {
     return (
       <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
-        <section className="mx-auto max-w-3xl rounded-[2rem] bg-white px-6 py-12 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
+        <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-12 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
           <p className="text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
           <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
           <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[#766767]">
@@ -294,6 +312,80 @@ export default function TestPage() {
               );
             })}
           </div>
+
+          <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
+            <div className="text-center">
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT BETA</p>
+              <h2 className="mt-3 text-2xl font-semibold">리뷰 기반 상품 적합도 Beta</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">
+                리뷰 맥락에서 축적한 상품 특성 코드로 상품별 16유형 적합도를 만들고,
+                그중 내 Beauty Code에 해당하는 결과를 보여줍니다.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-5 sm:grid-cols-2">
+              {productFits.map((fit) => {
+                const product = fit.product;
+                const hasVerifiedName = product.nameStatus === "verified" && Boolean(product.name);
+                const productLabel = hasVerifiedName ? product.name : product.productUrl ? "공식 상품 페이지" : "상품 정보 확인 중";
+
+                return (
+                  <article
+                    key={product.id}
+                    className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6 shadow-[0_14px_35px_rgba(216,140,156,0.16)]"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="rounded-full bg-[#d88c9c] px-3 py-1 text-xs font-semibold text-white">내 유형</span>
+                      <span className="rounded-full border border-[#e6a8b5] bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">SAMPLE DATA</span>
+                    </div>
+
+                    <p className="mt-5 text-xs font-semibold tracking-[0.14em] text-[#9b6b75]">
+                      {product.brand ?? product.sourceLabel ?? "상품 정보"}
+                    </p>
+                    {product.productUrl ? (
+                      <a
+                        href={product.productUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block break-words text-lg font-semibold underline decoration-[#d88c9c] underline-offset-4"
+                      >
+                        {productLabel}
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-lg font-semibold">{productLabel}</p>
+                    )}
+                    <p className="mt-1 text-sm text-[#806f72]">{product.category}</p>
+
+                    <div className="mt-5 rounded-2xl bg-white/85 p-5">
+                      <p className="text-sm font-semibold text-[#a85f6e]">내 유형 {fit.beautyCode}</p>
+                      <div className="mt-2 flex items-end justify-between gap-4">
+                        <p className="text-4xl font-bold text-[#c66f82]">{fit.fitScore}%</p>
+                        <p className="text-xs font-semibold text-[#8f747a]">{fit.confidenceLabel}</p>
+                      </div>
+                    </div>
+
+                    <dl className="mt-5 grid gap-3 text-sm">
+                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">리뷰 근거</dt><dd className="font-semibold">{fit.reviewEvidenceCount}건</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">잘 맞는 축</dt><dd className="text-right font-semibold">{fit.matchedAxes.length ? fit.matchedAxes.map((axis) => axisLabels[axis]).join(", ") : "추가 분석 필요"}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-[#806f72]">주의 축</dt><dd className="text-right font-semibold">{fit.weakAxes.length ? fit.weakAxes.map((axis) => axisLabels[axis]).join(", ") : "없음"}</dd></div>
+                    </dl>
+
+                    <div className="mt-5 border-t border-[#e9c7ce] pt-4">
+                      <p className="text-xs font-semibold tracking-[0.12em] text-[#9b6b75]">대표 분석 근거</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-[#695b5e]">
+                        {fit.representativeExcerpts.map((excerpt) => <li key={excerpt}>“{excerpt}”</li>)}
+                      </ul>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <p className="mt-6 rounded-2xl bg-[#fffafa] p-5 text-center text-xs leading-6 text-[#806f72]">
+              현재 결과는 리뷰 기반 분석 구조와 상품별 16유형 적합도 계산을 검증하기 위한 샘플 데이터 기반 Beta입니다.
+              실제 사용감은 피부 상태, 계절, 환경, 사용량에 따라 달라질 수 있습니다.
+            </p>
+          </section>
 
           <button
             type="button"
