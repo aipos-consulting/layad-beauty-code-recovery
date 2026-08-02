@@ -1,99 +1,121 @@
 import Link from "next/link";
 
+const features = [
+  {
+    icon: "01",
+    title: "20가지 질문",
+    description: "4가지 축, 20문항으로 나의 메이크업 성향을 살펴봅니다.",
+  },
+  {
+    icon: "02",
+    title: "4축 분석",
+    description: "O/D, G/M, P/C, V/E 네 가지 축으로 분류합니다.",
+  },
+  {
+    icon: "03",
+    title: "16가지 유형",
+    description: "응답 결과를 조합해 16가지 Beauty Code 중 하나를 확인합니다.",
+  },
+  {
+    icon: "04",
+    title: "제품 특성 안내",
+    description: "결과에 어울리는 제품 카테고리와 적합 특성을 안내합니다.",
+  },
+];
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#f7f2ed] px-5 py-6 text-[#241f1b] sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-[0_24px_80px_rgba(70,48,35,0.12)]">
-        <header className="flex items-center justify-between px-6 py-5 sm:px-10">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.32em] text-[#9b6c55]">
-              LAYAD
+    <main className="min-h-screen bg-[#fffdfc] text-[#272322]">
+      <header className="border-b border-[#eadfda] bg-white/95">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+          <img
+            src="/layad-logo.svg"
+            alt="LAYAD Seoul - Layers add delight"
+            className="h-auto w-[122px] object-contain sm:w-[154px]"
+          />
+          <p className="text-xs font-semibold tracking-[0.16em] sm:text-sm">
+            LAYAD BEAUTY CODE
+          </p>
+        </div>
+      </header>
+
+      <section className="relative overflow-hidden border-b border-[#eadfda]">
+        <div className="pointer-events-none absolute -right-16 top-16 h-52 w-52 rounded-full bg-[#f6d8d2]/55 blur-3xl" />
+        <div className="pointer-events-none absolute right-8 top-48 h-36 w-14 rotate-[24deg] rounded-full bg-gradient-to-b from-[#d9a28e] to-[#f8e5dd] opacity-70 shadow-xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-[-30px] h-44 w-60 rotate-[-18deg] rounded-[2.5rem] border border-[#e5b3a2] bg-gradient-to-br from-[#f8ddd3] to-[#df9b84] opacity-70 shadow-2xl" />
+
+        <div className="relative mx-auto flex min-h-[650px] max-w-6xl items-center px-5 py-16 sm:px-8 sm:py-20">
+          <div className="w-full text-center lg:max-w-4xl">
+            <p className="text-sm font-semibold tracking-[0.12em] text-[#cf7772] sm:text-base">
+              20문항 · 4축 · 16유형
             </p>
-            <p className="mt-1 text-sm font-medium">BEAUTY CODE</p>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <button className="rounded-full px-4 py-2 text-[#6f625b] transition hover:bg-[#f7f2ed]">
-              로그인
-            </button>
-            <button className="rounded-full border border-[#d8c5b8] px-4 py-2 font-medium transition hover:bg-[#f7f2ed]">
-              회원가입
-            </button>
-          </div>
-        </header>
-
-        <section className="grid flex-1 items-center gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[1.1fr_0.9fr] lg:px-16 lg:py-16">
-          <div>
-            <div className="inline-flex rounded-full bg-[#f1e3da] px-4 py-2 text-xs font-semibold tracking-[0.12em] text-[#8c5d47]">
-              20 QUESTIONS · 4 AXES · 16 TYPES
-            </div>
-
-            <h1 className="mt-7 max-w-2xl text-4xl font-semibold leading-[1.15] tracking-[-0.04em] sm:text-6xl">
-              나의 메이크업 습관을
-              <br />
-              하나의 코드로 만나보세요.
+            <h1 className="mt-7 text-4xl font-semibold tracking-[0.04em] sm:text-5xl lg:text-6xl">
+              LAYAD BEAUTY CODE
             </h1>
-
-            <p className="mt-6 max-w-xl text-base leading-7 text-[#71645d] sm:text-lg sm:leading-8">
-              LAYAD BEAUTY CODE는 20개의 질문을 통해 나의 메이크업 방식과
-              결과 성향을 네 가지 축으로 분류합니다. 비회원도 바로 테스트할 수
-              있으며, 결과 저장과 재조회는 회원가입 후 이용할 수 있습니다.
+            <p className="mt-5 text-lg text-[#5e5753] sm:text-xl">
+              당신만의 메이크업 유형을 찾아보세요
             </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link
-                href="/test"
-                className="inline-flex h-14 items-center justify-center rounded-full bg-[#2d2521] px-8 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-black"
-              >
-                테스트 시작
-              </Link>
-              <p className="text-sm text-[#8a7d75]">
-                약 3분 · 가입 없이 바로 시작
+            <div className="mx-auto mt-9 flex max-w-3xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full bg-[#fbefec] px-5 py-3 text-sm text-[#625a56]">
+              <span><b className="text-[#262220]">O/D</b> 외향/내향</span>
+              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
+              <span><b className="text-[#262220]">G/M</b> 글로우/매트</span>
+              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
+              <span><b className="text-[#262220]">P/C</b> 정교함/편의성</span>
+              <span className="hidden text-[#cdbbb4] sm:inline">|</span>
+              <span><b className="text-[#262220]">V/E</b> 변화성/안정성</span>
+            </div>
+
+            <Link
+              href="/test"
+              className="mx-auto mt-10 inline-flex h-14 min-w-64 items-center justify-center gap-6 rounded-full bg-gradient-to-r from-[#d7837e] to-[#cb706f] px-10 text-base font-semibold text-white shadow-[0_12px_30px_rgba(198,105,102,0.25)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(198,105,102,0.32)]"
+            >
+              테스트 시작하기 <span aria-hidden>→</span>
+            </Link>
+            <p className="mt-5 text-sm text-[#756d68]">약 3분 소요 · 무료 테스트 · 비회원 즉시 시작</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#fffafa]">
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-14 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:py-16">
+          {features.map((feature) => (
+            <article key={feature.title} className="text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f8e4e1] text-sm font-semibold tracking-[0.12em]">
+                {feature.icon}
+              </div>
+              <h2 className="mt-5 text-lg font-semibold">{feature.title}</h2>
+              <p className="mt-3 text-sm leading-6 text-[#6d6561]">{feature.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-[#eadfda] bg-white px-5 py-10 sm:px-8">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-[#e5d8d2] bg-[#fffdfc] p-6 sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#f9e5e2] text-xl" aria-hidden>
+              🔒
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">저작권 및 무단 사용 엄중 경고</h2>
+              <p className="mt-3 text-sm font-medium">© 2026 LAYAD. All rights reserved.</p>
+              <p className="mt-3 text-sm leading-6 text-[#5f5753]">
+                본 웹사이트의 텍스트, 이미지, 디자인, 프로그램, 분류체계 및 기타 모든 콘텐츠는
+                LAYAD의 저작권과 지식재산권 보호 대상입니다. LAYAD의 사전 서면 허가 없이
+                복제, 배포, 전송, 전시, 변형, 2차적 저작물 작성 또는 상업적 이용을 엄격히 금지합니다.
+              </p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-[#c94f49]">
+                무단 이용이 확인되는 경우 관련 법령에 따라 민사·형사상 책임을 물을 수 있습니다.
               </p>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute -left-6 top-10 h-28 w-28 rounded-full bg-[#e9cfc0] blur-3xl" />
-            <div className="absolute -right-5 bottom-8 h-36 w-36 rounded-full bg-[#d8c4dc] blur-3xl" />
-
-            <div className="relative rounded-[2rem] border border-white/70 bg-[#fbf8f5]/90 p-6 shadow-[0_30px_80px_rgba(74,53,42,0.16)] backdrop-blur sm:p-8">
-              <p className="text-xs font-semibold tracking-[0.25em] text-[#9b6c55]">
-                YOUR BEAUTY CODE
-              </p>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                {[
-                  ["O / D", "메이크업 접근 방식"],
-                  ["G / M", "표현 선호 성향"],
-                  ["P / C", "정교함 또는 편의성"],
-                  ["V / E", "변화성 또는 안정성"],
-                ].map(([code, label]) => (
-                  <div
-                    key={code}
-                    className="rounded-2xl border border-[#eadfd7] bg-white p-4"
-                  >
-                    <p className="text-xl font-semibold tracking-tight">{code}</p>
-                    <p className="mt-2 text-xs leading-5 text-[#81736b]">{label}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-[#2d2521] p-5 text-white">
-                <p className="text-xs tracking-[0.2em] text-white/60">SAMPLE CODE</p>
-                <p className="mt-2 text-3xl font-semibold tracking-[0.18em]">OGPV</p>
-                <p className="mt-3 text-sm leading-6 text-white/70">
-                  테스트 완료 후 나의 16가지 Beauty Code 중 하나를 확인할 수
-                  있습니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <footer className="border-t border-black/5 px-6 py-5 text-center text-xs text-[#9a8e87] sm:px-10">
-          현재 화면은 LAYAD BEAUTY CODE MVP 랜딩 페이지입니다. 특정 제품 추천과
-          AI 개인화는 포함하지 않습니다.
-        </footer>
-      </div>
+      <footer className="border-t border-[#eadfda] bg-white px-5 py-6 text-center text-xs text-[#756d68]">
+        © 2026 LAYAD. All rights reserved.
+      </footer>
     </main>
   );
 }
