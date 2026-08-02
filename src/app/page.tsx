@@ -57,13 +57,13 @@ export default function Home() {
             </p>
 
             <div className="mx-auto mt-9 flex max-w-3xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full bg-[#fbefec] px-5 py-3 text-sm text-[#625a56]">
-              <span><b className="text-[#262220]">O/D</b> Oily / Dry</span>
+              <span><b className="text-[#262220]">O/D</b> 유분형 / 건성형</span>
               <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">G/M</b> Glow / Matte</span>
+              <span><b className="text-[#262220]">G/M</b> 글로우 / 매트</span>
               <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">P/C</b> Precise / Convenient</span>
+              <span><b className="text-[#262220]">P/C</b> 정교함 / 편의성</span>
               <span className="hidden text-[#cdbbb4] sm:inline">|</span>
-              <span><b className="text-[#262220]">V/E</b> Variable / Even</span>
+              <span><b className="text-[#262220]">V/E</b> 변화형 / 안정형</span>
             </div>
 
             <Link
