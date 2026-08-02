@@ -14,16 +14,33 @@ const adjustProductAnalysisUI = () => {
   }
 
   document.querySelectorAll("p").forEach((element) => {
-    if (element.textContent?.trim() === "16유형 분석 상태") {
+    const text = element.textContent?.trim() ?? "";
+
+    if (text === "16유형 분석 상태") {
       element.style.textAlign = "center";
       element.style.fontSize = "0.6875rem";
       element.style.letterSpacing = "0.08em";
+    }
+
+    if (text.startsWith("QUESTION ") && text.includes("·")) {
+      element.textContent = text.split("·")[0].trim();
     }
   });
 
   document.querySelectorAll("span").forEach((element) => {
     if (element.textContent?.trim() === "내 유형") {
       element.remove();
+      return;
+    }
+
+    const text = element.textContent?.trim() ?? "";
+    const isQuestionOptionCode =
+      /^[ODGMPCVE]$/.test(text) &&
+      element.classList.contains("h-9") &&
+      element.classList.contains("w-9");
+
+    if (isQuestionOptionCode) {
+      element.style.display = "none";
     }
   });
 };
