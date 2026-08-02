@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 const ANSWERS_KEY = "layad-test-answers";
 const SESSION_KEY = "layad-supabase-session-id";
 const SAVED_CODE_KEY = "layad-saved-beauty-code";
+const SAVED_SOURCE_KEY = "layad-saved-beauty-code-source";
 
 type AnswerMap = Record<number, string>;
+type BeautyCodeSource = "test" | "manual";
 type AgeBand =
   | "14-19"
   | "20-29"
@@ -56,36 +58,45 @@ function findAnswerCode(button: HTMLButtonElement) {
   return possible ?? null;
 }
 
+function getCurrentSource(pathname: string): BeautyCodeSource | null {
+  if (pathname === "/test") return "test";
+  if (pathname === "/select-type") return "manual";
+  return null;
+}
+
 export default function AnonymousDataCapture() {
-  const [isTestPath, setIsTestPath] = useState(false);
+  const [source, setSource] = useState<BeautyCodeSource | null>(null);
   const [beautyCode, setBeautyCode] = useState<string | null>(null);
   const [showAgePrompt, setShowAgePrompt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
-    setIsTestPath(window.location.pathname === "/test");
+    setSource(getCurrentSource(window.location.pathname));
   }, []);
 
   useEffect(() => {
-    if (!isTestPath) return;
+    if (!source) return;
 
     const clickHandler = (event: MouseEvent) => {
       const button = (event.target as HTMLElement).closest("button");
       if (!(button instanceof HTMLButtonElement)) return;
 
-      const questionId = findCurrentQuestionId();
-      const answerCode = findAnswerCode(button);
-      if (questionId && answerCode) {
-        const answers = readAnswers();
-        answers[questionId] = answerCode;
-        sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answers));
+      if (source === "test") {
+        const questionId = findCurrentQuestionId();
+        const answerCode = findAnswerCode(button);
+        if (questionId && answerCode) {
+          const answers = readAnswers();
+          answers[questionId] = answerCode;
+          sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answers));
+        }
       }
 
       if (button.textContent?.includes("테스트 다시 하기")) {
         sessionStorage.removeItem(ANSWERS_KEY);
         sessionStorage.removeItem(SESSION_KEY);
         sessionStorage.removeItem(SAVED_CODE_KEY);
+        sessionStorage.removeItem(SAVED_SOURCE_KEY);
         setBeautyCode(null);
         setShowAgePrompt(false);
         setSaveMessage("");
@@ -98,8 +109,11 @@ export default function AnonymousDataCapture() {
       setBeautyCode(code);
 
       const savedCode = sessionStorage.getItem(SAVED_CODE_KEY);
+      const savedSource = sessionStorage.getItem(SAVED_SOURCE_KEY);
       const sessionId = sessionStorage.getItem(SESSION_KEY);
-      if (savedCode !== code || !sessionId) setShowAgePrompt(true);
+      if (savedCode !== code || savedSource !== source || !sessionId) {
+        setShowAgePrompt(true);
+      }
     };
 
     document.addEventListener("click", clickHandler);
@@ -111,7 +125,7 @@ export default function AnonymousDataCapture() {
       document.removeEventListener("click", clickHandler);
       observer.disconnect();
     };
-  }, [isTestPath]);
+  }, [source]);
 
   useEffect(() => {
     const submitHandler = async (event: Event) => {
@@ -144,34 +158,36 @@ export default function AnonymousDataCapture() {
   }, []);
 
   const saveSession = async (ageBand: AgeBand | null) => {
-    if (!beautyCode || saving) return;
+    if (!beautyCode || !source || saving) return;
     setSaving(true);
     setSaveMessage("");
 
-    const answers = Object.entries(readAnswers()).map(([questionId, selectedCode]) => ({
-      questionId: Number(questionId),
-      selectedCode,
-    }));
+    const answers =
+      source === "test"
+        ? Object.entries(readAnswers()).map(([questionId, selectedCode]) => ({
+            questionId: Number(questionId),
+            selectedCode,
+          }))
+        : [];
+
+    const payload = {
+      beautyCode,
+      beautyCodeSource: source,
+      ageBand,
+      answers,
+    };
 
     try {
       const response = await fetch("/api/anonymous-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          beautyCode,
-          beautyCodeSource: "test",
-          ageBand,
-          answers,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = (await response.json()) as { ok?: boolean; sessionId?: string; code?: string };
       if (!response.ok || !result.ok || !result.sessionId) {
         if (result.code === "SUPABASE_NOT_CONFIGURED") {
-          localStorage.setItem(
-            "layad-pending-session",
-            JSON.stringify({ beautyCode, beautyCodeSource: "test", ageBand, answers }),
-          );
+          localStorage.setItem("layad-pending-session", JSON.stringify(payload));
           setSaveMessage("현재 저장 준비 중입니다. 결과는 이 기기에 임시 보관되었습니다.");
         } else {
           setSaveMessage("저장에 실패했습니다. 결과 화면은 계속 이용할 수 있습니다.");
@@ -181,21 +197,23 @@ export default function AnonymousDataCapture() {
 
       sessionStorage.setItem(SESSION_KEY, result.sessionId);
       sessionStorage.setItem(SAVED_CODE_KEY, beautyCode);
+      sessionStorage.setItem(SAVED_SOURCE_KEY, source);
       localStorage.removeItem("layad-pending-session");
       setShowAgePrompt(false);
-      setSaveMessage("익명 테스트 데이터가 저장되었습니다.");
-    } catch {
-      localStorage.setItem(
-        "layad-pending-session",
-        JSON.stringify({ beautyCode, beautyCodeSource: "test", ageBand, answers }),
+      setSaveMessage(
+        source === "manual"
+          ? "선택한 Beauty Code와 익명 이용 데이터가 저장되었습니다."
+          : "익명 테스트 데이터가 저장되었습니다.",
       );
+    } catch {
+      localStorage.setItem("layad-pending-session", JSON.stringify(payload));
       setSaveMessage("네트워크 문제로 이 기기에 임시 보관했습니다.");
     } finally {
       setSaving(false);
     }
   };
 
-  if (!isTestPath || (!showAgePrompt && !saveMessage)) return null;
+  if (!source || (!showAgePrompt && !saveMessage)) return null;
 
   return (
     <>
