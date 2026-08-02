@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const ANSWERS_KEY = "layad-test-answers";
 const SESSION_KEY = "layad-supabase-session-id";
@@ -57,15 +57,15 @@ function findAnswerCode(button: HTMLButtonElement) {
 }
 
 export default function AnonymousDataCapture() {
+  const [isTestPath, setIsTestPath] = useState(false);
   const [beautyCode, setBeautyCode] = useState<string | null>(null);
   const [showAgePrompt, setShowAgePrompt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
-  const isTestPath = useMemo(
-    () => typeof window !== "undefined" && window.location.pathname === "/test",
-    [],
-  );
+  useEffect(() => {
+    setIsTestPath(window.location.pathname === "/test");
+  }, []);
 
   useEffect(() => {
     if (!isTestPath) return;
