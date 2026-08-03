@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const SESSION_KEY = "layad-supabase-session-id";
 
@@ -15,6 +15,23 @@ type ResultPayload = {
   userBeautyCode?: string | null;
   fits?: Fit[];
 };
+
+function fitMessage(score: number) {
+  if (score >= 90) return { admin: "매우 적합", user: "매우 잘 어울립니다" };
+  if (score >= 75) return { admin: "적합", user: "잘 어울립니다" };
+  if (score >= 60) return { admin: "보통", user: "무난하게 어울립니다" };
+  if (score >= 40) return { admin: "낮음", user: "일부 특성이 맞지 않을 수 있습니다" };
+  return { admin: "매우 낮음", user: "다른 상품과 함께 비교해 보세요" };
+}
+
+function heatStyle(score: number, mine: boolean, best: boolean) {
+  const alpha = Math.max(0.08, Math.min(0.42, score / 240));
+  return {
+    backgroundColor: `rgba(216, 140, 156, ${alpha})`,
+    borderColor: mine ? "#a94f65" : best ? "#d88c9c" : "#ead7db",
+    boxShadow: mine ? "0 0 0 2px rgba(169,79,101,.18)" : undefined,
+  };
+}
 
 export default function AnalysisProcessingFeedback() {
   const [visible, setVisible] = useState(false);
@@ -41,10 +58,9 @@ export default function AnalysisProcessingFeedback() {
       try {
         const response = await fetch(`/api/product-analysis-result?sessionId=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
         const payload = (await response.json()) as ResultPayload;
-
         if (payload.code === "SUPABASE_NOT_CONFIGURED") {
           setStage("config");
-          setMessage("Supabase 환경변수가 현재 배포에 적용되지 않았습니다.");
+          setMessage("데이터 저장 설정을 확인해 주세요.");
           return;
         }
         if (!response.ok || !payload.ok) throw new Error("상태 확인 실패");
@@ -56,32 +72,23 @@ export default function AnalysisProcessingFeedback() {
         }
         if (payload.status === "failed" || payload.status === "insufficient_reviews") {
           setStage("failed");
-          setMessage(
-            payload.status === "insufficient_reviews"
-              ? "공개된 상품 정보와 리뷰 근거가 부족하여 적합도를 계산하지 못했습니다. 정확한 상품 링크로 다시 요청해 주세요."
-              : payload.errorMessage || "AI 분석 처리에 실패했습니다.",
-          );
+          setMessage(payload.errorMessage || "현재 공개된 상품 정보가 충분하지 않아 적합도를 제공하기 어렵습니다.");
           return;
         }
 
         if (payload.status === "analyzing") setStage("analyzing");
-        else if (payload.status === "collecting_reviews") setStage("collecting");
-        else if (payload.status === "submitted" && attemptsRef.current > 2) {
-          setStage("config");
-          setMessage("AI 분석이 시작되지 않았습니다. Vercel의 OPENAI_API_KEY 설정을 확인해 주세요.");
-          return;
-        } else setStage("collecting");
+        else setStage("collecting");
 
         if (attemptsRef.current >= 45) {
           setStage("failed");
-          setMessage("분석 시간이 길어지고 있습니다. 잠시 후 다시 요청해 주세요.");
+          setMessage("분석 시간이 길어지고 있습니다. 운영자가 결과를 준비한 뒤 다시 확인해 주세요.");
           return;
         }
         timerRef.current = window.setTimeout(poll, 2000);
       } catch {
         if (attemptsRef.current >= 8) {
           setStage("failed");
-          setMessage("분석 상태를 확인하지 못했습니다. 네트워크 연결을 확인해 주세요.");
+          setMessage("분석 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
           return;
         }
         timerRef.current = window.setTimeout(poll, 2000);
@@ -93,10 +100,9 @@ export default function AnalysisProcessingFeedback() {
       if (!(form instanceof HTMLFormElement)) return;
       const button = form.querySelector('button[type="submit"]');
       const input = form.querySelector("input") as HTMLInputElement | null;
-      if (!button?.textContent?.includes("적합도 분석하기") || !input?.value.trim()) return;
-
-      const sessionId = sessionStorage.getItem(SESSION_KEY);
-      if (!sessionId) return;
+      const label = button?.textContent ?? "";
+      if ((!label.includes("적합도 분석하기") && !label.includes("잘 맞는지 확인하기")) || !input?.value.trim()) return;
+      if (!sessionStorage.getItem(SESSION_KEY)) return;
 
       stopTimer();
       attemptsRef.current = 0;
@@ -114,67 +120,69 @@ export default function AnalysisProcessingFeedback() {
     };
   }, []);
 
+  const fits = useMemo(() => [...(result?.fits ?? [])].sort((a, b) => b.fitScore - a.fitScore), [result]);
   if (!visible) return null;
 
   const done = stage === "completed";
   const stopped = stage === "failed" || stage === "config";
   const stageNumber = stage === "saving" ? 1 : stage === "collecting" ? 2 : stage === "analyzing" ? 3 : done ? 4 : 0;
-  const userCode = result?.userBeautyCode;
+  const userCode = result?.userBeautyCode ?? null;
+  const myFit = fits.find((fit) => fit.beautyCode === userCode);
+  const bestFit = fits[0];
+  const myRank = myFit ? fits.findIndex((fit) => fit.beautyCode === myFit.beautyCode) + 1 : null;
+  const productName = `${result?.product?.brand ?? ""} ${result?.product?.canonical_name ?? "선택하신 상품"}`.trim();
 
   return (
-    <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/35 px-4 py-6">
-      <section className="mx-auto w-full max-w-2xl rounded-3xl bg-white p-6 text-[#382d2d] shadow-2xl sm:p-8">
+    <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/40 px-4 py-6">
+      <section className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-6 text-[#382d2d] shadow-2xl sm:p-8">
         <div className="text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#fff0f2]">
             {done ? <span className="text-2xl text-[#d88c9c]">✓</span> : stopped ? <span className="text-2xl text-[#b84f63]">!</span> : <span className="h-7 w-7 animate-spin rounded-full border-4 border-[#f1dfe2] border-t-[#d88c9c]" />}
           </div>
-          <p className="mt-5 text-xs font-semibold tracking-[0.18em] text-[#b97b88]">AI ANALYSIS</p>
+          <p className="mt-5 text-xs font-semibold tracking-[0.18em] text-[#b97b88]">LAYAD BEAUTY CODE</p>
           <h2 className="mt-3 text-xl font-semibold">
-            {done ? "16유형 적합도 분석이 완료되었습니다" : stopped ? "분석을 계속할 수 없습니다" : stage === "analyzing" ? "AI가 리뷰 맥락을 분석하고 있습니다" : stage === "collecting" ? "공개 상품 정보와 리뷰를 확인하고 있습니다" : "분석 요청을 저장하고 있습니다"}
+            {done ? "회원님의 Beauty Code를 기준으로 확인한 결과입니다" : stopped ? "적합도 결과를 아직 보여드릴 수 없습니다" : "선택하신 상품과 회원님의 Beauty Code를 비교하고 있습니다"}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[#766767]">
-            {done ? `${result?.product?.brand ?? ""} ${result?.product?.canonical_name ?? "상품"}`.trim() : stopped ? message : "상품에 따라 최대 1분 정도 걸릴 수 있습니다. 화면을 닫지 말아 주세요."}
-          </p>
+          <p className="mt-3 text-sm leading-6 text-[#766767]">{done ? productName : stopped ? message : "운영자가 상품 특성을 확인하고 16유형 결과를 준비합니다."}</p>
         </div>
 
         {!done && !stopped ? (
           <div className="mt-6 space-y-3 text-sm">
-            {["상품 분석 요청 접수", "공개 정보와 리뷰 근거 확인", "AI 맥락 분석 및 특성 코드 생성", "16유형 적합도 계산"].map((label, index) => {
+            {["상품 신청 완료", "상품 정보 확인", "16유형 적합도 분석", "회원님 유형 결과 공개"].map((label, index) => {
               const number = index + 1;
               const active = number <= stageNumber;
-              return (
-                <div key={label} className="flex items-center gap-3 rounded-2xl bg-[#fffafa] px-4 py-3">
-                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${active ? "bg-[#d88c9c] text-white" : "bg-[#eadfe1] text-[#9b898c]"}`}>{number}</span>
-                  <span className={active ? "font-medium" : "text-[#9b898c]"}>{label}</span>
-                </div>
-              );
+              return <div key={label} className="flex items-center gap-3 rounded-2xl bg-[#fffafa] px-4 py-3"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${active ? "bg-[#d88c9c] text-white" : "bg-[#eadfe1] text-[#9b898c]"}`}>{number}</span><span className={active ? "font-medium" : "text-[#9b898c]"}>{label}</span></div>;
             })}
           </div>
         ) : null}
 
-        {done && result?.fits?.length ? (
-          <div className="mt-7">
-            <p className="text-center text-sm text-[#766767]">리뷰 근거 기반 16유형 적합도</p>
-            <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
-              {result.fits.map((fit) => {
-                const mine = fit.beautyCode === userCode;
-                return (
-                  <div key={fit.beautyCode} className={`rounded-2xl border px-2 py-3 text-center ${mine ? "border-[#d88c9c] bg-[#fff0f2] shadow-sm" : "border-[#ead7db] bg-white"}`}>
-                    <p className="text-[11px] font-semibold text-[#6f6063]">{fit.beautyCode}</p>
-                    <p className={`mt-1 text-lg font-semibold ${mine ? "text-[#c86f81]" : "text-[#382d2d]"}`}>{fit.fitScore}</p>
-                  </div>
-                );
-              })}
-            </div>
-            {userCode ? <p className="mt-4 text-center text-sm font-semibold text-[#a85f6e]">{userCode} 유형 결과가 배경색으로 강조되었습니다.</p> : null}
-          </div>
+        {done && myFit ? (
+          <>
+            <section className="mt-7 rounded-3xl border border-[#efcbd3] bg-[#fff7f8] p-6 text-center">
+              <p className="text-sm text-[#806f72]">선택하신 상품은 회원님의 Beauty Code <b>{userCode}</b>와</p>
+              <p className="mt-3 text-3xl font-semibold text-[#a94f65]">{fitMessage(myFit.fitScore).user}</p>
+              <p className="mt-4 text-6xl font-semibold text-[#d07488]">{myFit.fitScore}<span className="ml-1 text-xl">점</span></p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs">
+                <span className="rounded-full bg-white px-3 py-2">16유형 중 {myRank}위</span>
+                <span className="rounded-full bg-white px-3 py-2">최고 적합 {bestFit?.beautyCode} {bestFit?.fitScore}점</span>
+                <span className="rounded-full bg-white px-3 py-2">최고점과 {Math.max(0, (bestFit?.fitScore ?? myFit.fitScore) - myFit.fitScore)}점 차이</span>
+              </div>
+            </section>
+
+            <section className="mt-7">
+              <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold tracking-[0.16em] text-[#b97b88]">FIT HEATMAP</p><h3 className="mt-1 text-lg font-semibold">이 상품의 16유형 적합도</h3></div><p className="text-xs text-[#806f72]">내 유형은 굵은 테두리로 표시됩니다.</p></div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(result?.fits ?? []).map((fit) => {
+                  const mine = fit.beautyCode === userCode;
+                  const best = fit.beautyCode === bestFit?.beautyCode;
+                  return <article key={fit.beautyCode} style={heatStyle(fit.fitScore, mine, best)} className="rounded-2xl border p-4 text-center"><div className="flex items-center justify-center gap-1"><b>{fit.beautyCode}</b>{mine ? <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px]">회원님</span> : best ? <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px]">최고</span> : null}</div><p className="mt-2 text-2xl font-semibold">{fit.fitScore}</p><p className="mt-1 text-xs">{fitMessage(fit.fitScore).admin}</p></article>;
+                })}
+              </div>
+            </section>
+          </>
         ) : null}
 
-        {(done || stopped) ? (
-          <button type="button" onClick={() => setVisible(false)} className="mt-7 w-full rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#c8798a]">
-            {done ? "결과 화면 닫기" : "확인"}
-          </button>
-        ) : null}
+        {(done || stopped) ? <button type="button" onClick={() => setVisible(false)} className="mt-7 w-full rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#c8798a]">확인</button> : null}
       </section>
     </div>
   );
