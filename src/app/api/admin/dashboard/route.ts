@@ -27,12 +27,13 @@ async function readTable<T>(url: string, key: string, path: string): Promise<T> 
   return (await response.json()) as T;
 }
 
-async function readOptionalTable<T>(url: string, key: string, path: string, fallback: T): Promise<T> {
+async function readOptionalTable<T>(url: string, key: string, path: string, fallback: T) {
   try {
-    return await readTable<T>(url, key, path);
+    return { data: await readTable<T>(url, key, path), warning: null as string | null };
   } catch (error) {
+    const message = error instanceof Error ? error.message : "선택 테이블 조회 실패";
     console.warn(`Optional dashboard table unavailable: ${path}`, error);
-    return fallback;
+    return { data: fallback, warning: message };
   }
 }
 
@@ -59,33 +60,34 @@ export async function GET() {
   }
 
   try {
-    const [sessions, requests] = await Promise.all([
-      readTable<Array<{
-        id: string;
-        beauty_code: string | null;
-        beauty_code_source: "test" | "manual";
-        age_band: string | null;
-        country_code: string | null;
-        created_at: string;
-        completed: boolean;
-      }>>(url, key, "test_sessions?select=id,beauty_code,beauty_code_source,age_band,country_code,created_at,completed&order=created_at.desc&limit=10000"),
-      readTable<Array<{
-        id: string;
-        session_id: string;
-        input_type: "name" | "url";
-        input_value: string;
-        status: string;
-        created_at: string;
-      }>>(url, key, "product_analysis_requests?select=id,session_id,input_type,input_value,status,created_at&order=created_at.desc&limit=10000"),
-    ]);
+    const sessions = await readTable<Array<{
+      id: string;
+      beauty_code: string | null;
+      beauty_code_source: "test" | "manual";
+      age_band: string | null;
+      country_code: string | null;
+      created_at: string;
+      completed: boolean;
+    }>>(url, key, "test_sessions?select=id,beauty_code,beauty_code_source,age_band,country_code,created_at,completed&order=created_at.desc&limit=10000");
 
-    const completedFits = await readOptionalTable<Array<{ product_id: string }>>(
+    const requestResult = await readOptionalTable<Array<{
+      id: string;
+      session_id: string;
+      input_type: "name" | "url";
+      input_value: string;
+      status: string;
+      created_at: string;
+    }>>(url, key, "product_analysis_requests?select=id,session_id,input_type,input_value,status,created_at&order=created_at.desc&limit=10000", []);
+
+    const fitResult = await readOptionalTable<Array<{ product_id: string }>>(
       url,
       key,
       "product_type_fits?select=product_id&limit=10000",
       [],
     );
 
+    const requests = requestResult.data;
+    const completedFits = fitResult.data;
     const completedSessions = sessions.filter((session) => session.completed && session.beauty_code);
     const testCount = completedSessions.filter((session) => session.beauty_code_source === "test").length;
     const manualCount = completedSessions.filter((session) => session.beauty_code_source === "manual").length;
@@ -158,6 +160,11 @@ export async function GET() {
       beautyCode: sessionCode.get(request.session_id) ?? "-",
     }));
 
+    const warnings = [
+      requestResult.warning ? "상품 신청 테이블(product_analysis_requests)이 아직 생성되지 않았습니다." : null,
+      fitResult.warning ? "적합도 결과 테이블(product_type_fits)이 아직 생성되지 않았습니다." : null,
+    ].filter(Boolean);
+
     return NextResponse.json({
       ok: true,
       generatedAt: new Date().toISOString(),
@@ -183,7 +190,12 @@ export async function GET() {
       statusCounts,
       topProducts,
       recentRequests,
-      warnings: completedFits.length === 0 ? ["product_type_fits 테이블이 없거나 분석 완료 데이터가 없습니다."] : [],
+      warnings,
+      tableStatus: {
+        testSessions: true,
+        productRequests: !requestResult.warning,
+        productTypeFits: !fitResult.warning,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown dashboard error";
