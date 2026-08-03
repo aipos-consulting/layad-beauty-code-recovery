@@ -34,13 +34,20 @@ function detectDevice(userAgent: string) {
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return { url, serviceRoleKey };
+  const serverKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SECRET_KEY;
+
+  const missing: string[] = [];
+  if (!url) missing.push("SUPABASE_URL 또는 NEXT_PUBLIC_SUPABASE_URL");
+  if (!serverKey) missing.push("SUPABASE_SERVICE_ROLE_KEY 또는 SUPABASE_SECRET_KEY");
+
+  return { url, serverKey, missing };
 }
 
 async function supabaseInsert<T>(
   url: string,
-  serviceRoleKey: string,
+  serverKey: string,
   table: string,
   payload: unknown,
   returnRepresentation = true,
@@ -48,8 +55,8 @@ async function supabaseInsert<T>(
   const response = await fetch(`${url}/rest/v1/${table}`, {
     method: "POST",
     headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serverKey,
+      Authorization: `Bearer ${serverKey}`,
       "Content-Type": "application/json",
       Prefer: returnRepresentation ? "return=representation" : "return=minimal",
     },
@@ -67,10 +74,10 @@ async function supabaseInsert<T>(
 }
 
 export async function POST(request: NextRequest) {
-  const { url, serviceRoleKey } = getSupabaseConfig();
-  if (!url || !serviceRoleKey) {
+  const { url, serverKey, missing } = getSupabaseConfig();
+  if (!url || !serverKey) {
     return NextResponse.json(
-      { ok: false, code: "SUPABASE_NOT_CONFIGURED" },
+      { ok: false, code: "SUPABASE_NOT_CONFIGURED", missing },
       { status: 503 },
     );
   }
@@ -113,7 +120,7 @@ export async function POST(request: NextRequest) {
   const deviceType = detectDevice(request.headers.get("user-agent") ?? "");
 
   try {
-    const rows = await supabaseInsert<Array<{ id: string }>>(url, serviceRoleKey, "test_sessions", {
+    const rows = await supabaseInsert<Array<{ id: string }>>(url, serverKey, "test_sessions", {
       completed_at: new Date().toISOString(),
       country_code: countryCode,
       region_code: regionCode,
@@ -131,7 +138,7 @@ export async function POST(request: NextRequest) {
     if (normalizedAnswers.length > 0) {
       await supabaseInsert(
         url,
-        serviceRoleKey,
+        serverKey,
         "test_answers",
         normalizedAnswers.map((answer) => ({ ...answer, session_id: sessionId })),
         false,
