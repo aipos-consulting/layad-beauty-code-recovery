@@ -10,14 +10,14 @@ import {
 } from "@/lib/product-analysis-request";
 
 const codeLabels: Record<string, string> = {
-  O: "유분형",
+  O: "지성형",
   D: "건성형",
-  G: "글로우",
-  M: "매트",
-  P: "정교함",
-  C: "편의성",
-  V: "변화형",
-  E: "안정형",
+  G: "글로우 선호",
+  M: "매트함 추구",
+  P: "정교함 추구",
+  C: "간편함 추구",
+  V: "변동형",
+  E: "일관형",
 };
 
 const formatRequestTime = (iso: string) =>
