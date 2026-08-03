@@ -92,6 +92,21 @@ export default function AnonymousDataCapture() {
         }
       }
 
+      if (
+        source === "manual" &&
+        button.textContent?.includes("이 유형으로 계속하기")
+      ) {
+        const code = findBeautyCode();
+        if (code) {
+          sessionStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(SAVED_CODE_KEY);
+          sessionStorage.removeItem(SAVED_SOURCE_KEY);
+          setBeautyCode(code);
+          setSaveMessage("");
+          setShowAgePrompt(true);
+        }
+      }
+
       if (button.textContent?.includes("테스트 다시 하기")) {
         sessionStorage.removeItem(ANSWERS_KEY);
         sessionStorage.removeItem(SESSION_KEY);
@@ -104,6 +119,8 @@ export default function AnonymousDataCapture() {
     };
 
     const inspectResult = () => {
+      if (source !== "test") return;
+
       const code = findBeautyCode();
       if (!code) return;
       setBeautyCode(code);
@@ -135,7 +152,16 @@ export default function AnonymousDataCapture() {
       if (!submitButton?.textContent?.includes("적합도 분석하기")) return;
 
       const sessionId = sessionStorage.getItem(SESSION_KEY);
-      if (!sessionId) return;
+      if (!sessionId) {
+        if (source === "manual") {
+          const code = findBeautyCode();
+          if (code) {
+            setBeautyCode(code);
+            setShowAgePrompt(true);
+          }
+        }
+        return;
+      }
 
       const input = form.querySelector("input") as HTMLInputElement | null;
       const inputValue = input?.value.trim();
@@ -155,7 +181,7 @@ export default function AnonymousDataCapture() {
 
     document.addEventListener("submit", submitHandler, true);
     return () => document.removeEventListener("submit", submitHandler, true);
-  }, []);
+  }, [source]);
 
   const saveSession = async (ageBand: AgeBand | null) => {
     if (!beautyCode || !source || saving) return;
