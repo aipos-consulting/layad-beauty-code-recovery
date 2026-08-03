@@ -76,6 +76,12 @@ export default function AnonymousDataCapture() {
   }, []);
 
   useEffect(() => {
+    if (!saveMessage) return;
+    const timer = window.setTimeout(() => setSaveMessage(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [saveMessage]);
+
+  useEffect(() => {
     if (!source) return;
 
     const clickHandler = (event: MouseEvent) => {
@@ -212,6 +218,7 @@ export default function AnonymousDataCapture() {
 
       const result = (await response.json()) as { ok?: boolean; sessionId?: string; code?: string };
       if (!response.ok || !result.ok || !result.sessionId) {
+        setShowAgePrompt(false);
         if (result.code === "SUPABASE_NOT_CONFIGURED") {
           localStorage.setItem("layad-pending-session", JSON.stringify(payload));
           setSaveMessage("현재 저장 준비 중입니다. 결과는 이 기기에 임시 보관되었습니다.");
@@ -232,6 +239,7 @@ export default function AnonymousDataCapture() {
           : "익명 테스트 데이터가 저장되었습니다.",
       );
     } catch {
+      setShowAgePrompt(false);
       localStorage.setItem("layad-pending-session", JSON.stringify(payload));
       setSaveMessage("네트워크 문제로 이 기기에 임시 보관했습니다.");
     } finally {
@@ -277,8 +285,16 @@ export default function AnonymousDataCapture() {
       ) : null}
 
       {saveMessage ? (
-        <div className="fixed bottom-5 left-1/2 z-[110] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl bg-[#382d2d] px-5 py-4 text-center text-sm text-white shadow-xl">
-          {saveMessage}
+        <div className="fixed bottom-5 left-1/2 z-[110] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-2xl bg-[#382d2d] px-5 py-4 text-sm text-white shadow-xl">
+          <p className="min-w-0 flex-1 text-center">{saveMessage}</p>
+          <button
+            type="button"
+            aria-label="안내 닫기"
+            onClick={() => setSaveMessage("")}
+            className="shrink-0 rounded-full px-2 py-1 text-lg leading-none text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            ×
+          </button>
         </div>
       ) : null}
     </>
