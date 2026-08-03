@@ -33,8 +33,7 @@ export default function AnalysisProcessingFeedback() {
     const poll = async () => {
       const sessionId = sessionStorage.getItem(SESSION_KEY);
       if (!sessionId) {
-        setStage("config");
-        setMessage("연령대 선택 후 익명 세션 저장을 먼저 완료해 주세요.");
+        setVisible(false);
         return;
       }
 
@@ -95,6 +94,9 @@ export default function AnalysisProcessingFeedback() {
       const button = form.querySelector('button[type="submit"]');
       const input = form.querySelector("input") as HTMLInputElement | null;
       if (!button?.textContent?.includes("적합도 분석하기") || !input?.value.trim()) return;
+
+      const sessionId = sessionStorage.getItem(SESSION_KEY);
+      if (!sessionId) return;
 
       stopTimer();
       attemptsRef.current = 0;
