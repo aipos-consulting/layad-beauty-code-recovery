@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 function getConfig() {
   return {
     url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
-    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY,
   };
 }
 
@@ -23,29 +23,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "세션 ID가 올바르지 않습니다." }, { status: 400 });
   }
 
-  const requestResponse = await db(
-    `product_analysis_requests?session_id=eq.${sessionId}&select=id,status,error_message,product_id,created_at&order=created_at.desc&limit=1`,
-    url,
-    key,
-  );
+  const requestResponse = await db(`product_analysis_requests?session_id=eq.${sessionId}&select=id,status,error_message,product_id,created_at&order=created_at.desc&limit=1`, url, key);
   if (!requestResponse.ok) return NextResponse.json({ ok: false, code: "DATABASE_READ_FAILED" }, { status: 500 });
-  const rows = (await requestResponse.json()) as Array<{
-    id: string;
-    status: string;
-    error_message: string | null;
-    product_id: string | null;
-    created_at: string;
-  }>;
+  const rows = (await requestResponse.json()) as Array<{ id: string; status: string; error_message: string | null; product_id: string | null; created_at: string }>;
   const latest = rows[0];
   if (!latest) return NextResponse.json({ ok: true, status: "not_found" });
 
   if (latest.status !== "completed" || !latest.product_id) {
-    return NextResponse.json({
-      ok: true,
-      requestId: latest.id,
-      status: latest.status,
-      errorMessage: latest.error_message,
-    });
+    return NextResponse.json({ ok: true, requestId: latest.id, status: latest.status, errorMessage: latest.error_message });
   }
 
   const [productResponse, fitsResponse, sessionResponse] = await Promise.all([
@@ -59,12 +44,7 @@ export async function GET(request: NextRequest) {
   }
 
   const products = (await productResponse.json()) as Array<Record<string, unknown>>;
-  const fits = (await fitsResponse.json()) as Array<{
-    beauty_code: string;
-    fit_score: number;
-    review_count: number;
-    confidence: number;
-  }>;
+  const fits = (await fitsResponse.json()) as Array<{ beauty_code: string; fit_score: number; review_count: number; confidence: number }>;
   const sessions = (await sessionResponse.json()) as Array<{ beauty_code: string | null }>;
 
   return NextResponse.json({
@@ -73,11 +53,6 @@ export async function GET(request: NextRequest) {
     status: "completed",
     product: products[0] ?? null,
     userBeautyCode: sessions[0]?.beauty_code ?? null,
-    fits: fits.map((fit) => ({
-      beautyCode: fit.beauty_code,
-      fitScore: Math.round(Number(fit.fit_score)),
-      reviewCount: fit.review_count,
-      confidence: Number(fit.confidence),
-    })),
+    fits: fits.map((fit) => ({ beautyCode: fit.beauty_code, fitScore: Math.round(Number(fit.fit_score)), reviewCount: fit.review_count, confidence: Number(fit.confidence) })),
   });
 }
