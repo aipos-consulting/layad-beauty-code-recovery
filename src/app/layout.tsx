@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
+import AnalysisProcessingFeedback from "./analysis-processing-feedback";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         {children}
         <UiAdjustments />
         <AnonymousDataCapture />
+        <AnalysisProcessingFeedback />
       </body>
     </html>
   );
