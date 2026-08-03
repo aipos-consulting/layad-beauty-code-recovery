@@ -2,14 +2,21 @@
 
 import { useEffect } from "react";
 
+const FINAL_GUIDE = "선택하신 상품이 회원님의 Beauty Code와 얼마나 잘 맞는지 확인해 보세요.";
+
 const adjustProductAnalysisUI = () => {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
 
   while (node) {
-    if (node.textContent?.includes("AI 맥락 분석")) {
-      node.textContent = node.textContent.replaceAll("AI 맥락 분석", "AI 분석");
-    }
+    const text = node.textContent ?? "";
+    node.textContent = text
+      .replaceAll("AI 맥락 분석", "AI 분석")
+      .replaceAll("적합도 분석하기", "잘 맞는지 확인하기")
+      .replaceAll("내 상품 적합도 분석", "나에게 잘 맞는 상품인지 확인하기")
+      .replaceAll("상품 적합도 분석", "Beauty Code 상품 궁합")
+      .replaceAll("궁금한 상품명 또는 상품 링크를 등록하면 리뷰 맥락 분석을 통해 나의 Beauty Code와의 적합도를 확인할 수 있습니다.", FINAL_GUIDE)
+      .replaceAll("상품명 또는 상품 링크를 등록하면 AI 분석을 시작합니다.", FINAL_GUIDE);
     node = walker.nextNode();
   }
 
@@ -39,20 +46,14 @@ const adjustProductAnalysisUI = () => {
       element.classList.contains("h-9") &&
       element.classList.contains("w-9");
 
-    if (isQuestionOptionCode) {
-      element.style.display = "none";
-    }
+    if (isQuestionOptionCode) element.style.display = "none";
   });
 };
 
 export default function UiAdjustments() {
   useEffect(() => {
     adjustProductAnalysisUI();
-
-    const observer = new MutationObserver(() => {
-      adjustProductAnalysisUI();
-    });
-
+    const observer = new MutationObserver(adjustProductAnalysisUI);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
