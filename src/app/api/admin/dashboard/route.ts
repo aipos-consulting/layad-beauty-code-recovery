@@ -27,10 +27,19 @@ async function readTable<T>(url: string, key: string, path: string): Promise<T> 
   return (await response.json()) as T;
 }
 
+async function readOptionalTable<T>(url: string, key: string, path: string, fallback: T): Promise<T> {
+  try {
+    return await readTable<T>(url, key, path);
+  } catch (error) {
+    console.warn(`Optional dashboard table unavailable: ${path}`, error);
+    return fallback;
+  }
+}
+
 function normalizeProduct(value: string) {
   try {
-    const url = new URL(value);
-    return url.hostname.replace(/^www\./, "");
+    const parsed = new URL(value);
+    return parsed.hostname.replace(/^www\./, "");
   } catch {
     return value.trim().replace(/\s+/g, " ").slice(0, 80);
   }
@@ -39,11 +48,18 @@ function normalizeProduct(value: string) {
 export async function GET() {
   const { url, key } = config();
   if (!url || !key) {
-    return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
+    return NextResponse.json({
+      ok: false,
+      code: "SUPABASE_NOT_CONFIGURED",
+      missing: [
+        !url ? "SUPABASE_URL 또는 NEXT_PUBLIC_SUPABASE_URL" : null,
+        !key ? "SUPABASE_SERVICE_ROLE_KEY 또는 SUPABASE_SECRET_KEY" : null,
+      ].filter(Boolean),
+    }, { status: 503 });
   }
 
   try {
-    const [sessions, requests, completedFits] = await Promise.all([
+    const [sessions, requests] = await Promise.all([
       readTable<Array<{
         id: string;
         beauty_code: string | null;
@@ -61,8 +77,14 @@ export async function GET() {
         status: string;
         created_at: string;
       }>>(url, key, "product_analysis_requests?select=id,session_id,input_type,input_value,status,created_at&order=created_at.desc&limit=10000"),
-      readTable<Array<{ product_id: string }>>(url, key, "product_type_fits?select=product_id&limit=10000"),
     ]);
+
+    const completedFits = await readOptionalTable<Array<{ product_id: string }>>(
+      url,
+      key,
+      "product_type_fits?select=product_id&limit=10000",
+      [],
+    );
 
     const completedSessions = sessions.filter((session) => session.completed && session.beauty_code);
     const testCount = completedSessions.filter((session) => session.beauty_code_source === "test").length;
@@ -136,8 +158,6 @@ export async function GET() {
       beautyCode: sessionCode.get(request.session_id) ?? "-",
     }));
 
-    const uniqueCompletedProducts = new Set(completedFits.map((row) => row.product_id)).size;
-
     return NextResponse.json({
       ok: true,
       generatedAt: new Date().toISOString(),
@@ -147,7 +167,7 @@ export async function GET() {
         manualSelected: manualCount,
         productRequests: requests.length,
         requestedProducts: productGroups.size,
-        completedProducts: uniqueCompletedProducts,
+        completedProducts: new Set(completedFits.map((row) => row.product_id)).size,
       },
       typeStats: BEAUTY_CODES.map((code) => ({ code, count: typeCounts[code] })),
       axes: {
@@ -163,9 +183,15 @@ export async function GET() {
       statusCounts,
       topProducts,
       recentRequests,
+      warnings: completedFits.length === 0 ? ["product_type_fits 테이블이 없거나 분석 완료 데이터가 없습니다."] : [],
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ ok: false, code: "DASHBOARD_READ_FAILED" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown dashboard error";
+    console.error("Admin dashboard read failed", error);
+    return NextResponse.json({
+      ok: false,
+      code: "DASHBOARD_READ_FAILED",
+      message: message.slice(0, 500),
+    }, { status: 500 });
   }
 }
