@@ -87,14 +87,20 @@ export default function SelectTypePage() {
         ok?: boolean;
         sessionId?: string;
         code?: string;
+        missing?: string[];
       };
 
       if (!response.ok || !result.ok || !result.sessionId) {
-        setAgeError(
-          result.code === "SUPABASE_NOT_CONFIGURED"
-            ? "데이터 저장 설정을 확인 중입니다. 잠시 후 다시 시도해 주세요."
-            : "연령대 저장에 실패했습니다. 다시 시도해 주세요.",
-        );
+        if (result.code === "SUPABASE_NOT_CONFIGURED") {
+          const missingText = result.missing?.length
+            ? ` 누락 항목: ${result.missing.join(", ")}`
+            : "";
+          setAgeError(`Vercel의 Supabase 환경변수가 적용되지 않았습니다.${missingText}`);
+        } else if (result.code === "DATABASE_WRITE_FAILED") {
+          setAgeError("Supabase 연결은 되었지만 test_sessions 저장에 실패했습니다. 테이블과 키 권한을 확인해 주세요.");
+        } else {
+          setAgeError("연령대 저장에 실패했습니다. 다시 시도해 주세요.");
+        }
         return;
       }
 
