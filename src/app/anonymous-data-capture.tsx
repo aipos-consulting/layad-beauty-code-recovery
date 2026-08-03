@@ -159,12 +159,16 @@ export default function AnonymousDataCapture() {
 
       const sessionId = sessionStorage.getItem(SESSION_KEY);
       if (!sessionId) {
-        if (source === "manual") {
-          const code = findBeautyCode();
-          if (code) {
-            setBeautyCode(code);
-            setShowAgePrompt(true);
-          }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        const code = findBeautyCode();
+        if (code) {
+          setBeautyCode(code);
+          setSaveMessage("");
+          setShowAgePrompt(true);
+        } else {
+          setSaveMessage("Beauty Code를 먼저 선택해 주세요.");
         }
         return;
       }
