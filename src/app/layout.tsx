@@ -4,6 +4,7 @@ import "./globals.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
 import AnalysisProcessingFeedback from "./analysis-processing-feedback";
+import { LanguageProvider } from "./i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,24 +18,19 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "LAYAD BEAUTY CODE",
-  description: "20문항으로 확인하는 LAYAD BEAUTY CODE",
+  description: "Create your Beauty Code and review product fit information.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        {children}
-        <UiAdjustments />
-        <AnonymousDataCapture />
-        <AnalysisProcessingFeedback />
+        <LanguageProvider>
+          {children}
+          <UiAdjustments />
+          <AnonymousDataCapture />
+          <AnalysisProcessingFeedback />
+        </LanguageProvider>
       </body>
     </html>
   );
