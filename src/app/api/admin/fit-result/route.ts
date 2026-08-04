@@ -16,12 +16,15 @@ export async function POST(request:NextRequest){
  const rows=await rr.json() as Array<{id:string;input_type:"name"|"url";input_value:string;product_id:string|null}>;const row=rows[0];if(!row)return NextResponse.json({ok:false,message:"상품 신청을 찾을 수 없습니다."},{status:404});
  let productId=row.product_id;
  if(!productId){
-  const pr=await db(url,key,"products",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({canonical_name:body.canonicalName?.trim()||(row.input_type==="name"?row.input_value:null),product_url:row.input_type==="url"?row.input_value:null,brand:body.brand?.trim()||null,category:body.category?.trim()||null,verification_status:"unverified"})});
+  const canonicalName=body.canonicalName?.trim()||(row.input_type==="name"?row.input_value:"신청 상품");
+  const pr=await db(url,key,"products",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({canonical_name:canonicalName,product_url:row.input_type==="url"?row.input_value:null,brand:body.brand?.trim()||null,category:body.category?.trim()||null,verification_status:"pending",analysis_summary:body.summary?.trim()||null})});
   if(!pr.ok)return NextResponse.json({ok:false,code:"PRODUCT_SAVE_FAILED",detail:await pr.text()},{status:500});
   productId=((await pr.json()) as Array<{id:string}>)[0]?.id;
  }
  if(!productId)return NextResponse.json({ok:false,code:"PRODUCT_SAVE_FAILED"},{status:500});
- const fitRows=CODES.map(code=>({product_id:productId,beauty_code:code,fit_score:Math.round(scores[code]),review_count:0,confidence:0.7,analysis_version:"manual-mvp-v1"}));
+ const sorted=CODES.map(code=>({code,score:Math.round(scores[code])})).sort((a,b)=>b.score-a.score);
+ const rankMap=new Map(sorted.map((item,index)=>[item.code,index+1]));
+ const fitRows=CODES.map(code=>({product_id:productId,beauty_code:code,fit_score:Math.round(scores[code]),fit_grade:null,rank:rankMap.get(code),review_count:0,confidence:0.7,analysis_version:"manual-mvp-v1",is_published:true,evidence_summary:null}));
  const fr=await db(url,key,"product_type_fits?on_conflict=product_id,beauty_code",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(fitRows)});
  if(!fr.ok)return NextResponse.json({ok:false,code:"FIT_SAVE_FAILED",detail:await fr.text()},{status:500});
  const ur=await db(url,key,`product_analysis_requests?id=eq.${body.requestId}`,{method:"PATCH",body:JSON.stringify({product_id:productId,status:"completed",error_message:null,updated_at:new Date().toISOString()})});
