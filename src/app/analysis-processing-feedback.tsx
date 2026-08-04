@@ -132,6 +132,26 @@ export default function AnalysisProcessingFeedback() {
   const myRank = myFit ? fits.findIndex((fit) => fit.beautyCode === myFit.beautyCode) + 1 : null;
   const productName = `${result?.product?.brand ?? ""} ${result?.product?.canonical_name ?? "선택하신 상품"}`.trim();
 
+  const statusTitle = done
+    ? "회원님의 Beauty Code를 기준으로 확인한 결과입니다"
+    : stopped
+      ? "적합도 결과를 아직 보여드릴 수 없습니다"
+      : stage === "analyzing"
+        ? "운영자가 AI 분석을 진행하고 있습니다"
+        : stage === "collecting"
+          ? "운영자가 상품 정보를 확인하고 있습니다"
+          : "상품 신청을 접수하고 있습니다";
+
+  const statusDescription = done
+    ? productName
+    : stopped
+      ? message
+      : stage === "analyzing"
+        ? "회원님의 Beauty Code와 선택하신 상품이 얼마나 잘 맞는지 꼼꼼하게 확인하고 있습니다."
+        : stage === "collecting"
+          ? "상품 특성을 확인한 뒤 회원님의 Beauty Code를 기준으로 16유형 적합도 분석을 진행합니다."
+          : "신청이 완료되면 운영자가 상품을 확인하고 AI 분석을 시작합니다.";
+
   return (
     <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/40 px-4 py-6">
       <section className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-6 text-[#382d2d] shadow-2xl sm:p-8">
@@ -140,15 +160,13 @@ export default function AnalysisProcessingFeedback() {
             {done ? <span className="text-2xl text-[#d88c9c]">✓</span> : stopped ? <span className="text-2xl text-[#b84f63]">!</span> : <span className="h-7 w-7 animate-spin rounded-full border-4 border-[#f1dfe2] border-t-[#d88c9c]" />}
           </div>
           <p className="mt-5 text-xs font-semibold tracking-[0.18em] text-[#b97b88]">LAYAD BEAUTY CODE</p>
-          <h2 className="mt-3 text-xl font-semibold">
-            {done ? "회원님의 Beauty Code를 기준으로 확인한 결과입니다" : stopped ? "적합도 결과를 아직 보여드릴 수 없습니다" : "선택하신 상품과 회원님의 Beauty Code를 비교하고 있습니다"}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-[#766767]">{done ? productName : stopped ? message : "운영자가 상품 특성을 확인하고 16유형 결과를 준비합니다."}</p>
+          <h2 className="mt-3 text-xl font-semibold">{statusTitle}</h2>
+          <p className="mt-3 text-sm leading-6 text-[#766767]">{statusDescription}</p>
         </div>
 
         {!done && !stopped ? (
           <div className="mt-6 space-y-3 text-sm">
-            {["상품 신청 완료", "상품 정보 확인", "16유형 적합도 분석", "회원님 유형 결과 공개"].map((label, index) => {
+            {["상품 신청 완료", "상품 정보 확인", "운영자 AI 적합도 분석", "회원님 유형 결과 공개"].map((label, index) => {
               const number = index + 1;
               const active = number <= stageNumber;
               return <div key={label} className="flex items-center gap-3 rounded-2xl bg-[#fffafa] px-4 py-3"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${active ? "bg-[#d88c9c] text-white" : "bg-[#eadfe1] text-[#9b898c]"}`}>{number}</span><span className={active ? "font-medium" : "text-[#9b898c]"}>{label}</span></div>;
