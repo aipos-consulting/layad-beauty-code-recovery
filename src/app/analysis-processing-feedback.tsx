@@ -11,6 +11,7 @@ type ResultPayload = {
   code?: string;
   status?: string;
   errorMessage?: string | null;
+  message?: string;
   product?: { canonical_name?: string; brand?: string; category?: string } | null;
   userBeautyCode?: string | null;
   fits?: Fit[];
@@ -95,22 +96,55 @@ export default function AnalysisProcessingFeedback() {
       }
     };
 
-    const submitHandler = (event: Event) => {
+    const submitHandler = async (event: Event) => {
       const form = event.target as HTMLFormElement;
       if (!(form instanceof HTMLFormElement)) return;
-      const button = form.querySelector('button[type="submit"]');
+      const button = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
       const input = form.querySelector("input") as HTMLInputElement | null;
       const label = button?.textContent ?? "";
-      if ((!label.includes("적합도 분석하기") && !label.includes("잘 맞는지 확인하기")) || !input?.value.trim()) return;
-      if (!sessionStorage.getItem(SESSION_KEY)) return;
+      const inputValue = input?.value.trim() ?? "";
+      if ((!label.includes("적합도 분석하기") && !label.includes("잘 맞는지 확인하기")) || !inputValue) return;
 
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const sessionId = sessionStorage.getItem(SESSION_KEY);
+      if (!sessionId) {
+        setMessage("회원님의 Beauty Code 세션을 확인하지 못했습니다. 유형을 다시 선택해 주세요.");
+        setStage("failed");
+        setVisible(true);
+        return;
+      }
+
+      const inputType = /^https?:\/\//i.test(inputValue) ? "url" : "name";
+      if (button) button.disabled = true;
       stopTimer();
       attemptsRef.current = 0;
       setResult(null);
       setMessage("");
-      setStage("saving");
-      setVisible(true);
-      timerRef.current = window.setTimeout(poll, 1200);
+
+      try {
+        const response = await fetch("/api/product-analysis-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, inputType, inputValue }),
+        });
+        const payload = (await response.json()) as ResultPayload & { requestId?: string };
+        if (!response.ok || !payload.ok || !payload.requestId) {
+          throw new Error(payload.message || (payload.code === "SUPABASE_NOT_CONFIGURED" ? "데이터 저장 설정을 확인해 주세요." : "상품 신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+        }
+
+        if (input) input.value = "";
+        setStage("collecting");
+        setVisible(true);
+        timerRef.current = window.setTimeout(poll, 800);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "상품 신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        setStage("failed");
+        setVisible(true);
+      } finally {
+        if (button) button.disabled = false;
+      }
     };
 
     document.addEventListener("submit", submitHandler, true);
