@@ -20,6 +20,13 @@ const adjustProductAnalysisUI = () => {
     node = walker.nextNode();
   }
 
+  document.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
+    const placeholder = input.getAttribute("placeholder") ?? "";
+    if (placeholder.includes("프라이머 상품명") || placeholder.includes("상품명 또는")) {
+      input.setAttribute("placeholder", "상품명");
+    }
+  });
+
   document.querySelectorAll("p").forEach((element) => {
     const text = element.textContent?.trim() ?? "";
 
