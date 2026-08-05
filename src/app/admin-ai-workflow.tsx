@@ -15,8 +15,18 @@ function extractStructuredResult(text: string) {
 }
 
 function parseManualResult(text: string): ManualResult {
-  const parsed = JSON.parse(extractStructuredResult(text)) as { summary?: unknown; scores?: Record<string, unknown> };
-  const summary = typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim() : "분석 요약이 없습니다.";
+  const source = text.trim();
+  if (!source) throw new Error("ChatGPT에서 받은 분석 결과를 붙여넣어 주세요.");
+  if (source.includes("당신은 LAYAD BEAUTY CODE") || source.includes("분석 대상 상품:") || source.includes("Beauty Code 공식 축 정의")) {
+    throw new Error("분석 지시문이 붙여넣어졌습니다. ChatGPT가 생성한 분석 결과를 복사해 주세요.");
+  }
+
+  const parsed = JSON.parse(extractStructuredResult(source)) as { summary?: unknown; scores?: Record<string, unknown> };
+  const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+  if (!summary || summary.includes("상품 특성과 유형별 점수 차이를 설명하는 짧은 요약")) {
+    throw new Error("실제 상품 분석 요약을 확인할 수 없습니다.");
+  }
+
   const rawScores = parsed.scores;
   if (!rawScores || typeof rawScores !== "object") throw new Error("16유형 점수 항목을 찾지 못했습니다.");
 
@@ -28,6 +38,15 @@ function parseManualResult(text: string): ManualResult {
     }
     scores[code] = Number(value);
   }
+
+  const values = Object.values(scores);
+  if (values.every(value => value === 0)) {
+    throw new Error("0점 예시값은 분석 결과가 아닙니다. ChatGPT에서 실제 분석을 실행해 주세요.");
+  }
+  if (new Set(values).size < 2) {
+    throw new Error("16유형 점수에 차이가 없습니다. 상품 특성을 반영해 다시 분석해 주세요.");
+  }
+
   return { summary, scores };
 }
 
@@ -40,8 +59,8 @@ function selectedContext() {
 }
 
 function manualPrompt(product: string, beautyCode: string) {
-  const scoreTemplate = Object.fromEntries(CODES.map(code => [code, 0]));
-  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${product}\n신청자 Beauty Code: ${beautyCode}\n\nBeauty Code 공식 축 정의\n- O/D\n- G/M\n- P = Precise: 정교함·완성도 중심\n- C = Convenient: 간편함·편의성 중심\n- V = Variable: 제품·환경에 따라 결과가 달라짐\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 상품 특성에 근거해 16개 유형 각각의 적합도를 0~100 정수로 평가하세요. 같은 상품 안에서 유형별 상대 차이가 드러나도록 일관된 기준을 적용하세요.\n\n응답은 설명이나 코드펜스 없이 아래 결과 형식만 출력하세요. 모든 코드가 반드시 포함되어야 합니다.\n\n${JSON.stringify({ summary: "상품 특성과 유형별 점수 차이를 설명하는 짧은 요약", scores: scoreTemplate }, null, 2)}`;
+  const scoreTemplate = Object.fromEntries(CODES.map(code => [code, null]));
+  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${product}\n신청자 Beauty Code: ${beautyCode}\n\nBeauty Code 공식 축 정의\n- O/D\n- G/M\n- P = Precise: 정교함·완성도 중심\n- C = Convenient: 간편함·편의성 중심\n- V = Variable: 제품·환경에 따라 결과가 달라짐\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 상품 특성에 근거해 16개 유형 각각의 적합도를 0~100 정수로 평가하세요. 유형별 상대 차이가 드러나도록 일관된 기준을 적용하세요. 모든 점수를 0으로 두거나 동일한 점수로 채우지 마세요.\n\n응답은 설명이나 코드펜스 없이 아래 결과 형식만 출력하세요. null은 실제 0~100 정수로 바꾸고 모든 코드를 포함하세요.\n\n${JSON.stringify({ summary: "실제 상품 특성과 유형별 점수 차이를 설명하는 요약", scores: scoreTemplate }, null, 2)}`;
 }
 
 export default function AdminAiWorkflow() {
@@ -50,8 +69,8 @@ export default function AdminAiWorkflow() {
 
     const enhance = () => {
       const paragraphs = Array.from(document.querySelectorAll("p"));
-      const guide = paragraphs.find(node => node.textContent?.includes("ChatGPT Plus에 분석 지시문") || node.textContent?.includes("AI 분석 결과를 확인한 후 승인"));
-      if (guide) guide.textContent = "수동 분석 결과를 붙여넣어 검증한 후 승인하면 사용자에게 즉시 공개됩니다. 점수는 수정하지 않습니다.";
+      const guide = paragraphs.find(node => node.textContent?.includes("ChatGPT Plus에 분석 지시문") || node.textContent?.includes("AI 분석 결과를 확인한 후 승인") || node.textContent?.includes("수동 분석 결과를 붙여넣어"));
+      if (guide) guide.textContent = "지시문을 복사해 ChatGPT에서 분석한 뒤, ChatGPT가 생성한 결과를 붙여넣어 확인하고 공개합니다.";
 
       const legacyHeading = Array.from(document.querySelectorAll("h3")).find(node => node.textContent?.includes("ChatGPT Plus 분석 지시문"));
       const legacySection = legacyHeading?.closest("section");
@@ -62,50 +81,43 @@ export default function AdminAiWorkflow() {
 
       legacySection.innerHTML = `
         <div class="rounded-2xl border border-[#eadfe1] bg-white p-4">
-          <p class="text-xs font-semibold text-[#a94f65]">분석 방식</p>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <div class="rounded-xl border-2 border-[#d88c9c] bg-[#fff7f8] p-4">
-              <div class="flex items-center justify-between gap-2"><strong>수동 분석</strong><span class="rounded-full bg-white px-2 py-1 text-[11px] font-semibold">현재 운영</span></div>
-              <p class="mt-2 text-xs leading-5 text-[#78696c]">OpenAI API를 사용하지 않습니다. 운영자가 지시문과 결과를 복사·붙여넣습니다.</p>
-            </div>
-            <div class="rounded-xl border border-[#eadfe1] bg-[#f7f4f4] p-4 opacity-70">
-              <div class="flex items-center justify-between gap-2"><strong>자동 분석</strong><span class="rounded-full bg-white px-2 py-1 text-[11px]">오너 검증 후</span></div>
-              <p class="mt-2 text-xs leading-5 text-[#78696c]">OpenAI API, 비용 한도, 결과 재사용 정책을 적용하는 향후 운영 방식입니다.</p>
-            </div>
-          </div>
+          <p class="text-xs font-semibold text-[#a94f65]">현재 분석 방식</p>
+          <p class="mt-2 text-sm leading-6 text-[#66575a]">수동 분석 · 앱에서 API를 호출하지 않습니다. 운영자가 ChatGPT에서 분석을 실행한 뒤 결과를 가져옵니다.</p>
         </div>
 
-        <div class="mt-5">
-          <h3 class="font-semibold">수동 분석 · 1건 즉시 승인</h3>
-          <p class="mt-1 text-xs text-[#78696c]">① 지시문 복사 → ② ChatGPT 실행 → ③ 결과 붙여넣기 → ④ 자동 검증 → ⑤ 승인 및 공개</p>
-        </div>
-
-        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="mt-5 grid gap-4 lg:grid-cols-2">
           <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div><p class="text-xs font-semibold text-[#a94f65]">STEP 1</p><h4 class="mt-1 font-semibold">분석 지시문 복사</h4><p class="mt-2 text-xs leading-5 text-[#78696c]">선택 상품과 결과 출력 형식이 자동 포함됩니다.</p></div>
-              <button type="button" data-copy-prompt class="rounded-xl bg-[#d88c9c] px-4 py-3 text-sm font-semibold text-white">지시문 복사</button>
-            </div>
-            <pre data-prompt-preview class="mt-4 max-h-44 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7f1f2] p-4 text-xs leading-6 text-[#66575a]"></pre>
+            <p class="text-xs font-semibold text-[#a94f65]">STEP 1</p>
+            <h3 class="mt-1 font-semibold">분석 지시문 복사</h3>
+            <p class="mt-2 text-xs leading-5 text-[#78696c]">선택한 상품과 결과 출력 형식이 포함된 지시문을 복사합니다.</p>
+            <button type="button" data-copy-prompt class="mt-4 rounded-xl bg-[#d88c9c] px-4 py-3 text-sm font-semibold text-white">지시문 복사</button>
+            <pre data-prompt-preview class="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7f1f2] p-4 text-xs leading-6 text-[#66575a]"></pre>
           </section>
 
           <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
             <p class="text-xs font-semibold text-[#a94f65]">STEP 2</p>
-            <h4 class="mt-1 font-semibold">ChatGPT 결과 붙여넣기</h4>
-            <p class="mt-2 text-xs leading-5 text-[#78696c]">ChatGPT가 반환한 분석 결과 전체를 붙여넣으세요. 16개 점수는 개별 입력하지 않습니다.</p>
-            <textarea data-manual-input rows="8" placeholder="ChatGPT 분석 결과 전체를 여기에 붙여넣으세요." class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button type="button" data-validate class="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">결과 검증</button>
-              <button type="button" data-clear class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">초기화</button>
-            </div>
+            <h3 class="mt-1 font-semibold">ChatGPT에서 분석 실행</h3>
+            <p class="mt-2 text-xs leading-5 text-[#78696c]">새 탭에서 ChatGPT를 열고 복사한 지시문을 붙여넣어 실행합니다. 앱이 자동으로 붙여넣거나 실행하지는 않습니다.</p>
+            <button type="button" data-open-chatgpt class="mt-4 rounded-xl border border-[#d88c9c] bg-white px-4 py-3 text-sm font-semibold text-[#a94f65]">ChatGPT 열기</button>
           </section>
         </div>
 
-        <div data-status class="mt-4 rounded-xl bg-[#f7f1f2] p-4 text-sm text-[#66575a]">수동 모드는 앱의 OpenAI API 비용이 발생하지 않습니다.</div>
+        <section class="mt-4 rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
+          <p class="text-xs font-semibold text-[#a94f65]">STEP 3</p>
+          <h3 class="mt-1 font-semibold">ChatGPT 분석 결과 붙여넣기</h3>
+          <p class="mt-2 text-xs leading-5 text-[#78696c]">ChatGPT가 분석을 마친 후 반환한 결과 전체를 복사해 아래에 붙여넣으세요. 지시문 자체를 붙여넣으면 검증되지 않습니다.</p>
+          <textarea data-manual-input rows="9" placeholder="ChatGPT가 생성한 분석 결과 전체를 여기에 붙여넣으세요." class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" data-validate class="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">분석 결과 확인</button>
+            <button type="button" data-clear class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">초기화</button>
+          </div>
+        </section>
+
+        <div data-status class="mt-4 rounded-xl bg-[#f7f1f2] p-4 text-sm text-[#66575a]">먼저 지시문을 복사하고 ChatGPT에서 분석을 실행해 주세요.</div>
 
         <section data-result class="mt-4 hidden rounded-2xl border border-[#eadfe1] bg-white p-5">
           <div class="flex flex-wrap items-start justify-between gap-3">
-            <div><p class="text-xs font-semibold text-[#a94f65]">STEP 3</p><h4 class="mt-1 font-semibold">검증 완료 · 읽기 전용 결과</h4></div>
+            <div><p class="text-xs font-semibold text-[#a94f65]">STEP 4</p><h3 class="mt-1 font-semibold">분석 결과 확인 및 공개</h3></div>
             <span class="rounded-full bg-[#edf8ef] px-3 py-2 text-xs font-semibold text-[#376b42]">16/16 정상</span>
           </div>
           <p data-summary class="mt-4 rounded-xl bg-[#fff7f8] p-4 text-sm leading-6 text-[#66575a]"></p>
@@ -116,14 +128,11 @@ export default function AdminAiWorkflow() {
             <button type="button" data-hold class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">보류</button>
           </div>
           <p class="mt-3 text-xs text-[#78696c]">점수가 적절하지 않으면 수정하지 말고 다시 분석하거나 보류합니다.</p>
-        </section>
-
-        <div class="mt-4 rounded-xl border border-[#eadfe1] bg-white p-4 text-xs leading-6 text-[#78696c]">
-          초기 운영 설정: 수동 모드 · 승인 단위 1건 · 운영자 승인 후 공개 · 점수 수정 불가 · 자동 모드는 오너 검증 후 전환
-        </div>`;
+        </section>`;
 
       const promptPreview = legacySection.querySelector<HTMLElement>("[data-prompt-preview]");
       const copyButton = legacySection.querySelector<HTMLButtonElement>("[data-copy-prompt]");
+      const openButton = legacySection.querySelector<HTMLButtonElement>("[data-open-chatgpt]");
       const input = legacySection.querySelector<HTMLTextAreaElement>("[data-manual-input]");
       const validateButton = legacySection.querySelector<HTMLButtonElement>("[data-validate]");
       const clearButton = legacySection.querySelector<HTMLButtonElement>("[data-clear]");
@@ -147,22 +156,26 @@ export default function AdminAiWorkflow() {
         if (input) input.value = "";
         result?.classList.add("hidden");
         refreshPrompt();
-        if (status) status.textContent = "선택한 상품의 수동 분석을 시작할 수 있습니다.";
+        if (status) status.textContent = "선택한 상품의 지시문을 복사해 ChatGPT에서 분석을 시작하세요.";
       });
 
       copyButton?.addEventListener("click", async () => {
         const context = selectedContext();
         if (!context.requestId || !status || !copyButton) return;
-        const prompt = manualPrompt(context.product, context.beautyCode);
         try {
+          await navigator.clipboard.writeText(manualPrompt(context.product, context.beautyCode));
           await fetch("/api/admin/analysis-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: context.requestId, action: "start" }) });
-          await navigator.clipboard.writeText(prompt);
           copyButton.textContent = "복사 완료";
-          status.textContent = "지시문을 복사했습니다. ChatGPT에서 실행한 뒤 분석 결과 전체를 붙여넣으세요.";
-          window.setTimeout(() => { if (copyButton) copyButton.textContent = "지시문 복사"; }, 1500);
+          status.textContent = "지시문이 복사되었습니다. 이제 ChatGPT 열기를 눌러 새 탭에서 붙여넣고 분석을 실행하세요.";
+          window.setTimeout(() => { copyButton.textContent = "지시문 복사"; }, 1500);
         } catch {
           status.textContent = "지시문 복사에 실패했습니다. 브라우저 클립보드 권한을 확인해 주세요.";
         }
+      });
+
+      openButton?.addEventListener("click", () => {
+        window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
+        if (status) status.textContent = "ChatGPT 새 탭이 열렸습니다. 복사한 지시문을 붙여넣고 분석 결과가 나올 때까지 기다려 주세요.";
       });
 
       validateButton?.addEventListener("click", () => {
@@ -172,11 +185,11 @@ export default function AdminAiWorkflow() {
           if (summary) summary.textContent = currentResult.summary;
           if (grid) grid.innerHTML = CODES.map(code => `<div class="rounded-xl border border-[#eadfe1] bg-white p-3 text-center"><p class="text-xs font-semibold">${code}</p><p class="mt-1 text-xl font-semibold">${currentResult!.scores[code]}</p></div>`).join("");
           result?.classList.remove("hidden");
-          status.textContent = "16개 점수를 모두 검증했습니다. 내용을 확인하고 승인·다시 분석·보류 중 하나를 선택하세요.";
+          status.textContent = "실제 분석 결과 16개를 확인했습니다. 승인 및 공개, 다시 분석, 보류 중 하나를 선택하세요.";
         } catch (error) {
           currentResult = null;
           result?.classList.add("hidden");
-          status.textContent = error instanceof Error ? `결과 검증 실패: ${error.message}` : "결과 검증에 실패했습니다.";
+          status.textContent = error instanceof Error ? `결과 확인 실패: ${error.message}` : "분석 결과를 확인하지 못했습니다.";
         }
       });
 
@@ -184,7 +197,7 @@ export default function AdminAiWorkflow() {
         currentResult = null;
         if (input) input.value = "";
         result?.classList.add("hidden");
-        if (status) status.textContent = "지시문을 다시 실행하고 새 분석 결과를 붙여넣으세요.";
+        if (status) status.textContent = "ChatGPT에서 다시 분석한 후 새 결과를 붙여넣어 주세요.";
       };
       clearButton?.addEventListener("click", resetManual);
       retryButton?.addEventListener("click", resetManual);
@@ -198,7 +211,7 @@ export default function AdminAiWorkflow() {
           const response = await fetch("/api/admin/fit-result", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: context.requestId, scores: currentResult.scores, summary: currentResult.summary }) });
           const payload = await response.json();
           if (!response.ok || !payload.ok) throw new Error(payload.message || payload.detail || payload.code || "승인 실패");
-          status.textContent = "수동 분석 결과의 승인 및 공개가 완료되었습니다.";
+          status.textContent = "분석 결과의 승인 및 공개가 완료되었습니다.";
           result?.classList.add("hidden");
           window.setTimeout(() => window.location.reload(), 700);
         } catch (error) {
