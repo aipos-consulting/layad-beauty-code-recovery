@@ -17,9 +17,17 @@ export async function POST(request:NextRequest){
  let productId=row.product_id;
  if(!productId){
   const canonicalName=body.canonicalName?.trim()||(row.input_type==="name"?row.input_value:"신청 상품");
-  const pr=await db(url,key,"products",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({canonical_name:canonicalName,product_url:row.input_type==="url"?row.input_value:null,brand:body.brand?.trim()||null,category:body.category?.trim()||null,verification_status:"pending",analysis_summary:body.summary?.trim()||null})});
-  if(!pr.ok)return NextResponse.json({ok:false,code:"PRODUCT_SAVE_FAILED",detail:await pr.text()},{status:500});
-  productId=((await pr.json()) as Array<{id:string}>)[0]?.id;
+  const lookupPath=row.input_type==="url"
+   ? `products?product_url=eq.${encodeURIComponent(row.input_value)}&select=id&limit=1`
+   : `products?canonical_name=ilike.${encodeURIComponent(canonicalName)}&select=id&limit=1`;
+  const existingResponse=await db(url,key,lookupPath,{method:"GET"});
+  if(!existingResponse.ok)return NextResponse.json({ok:false,code:"PRODUCT_LOOKUP_FAILED",detail:await existingResponse.text()},{status:500});
+  productId=((await existingResponse.json()) as Array<{id:string}>)[0]?.id;
+  if(!productId){
+   const pr=await db(url,key,"products",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({canonical_name:canonicalName,product_url:row.input_type==="url"?row.input_value:null,brand:body.brand?.trim()||null,category:body.category?.trim()||null,verification_status:"pending",analysis_summary:body.summary?.trim()||null})});
+   if(!pr.ok)return NextResponse.json({ok:false,code:"PRODUCT_SAVE_FAILED",detail:await pr.text()},{status:500});
+   productId=((await pr.json()) as Array<{id:string}>)[0]?.id;
+  }
  }
  if(!productId)return NextResponse.json({ok:false,code:"PRODUCT_SAVE_FAILED"},{status:500});
  const sorted=CODES.map(code=>({code,score:Math.round(scores[code])})).sort((a,b)=>b.score-a.score);
