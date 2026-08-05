@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   }
 
-  let body: { requestId?: string; action?: "start" | "prepare-next" };
+  let body: { requestId?: string; action?: "start" | "prepare-next" | "hold" };
   try {
     body = await request.json();
   } catch {
@@ -62,14 +62,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "신청 ID를 확인해 주세요." }, { status: 400 });
   }
 
+  const patch = body.action === "hold"
+    ? { status: "failed", error_message: "운영자 보류", updated_at: new Date().toISOString() }
+    : { status: "analyzing", error_message: null, updated_at: new Date().toISOString() };
+
   const update = await db(url, key, `product_analysis_requests?id=eq.${body.requestId}`, {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ status: "analyzing", error_message: null, updated_at: new Date().toISOString() }),
+    body: JSON.stringify(patch),
   });
   if (!update.ok) {
     return NextResponse.json({ ok: false, code: "REQUEST_UPDATE_FAILED", detail: await update.text() }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, requestId: body.requestId });
+  return NextResponse.json({ ok: true, requestId: body.requestId, action: body.action ?? "start" });
 }

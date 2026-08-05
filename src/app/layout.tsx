@@ -4,6 +4,7 @@ import "./globals.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
 import AnalysisProcessingFeedback from "./analysis-processing-feedback";
+import AdminAiWorkflow from "./admin-ai-workflow";
 import { LanguageProvider } from "./i18n";
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <UiAdjustments />
           <AnonymousDataCapture />
           <AnalysisProcessingFeedback />
+          <AdminAiWorkflow />
         </LanguageProvider>
       </body>
     </html>
