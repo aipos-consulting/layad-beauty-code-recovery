@@ -6,6 +6,8 @@ type ProductRequestInput = {
   inputValue: string;
 };
 
+const TEST_PRODUCT = "layad";
+
 function config() {
   return {
     supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -39,22 +41,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "잘못된 요청입니다." }, { status: 400 });
   }
 
-  const inputValue = body.inputValue?.trim();
-  if (!/^[0-9a-f-]{36}$/i.test(body.sessionId) || !inputValue || inputValue.length > 2000) {
+  const inputValue = body.inputValue?.trim().toLowerCase();
+  if (!/^[0-9a-f-]{36}$/i.test(body.sessionId) || !inputValue) {
     return NextResponse.json({ ok: false, message: "요청값을 확인해 주세요." }, { status: 400 });
   }
 
-  if (body.inputType !== "name" && body.inputType !== "url") {
-    return NextResponse.json({ ok: false, message: "상품 입력 유형이 올바르지 않습니다." }, { status: 400 });
-  }
-
-  if (body.inputType === "url") {
-    try {
-      const url = new URL(inputValue);
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
-    } catch {
-      return NextResponse.json({ ok: false, message: "공개 상품 링크를 입력해 주세요." }, { status: 400 });
-    }
+  if (body.inputType !== "name" || inputValue !== TEST_PRODUCT) {
+    return NextResponse.json({
+      ok: false,
+      code: "TEST_PRODUCT_ONLY",
+      message: "현재 테스트 기간에는 layad 상품만 신청할 수 있습니다.",
+    }, { status: 400 });
   }
 
   const insert = await supabase("product_analysis_requests", {
@@ -62,9 +59,10 @@ export async function POST(request: NextRequest) {
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({
       session_id: body.sessionId,
-      input_type: body.inputType,
-      input_value: inputValue,
+      input_type: "name",
+      input_value: TEST_PRODUCT,
       status: "submitted",
+      error_message: null,
     }),
   }, supabaseUrl, serviceKey);
 
@@ -85,6 +83,8 @@ export async function POST(request: NextRequest) {
     requestId,
     status: "submitted",
     mode: "manual_chatgpt_review",
-    message: "상품 적합도 분석 신청이 접수되었습니다. 운영자가 ChatGPT Plus를 활용해 리뷰 기반 분석을 진행합니다.",
+    testProduct: TEST_PRODUCT,
+    retryAllowed: true,
+    message: "layad 테스트 신청이 접수되었습니다. 완료 전까지 같은 상품으로 다시 신청할 수 있습니다.",
   });
 }
