@@ -6,19 +6,19 @@ const CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","D
 type Scores = Record<(typeof CODES)[number], number>;
 type ManualResult = { summary: string; scores: Scores };
 
-function extractJson(text: string) {
+function extractStructuredResult(text: string) {
   const trimmed = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   const start = trimmed.indexOf("{");
   const end = trimmed.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("JSON 형식의 결과를 찾지 못했습니다.");
+  if (start < 0 || end <= start) throw new Error("분석 결과 형식을 확인할 수 없습니다.");
   return trimmed.slice(start, end + 1);
 }
 
 function parseManualResult(text: string): ManualResult {
-  const parsed = JSON.parse(extractJson(text)) as { summary?: unknown; scores?: Record<string, unknown> };
+  const parsed = JSON.parse(extractStructuredResult(text)) as { summary?: unknown; scores?: Record<string, unknown> };
   const summary = typeof parsed.summary === "string" && parsed.summary.trim() ? parsed.summary.trim() : "분석 요약이 없습니다.";
   const rawScores = parsed.scores;
-  if (!rawScores || typeof rawScores !== "object") throw new Error("scores 항목을 찾지 못했습니다.");
+  if (!rawScores || typeof rawScores !== "object") throw new Error("16유형 점수 항목을 찾지 못했습니다.");
 
   const scores = {} as Scores;
   for (const code of CODES) {
@@ -41,7 +41,7 @@ function selectedContext() {
 
 function manualPrompt(product: string, beautyCode: string) {
   const scoreTemplate = Object.fromEntries(CODES.map(code => [code, 0]));
-  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${product}\n신청자 Beauty Code: ${beautyCode}\n\nBeauty Code 공식 축 정의\n- O/D\n- G/M\n- P = Precise: 정교함·완성도 중심\n- C = Convenient: 간편함·편의성 중심\n- V = Variable: 제품·환경에 따라 결과가 달라짐\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 상품 특성에 근거해 16개 유형 각각의 적합도를 0~100 정수로 평가하세요. 같은 상품 안에서 유형별 상대 차이가 드러나도록 일관된 기준을 적용하세요.\n\n응답은 설명이나 코드펜스 없이 아래 JSON 형식만 출력하세요. 모든 코드가 반드시 포함되어야 합니다.\n\n${JSON.stringify({ summary: "상품 특성과 유형별 점수 차이를 설명하는 짧은 요약", scores: scoreTemplate }, null, 2)}`;
+  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${product}\n신청자 Beauty Code: ${beautyCode}\n\nBeauty Code 공식 축 정의\n- O/D\n- G/M\n- P = Precise: 정교함·완성도 중심\n- C = Convenient: 간편함·편의성 중심\n- V = Variable: 제품·환경에 따라 결과가 달라짐\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 상품 특성에 근거해 16개 유형 각각의 적합도를 0~100 정수로 평가하세요. 같은 상품 안에서 유형별 상대 차이가 드러나도록 일관된 기준을 적용하세요.\n\n응답은 설명이나 코드펜스 없이 아래 결과 형식만 출력하세요. 모든 코드가 반드시 포함되어야 합니다.\n\n${JSON.stringify({ summary: "상품 특성과 유형별 점수 차이를 설명하는 짧은 요약", scores: scoreTemplate }, null, 2)}`;
 }
 
 export default function AdminAiWorkflow() {
@@ -83,7 +83,7 @@ export default function AdminAiWorkflow() {
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
           <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
             <div class="flex items-start justify-between gap-3">
-              <div><p class="text-xs font-semibold text-[#a94f65]">STEP 1</p><h4 class="mt-1 font-semibold">분석 지시문 복사</h4><p class="mt-2 text-xs leading-5 text-[#78696c]">선택 상품과 출력 JSON 형식이 자동 포함됩니다.</p></div>
+              <div><p class="text-xs font-semibold text-[#a94f65]">STEP 1</p><h4 class="mt-1 font-semibold">분석 지시문 복사</h4><p class="mt-2 text-xs leading-5 text-[#78696c]">선택 상품과 결과 출력 형식이 자동 포함됩니다.</p></div>
               <button type="button" data-copy-prompt class="rounded-xl bg-[#d88c9c] px-4 py-3 text-sm font-semibold text-white">지시문 복사</button>
             </div>
             <pre data-prompt-preview class="mt-4 max-h-44 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7f1f2] p-4 text-xs leading-6 text-[#66575a]"></pre>
@@ -92,8 +92,8 @@ export default function AdminAiWorkflow() {
           <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
             <p class="text-xs font-semibold text-[#a94f65]">STEP 2</p>
             <h4 class="mt-1 font-semibold">ChatGPT 결과 붙여넣기</h4>
-            <p class="mt-2 text-xs leading-5 text-[#78696c]">ChatGPT가 반환한 JSON 전체를 붙여넣으세요. 16개 점수는 개별 입력하지 않습니다.</p>
-            <textarea data-manual-input rows="8" placeholder='{"summary":"...","scores":{"OGPV":80,...}}' class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
+            <p class="mt-2 text-xs leading-5 text-[#78696c]">ChatGPT가 반환한 분석 결과 전체를 붙여넣으세요. 16개 점수는 개별 입력하지 않습니다.</p>
+            <textarea data-manual-input rows="8" placeholder="ChatGPT 분석 결과 전체를 여기에 붙여넣으세요." class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
             <div class="mt-3 flex flex-wrap gap-2">
               <button type="button" data-validate class="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">결과 검증</button>
               <button type="button" data-clear class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">초기화</button>
@@ -158,7 +158,7 @@ export default function AdminAiWorkflow() {
           await fetch("/api/admin/analysis-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: context.requestId, action: "start" }) });
           await navigator.clipboard.writeText(prompt);
           copyButton.textContent = "복사 완료";
-          status.textContent = "지시문을 복사했습니다. ChatGPT에서 실행한 뒤 JSON 결과 전체를 붙여넣으세요.";
+          status.textContent = "지시문을 복사했습니다. ChatGPT에서 실행한 뒤 분석 결과 전체를 붙여넣으세요.";
           window.setTimeout(() => { if (copyButton) copyButton.textContent = "지시문 복사"; }, 1500);
         } catch {
           status.textContent = "지시문 복사에 실패했습니다. 브라우저 클립보드 권한을 확인해 주세요.";
@@ -184,7 +184,7 @@ export default function AdminAiWorkflow() {
         currentResult = null;
         if (input) input.value = "";
         result?.classList.add("hidden");
-        if (status) status.textContent = "지시문을 다시 실행하고 새 JSON 결과를 붙여넣으세요.";
+        if (status) status.textContent = "지시문을 다시 실행하고 새 분석 결과를 붙여넣으세요.";
       };
       clearButton?.addEventListener("click", resetManual);
       retryButton?.addEventListener("click", resetManual);
