@@ -20,33 +20,22 @@ function parseManualResult(text: string): ManualResult {
   if (source.includes("당신은 LAYAD BEAUTY CODE") || source.includes("분석 대상 상품:") || source.includes("Beauty Code 공식 축 정의")) {
     throw new Error("분석 지시문이 붙여넣어졌습니다. ChatGPT가 생성한 분석 결과를 복사해 주세요.");
   }
-
   const parsed = JSON.parse(extractStructuredResult(source)) as { summary?: unknown; scores?: Record<string, unknown> };
   const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
-  if (!summary || summary.includes("상품 특성과 유형별 점수 차이를 설명하는 짧은 요약")) {
+  if (!summary || summary.includes("실제 상품 특성과 유형별 점수 차이를 설명하는 요약")) {
     throw new Error("실제 상품 분석 요약을 확인할 수 없습니다.");
   }
-
   const rawScores = parsed.scores;
   if (!rawScores || typeof rawScores !== "object") throw new Error("16유형 점수 항목을 찾지 못했습니다.");
-
   const scores = {} as Scores;
   for (const code of CODES) {
     const value = rawScores[code];
-    if (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 100) {
-      throw new Error(`${code} 점수는 0~100 정수여야 합니다.`);
-    }
+    if (!Number.isInteger(value) || Number(value) < 0 || Number(value) > 100) throw new Error(`${code} 점수는 0~100 정수여야 합니다.`);
     scores[code] = Number(value);
   }
-
   const values = Object.values(scores);
-  if (values.every(value => value === 0)) {
-    throw new Error("0점 예시값은 분석 결과가 아닙니다. ChatGPT에서 실제 분석을 실행해 주세요.");
-  }
-  if (new Set(values).size < 2) {
-    throw new Error("16유형 점수에 차이가 없습니다. 상품 특성을 반영해 다시 분석해 주세요.");
-  }
-
+  if (values.every(value => value === 0)) throw new Error("0점 예시값은 분석 결과가 아닙니다. ChatGPT에서 실제 분석을 실행해 주세요.");
+  if (new Set(values).size < 2) throw new Error("16유형 점수에 차이가 없습니다. 상품 특성을 반영해 다시 분석해 주세요.");
   return { summary, scores };
 }
 
@@ -69,8 +58,8 @@ export default function AdminAiWorkflow() {
 
     const enhance = () => {
       const paragraphs = Array.from(document.querySelectorAll("p"));
-      const guide = paragraphs.find(node => node.textContent?.includes("ChatGPT Plus에 분석 지시문") || node.textContent?.includes("AI 분석 결과를 확인한 후 승인") || node.textContent?.includes("수동 분석 결과를 붙여넣어"));
-      if (guide) guide.textContent = "지시문을 복사해 ChatGPT에서 분석한 뒤, ChatGPT가 생성한 결과를 붙여넣어 확인하고 공개합니다.";
+      const guide = paragraphs.find(node => node.textContent?.includes("ChatGPT Plus에 분석 지시문") || node.textContent?.includes("AI 분석 결과를 확인한 후 승인") || node.textContent?.includes("수동 분석 결과를 붙여넣어") || node.textContent?.includes("지시문을 복사해 ChatGPT"));
+      if (guide) guide.textContent = "지시문을 복사하고 ChatGPT를 연 뒤, 같은 화면에서 분석 결과를 붙여넣어 확인하고 공개합니다.";
 
       const legacyHeading = Array.from(document.querySelectorAll("h3")).find(node => node.textContent?.includes("ChatGPT Plus 분석 지시문"));
       const legacySection = legacyHeading?.closest("section");
@@ -82,42 +71,43 @@ export default function AdminAiWorkflow() {
       legacySection.innerHTML = `
         <div class="rounded-2xl border border-[#eadfe1] bg-white p-4">
           <p class="text-xs font-semibold text-[#a94f65]">현재 분석 방식</p>
-          <p class="mt-2 text-sm leading-6 text-[#66575a]">수동 분석 · 앱에서 API를 호출하지 않습니다. 운영자가 ChatGPT에서 분석을 실행한 뒤 결과를 가져옵니다.</p>
+          <p class="mt-2 text-sm leading-6 text-[#66575a]">수동 분석 · 앱에서 API를 호출하지 않습니다. 운영자는 지시문 복사, ChatGPT 실행, 결과 붙여넣기, 승인만 수행합니다.</p>
         </div>
 
-        <div class="mt-5 grid gap-4 lg:grid-cols-2">
-          <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
-            <p class="text-xs font-semibold text-[#a94f65]">STEP 1</p>
-            <h3 class="mt-1 font-semibold">분석 지시문 복사</h3>
-            <p class="mt-2 text-xs leading-5 text-[#78696c]">선택한 상품과 결과 출력 형식이 포함된 지시문을 복사합니다.</p>
-            <button type="button" data-copy-prompt class="mt-4 rounded-xl bg-[#d88c9c] px-4 py-3 text-sm font-semibold text-white">지시문 복사</button>
-            <pre data-prompt-preview class="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7f1f2] p-4 text-xs leading-6 text-[#66575a]"></pre>
-          </section>
-
-          <section class="rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
-            <p class="text-xs font-semibold text-[#a94f65]">STEP 2</p>
-            <h3 class="mt-1 font-semibold">ChatGPT에서 분석 실행</h3>
-            <p class="mt-2 text-xs leading-5 text-[#78696c]">새 탭에서 ChatGPT를 열고 복사한 지시문을 붙여넣어 실행합니다. 앱이 자동으로 붙여넣거나 실행하지는 않습니다.</p>
-            <button type="button" data-open-chatgpt class="mt-4 rounded-xl border border-[#d88c9c] bg-white px-4 py-3 text-sm font-semibold text-[#a94f65]">ChatGPT 열기</button>
-          </section>
-        </div>
+        <section class="mt-5 rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
+          <p class="text-xs font-semibold text-[#a94f65]">STEP 1</p>
+          <h3 class="mt-1 font-semibold">지시문 복사하고 ChatGPT 열기</h3>
+          <p class="mt-2 text-xs leading-5 text-[#78696c]">버튼을 누르면 선택한 상품의 분석 지시문이 복사되고 ChatGPT가 새 창으로 열립니다.</p>
+          <button type="button" data-copy-open class="mt-4 rounded-xl bg-[#d88c9c] px-4 py-3 text-sm font-semibold text-white">지시문 복사하고 ChatGPT 열기</button>
+          <pre data-prompt-preview class="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7f1f2] p-4 text-xs leading-6 text-[#66575a]"></pre>
+        </section>
 
         <section class="mt-4 rounded-2xl border border-[#eadfe1] bg-[#fffdfd] p-5">
-          <p class="text-xs font-semibold text-[#a94f65]">STEP 3</p>
-          <h3 class="mt-1 font-semibold">ChatGPT 분석 결과 붙여넣기</h3>
-          <p class="mt-2 text-xs leading-5 text-[#78696c]">ChatGPT가 분석을 마친 후 반환한 결과 전체를 복사해 아래에 붙여넣으세요. 지시문 자체를 붙여넣으면 검증되지 않습니다.</p>
-          <textarea data-manual-input rows="9" placeholder="ChatGPT가 생성한 분석 결과 전체를 여기에 붙여넣으세요." class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold text-[#a94f65]">STEP 2</p>
+              <h3 class="mt-1 font-semibold">ChatGPT에서 분석하고 결과 붙여넣기</h3>
+            </div>
+            <button type="button" data-open-chatgpt class="rounded-xl border border-[#d88c9c] bg-white px-4 py-3 text-sm font-semibold text-[#a94f65]">ChatGPT 다시 열기</button>
+          </div>
+          <ol class="mt-3 list-decimal space-y-1 pl-5 text-xs leading-5 text-[#78696c]">
+            <li>새 창에 열린 ChatGPT에 복사된 지시문을 붙여넣고 실행합니다.</li>
+            <li>ChatGPT의 분석 결과 전체를 복사합니다.</li>
+            <li>아래 입력란에 붙여넣고 분석 결과 확인을 누릅니다.</li>
+          </ol>
+          <textarea data-manual-input rows="10" placeholder="ChatGPT가 생성한 분석 결과 전체를 여기에 붙여넣으세요." class="mt-4 w-full rounded-xl border border-[#dfd1d4] bg-white p-3 text-sm"></textarea>
           <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" data-paste class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">클립보드 붙여넣기</button>
             <button type="button" data-validate class="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">분석 결과 확인</button>
             <button type="button" data-clear class="rounded-xl border border-[#d8b6bd] px-4 py-3 text-sm font-semibold">초기화</button>
           </div>
         </section>
 
-        <div data-status class="mt-4 rounded-xl bg-[#f7f1f2] p-4 text-sm text-[#66575a]">먼저 지시문을 복사하고 ChatGPT에서 분석을 실행해 주세요.</div>
+        <div data-status class="mt-4 rounded-xl bg-[#f7f1f2] p-4 text-sm text-[#66575a]">먼저 지시문 복사하고 ChatGPT 열기를 눌러 주세요.</div>
 
         <section data-result class="mt-4 hidden rounded-2xl border border-[#eadfe1] bg-white p-5">
           <div class="flex flex-wrap items-start justify-between gap-3">
-            <div><p class="text-xs font-semibold text-[#a94f65]">STEP 4</p><h3 class="mt-1 font-semibold">분석 결과 확인 및 공개</h3></div>
+            <div><p class="text-xs font-semibold text-[#a94f65]">STEP 3</p><h3 class="mt-1 font-semibold">분석 결과 확인 및 공개</h3></div>
             <span class="rounded-full bg-[#edf8ef] px-3 py-2 text-xs font-semibold text-[#376b42]">16/16 정상</span>
           </div>
           <p data-summary class="mt-4 rounded-xl bg-[#fff7f8] p-4 text-sm leading-6 text-[#66575a]"></p>
@@ -131,8 +121,9 @@ export default function AdminAiWorkflow() {
         </section>`;
 
       const promptPreview = legacySection.querySelector<HTMLElement>("[data-prompt-preview]");
-      const copyButton = legacySection.querySelector<HTMLButtonElement>("[data-copy-prompt]");
+      const copyOpenButton = legacySection.querySelector<HTMLButtonElement>("[data-copy-open]");
       const openButton = legacySection.querySelector<HTMLButtonElement>("[data-open-chatgpt]");
+      const pasteButton = legacySection.querySelector<HTMLButtonElement>("[data-paste]");
       const input = legacySection.querySelector<HTMLTextAreaElement>("[data-manual-input]");
       const validateButton = legacySection.querySelector<HTMLButtonElement>("[data-validate]");
       const clearButton = legacySection.querySelector<HTMLButtonElement>("[data-clear]");
@@ -156,26 +147,42 @@ export default function AdminAiWorkflow() {
         if (input) input.value = "";
         result?.classList.add("hidden");
         refreshPrompt();
-        if (status) status.textContent = "선택한 상품의 지시문을 복사해 ChatGPT에서 분석을 시작하세요.";
+        if (status) status.textContent = "선택한 상품의 지시문을 복사하고 ChatGPT를 열어 분석을 시작하세요.";
       });
 
-      copyButton?.addEventListener("click", async () => {
+      const openChatGpt = () => window.open("https://chatgpt.com/", "layad-chatgpt-analysis", "popup=yes,width=760,height=900,resizable=yes,scrollbars=yes");
+
+      copyOpenButton?.addEventListener("click", async () => {
         const context = selectedContext();
-        if (!context.requestId || !status || !copyButton) return;
+        if (!context.requestId || !status || !copyOpenButton) return;
+        const chatWindow = openChatGpt();
         try {
           await navigator.clipboard.writeText(manualPrompt(context.product, context.beautyCode));
           await fetch("/api/admin/analysis-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId: context.requestId, action: "start" }) });
-          copyButton.textContent = "복사 완료";
-          status.textContent = "지시문이 복사되었습니다. 이제 ChatGPT 열기를 눌러 새 탭에서 붙여넣고 분석을 실행하세요.";
-          window.setTimeout(() => { copyButton.textContent = "지시문 복사"; }, 1500);
+          copyOpenButton.textContent = "복사 완료 · ChatGPT 열림";
+          status.textContent = chatWindow ? "ChatGPT 창이 열렸습니다. 지시문을 붙여넣고 분석한 뒤 결과를 아래 입력란에 붙여넣으세요." : "지시문은 복사됐지만 새 창이 차단되었습니다. ChatGPT 다시 열기를 눌러 주세요.";
+          input?.focus();
+          window.setTimeout(() => { copyOpenButton.textContent = "지시문 복사하고 ChatGPT 열기"; }, 1800);
         } catch {
           status.textContent = "지시문 복사에 실패했습니다. 브라우저 클립보드 권한을 확인해 주세요.";
         }
       });
 
       openButton?.addEventListener("click", () => {
-        window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
-        if (status) status.textContent = "ChatGPT 새 탭이 열렸습니다. 복사한 지시문을 붙여넣고 분석 결과가 나올 때까지 기다려 주세요.";
+        openChatGpt();
+        if (status) status.textContent = "ChatGPT 창을 다시 열었습니다. 분석 결과를 복사해 아래에 붙여넣으세요.";
+        input?.focus();
+      });
+
+      pasteButton?.addEventListener("click", async () => {
+        if (!input || !status) return;
+        try {
+          input.value = await navigator.clipboard.readText();
+          input.focus();
+          status.textContent = "클립보드 내용을 붙여넣었습니다. 분석 결과 확인을 눌러 주세요.";
+        } catch {
+          status.textContent = "브라우저가 클립보드 읽기를 허용하지 않았습니다. 직접 붙여넣어 주세요.";
+        }
       });
 
       validateButton?.addEventListener("click", () => {
@@ -185,6 +192,7 @@ export default function AdminAiWorkflow() {
           if (summary) summary.textContent = currentResult.summary;
           if (grid) grid.innerHTML = CODES.map(code => `<div class="rounded-xl border border-[#eadfe1] bg-white p-3 text-center"><p class="text-xs font-semibold">${code}</p><p class="mt-1 text-xl font-semibold">${currentResult!.scores[code]}</p></div>`).join("");
           result?.classList.remove("hidden");
+          result?.scrollIntoView({ behavior: "smooth", block: "start" });
           status.textContent = "실제 분석 결과 16개를 확인했습니다. 승인 및 공개, 다시 분석, 보류 중 하나를 선택하세요.";
         } catch (error) {
           currentResult = null;
@@ -198,9 +206,10 @@ export default function AdminAiWorkflow() {
         if (input) input.value = "";
         result?.classList.add("hidden");
         if (status) status.textContent = "ChatGPT에서 다시 분석한 후 새 결과를 붙여넣어 주세요.";
+        input?.focus();
       };
       clearButton?.addEventListener("click", resetManual);
-      retryButton?.addEventListener("click", resetManual);
+      retryButton?.addEventListener("click", () => { resetManual(); openChatGpt(); });
 
       approveButton?.addEventListener("click", async () => {
         const context = selectedContext();
