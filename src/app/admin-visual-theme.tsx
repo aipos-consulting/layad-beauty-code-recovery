@@ -88,18 +88,15 @@ function applyAdminTheme(main: HTMLElement) {
     (nav as HTMLElement).style.marginTop = "10px";
 
     const entries = Array.from(nav.children).filter((node) => !(node as HTMLElement).dataset.adminGroup);
-    const hasDataLink = entries.some((node) => node.textContent?.trim() === "운영 데이터 관리");
-    if (!hasDataLink) {
+    if (!entries.some((node) => node.textContent?.trim() === "운영 데이터 관리")) {
       const link = document.createElement("a");
       link.href = "/admin/data-management";
       link.textContent = "운영 데이터 관리";
       link.className = "block rounded-xl px-4 py-3 text-sm";
       nav.appendChild(link);
-      entries.push(link);
     }
 
     nav.querySelectorAll("[data-admin-group]").forEach((node) => node.remove());
-
     const refreshed = Array.from(nav.children);
     const insertBeforeText = (target: string, label: string) => {
       const node = refreshed.find((item) => item.textContent?.trim() === target);
@@ -148,13 +145,6 @@ function applyAdminTheme(main: HTMLElement) {
     header.style.background = "rgba(255,255,255,.92)";
     header.style.backdropFilter = "blur(10px)";
   }
-
-  main.querySelectorAll("section").forEach((section) => {
-    const element = section as HTMLElement;
-    element.style.background = "rgba(255,255,255,.92)";
-    element.style.backdropFilter = "blur(10px)";
-    element.style.boxShadow = "0 12px 35px rgba(84,64,68,.08)";
-  });
 }
 
 export default function AdminVisualTheme() {
@@ -162,17 +152,17 @@ export default function AdminVisualTheme() {
     const applyTheme = () => {
       const main = document.querySelector("main") as HTMLElement | null;
       if (!main) return;
-
       main.classList.add("layad-admin-background");
-
       if (window.location.pathname === "/") applyHomeTheme(main);
       if (window.location.pathname.startsWith("/admin")) applyAdminTheme(main);
     };
 
-    applyTheme();
-    const observer = new MutationObserver(applyTheme);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    const frame = window.requestAnimationFrame(applyTheme);
+    const timer = window.setTimeout(applyTheme, 250);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, []);
 
   return null;
