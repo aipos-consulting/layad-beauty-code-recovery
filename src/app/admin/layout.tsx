@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
-import AdminNavigationFix from "./admin-navigation-fix";
-import AdminSettingsClickGuard from "./admin-settings-click-guard";
+import AdminShell from "./admin-shell";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <AdminNavigationFix />
-      <AdminSettingsClickGuard />
-      {children}
-    </>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }
