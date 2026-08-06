@@ -25,8 +25,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#fbf7f7] text-[#382d2d] lg:flex">
       <aside className="hidden min-h-screen w-64 shrink-0 border-r border-[#eadfe1] bg-white px-4 py-6 lg:flex lg:flex-col" style={{ minWidth: 256, maxWidth: 256 }}>
         <div className="px-3">
-          <p className="text-lg font-semibold tracking-[.12em] text-[#a94f65]">LAYAD</p>
-          <p className="mt-1 text-xs font-semibold tracking-[.18em] text-[#8b777b]">LAYAD ADMIN</p>
+          <p className="text-lg font-semibold tracking-[.12em] text-[#a94f65]">LAYAD ADMIN</p>
         </div>
         <nav className="mt-7 flex-1 space-y-6">
           {menuGroups.map(group => (
