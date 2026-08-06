@@ -59,9 +59,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </div>
 
       <style>{`
-        .admin-route-content > main > aside { display: none !important; }
-        .admin-route-content > main { width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; }
-        .admin-route-content > main > div { min-width: 0 !important; width: 100% !important; }
+        .admin-route-content aside { display: none !important; }
+        .admin-route-content main { width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; }
+        .admin-route-content main > div { min-width: 0 !important; width: 100% !important; }
         .admin-route-content table { max-width: 100%; }
       `}</style>
     </div>
