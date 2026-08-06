@@ -35,47 +35,112 @@ function applyHomeTheme(main: HTMLElement) {
 
   Array.from(content.querySelectorAll("p")).forEach((node) => {
     const value = node.textContent?.trim() ?? "";
-    if (
-      value.startsWith("약 3분 소요") ||
-      value.startsWith("About 3 minutes") ||
-      value.startsWith("約3分")
-    ) {
+    if (value.startsWith("약 3분 소요") || value.startsWith("About 3 minutes") || value.startsWith("約3分")) {
       (node as HTMLElement).style.display = "none";
     }
   });
 }
 
+function groupLabel(text: string) {
+  const label = document.createElement("div");
+  label.setAttribute("data-admin-group", text);
+  label.textContent = text;
+  label.style.margin = "22px 12px 8px";
+  label.style.color = "#9a8d90";
+  label.style.fontSize = "11px";
+  label.style.fontWeight = "700";
+  label.style.letterSpacing = ".12em";
+  return label;
+}
+
 function applyAdminTheme(main: HTMLElement) {
   const aside = main.querySelector("aside") as HTMLElement | null;
-  if (aside) {
-    aside.style.background = "rgba(255,255,255,.96)";
-    aside.style.color = "#382d2d";
-    aside.style.borderRight = "1px solid rgba(234,223,225,.95)";
-    aside.style.backdropFilter = "blur(10px)";
-    aside.style.boxShadow = "4px 0 24px rgba(84,64,68,.05)";
+  if (!aside) return;
 
-    const title = aside.querySelector("p") as HTMLElement | null;
-    if (title) title.style.display = "none";
+  aside.style.width = "256px";
+  aside.style.minHeight = "100vh";
+  aside.style.display = "flex";
+  aside.style.flexDirection = "column";
+  aside.style.background = "rgba(255,255,255,.96)";
+  aside.style.color = "#382d2d";
+  aside.style.borderRight = "1px solid rgba(234,223,225,.95)";
+  aside.style.backdropFilter = "blur(10px)";
+  aside.style.boxShadow = "4px 0 24px rgba(84,64,68,.05)";
 
-    if (!aside.querySelector("[data-layad-admin-brand]")) {
-      const brand = document.createElement("div");
-      brand.setAttribute("data-layad-admin-brand", "true");
-      brand.style.padding = "0 16px 18px";
-      brand.innerHTML = `
-        <img src="/layad-logo.svg" alt="LAYAD Seoul" style="width:150px;height:auto;display:block;margin-bottom:14px" />
-        <p style="margin:0;color:#d88c9c;font-size:13px;font-weight:700;letter-spacing:.16em">LAYAD ADMIN</p>
-      `;
-      aside.insertBefore(brand, aside.firstChild);
+  const oldTitle = aside.querySelector(":scope > p") as HTMLElement | null;
+  if (oldTitle) oldTitle.style.display = "none";
+
+  if (!aside.querySelector("[data-layad-admin-brand]")) {
+    const brand = document.createElement("div");
+    brand.setAttribute("data-layad-admin-brand", "true");
+    brand.style.padding = "2px 16px 20px";
+    brand.style.borderBottom = "1px solid #f0e6e8";
+    brand.innerHTML = `
+      <img src="/layad-logo.svg" alt="LAYAD Seoul" style="width:150px;height:auto;display:block;margin-bottom:14px" />
+      <p style="margin:0;color:#d88c9c;font-size:13px;font-weight:700;letter-spacing:.16em">LAYAD ADMIN</p>
+    `;
+    aside.insertBefore(brand, aside.firstChild);
+  }
+
+  const nav = aside.querySelector("nav");
+  if (nav) {
+    (nav as HTMLElement).style.flex = "1";
+    (nav as HTMLElement).style.marginTop = "10px";
+
+    const entries = Array.from(nav.children).filter((node) => !(node as HTMLElement).dataset.adminGroup);
+    const hasDataLink = entries.some((node) => node.textContent?.trim() === "운영 데이터 관리");
+    if (!hasDataLink) {
+      const link = document.createElement("a");
+      link.href = "/admin/data-management";
+      link.textContent = "운영 데이터 관리";
+      link.className = "block rounded-xl px-4 py-3 text-sm";
+      nav.appendChild(link);
+      entries.push(link);
     }
 
-    aside.querySelectorAll("a").forEach((link) => {
-      const element = link as HTMLElement;
-      element.style.color = "#5b4d50";
-      if (element.textContent?.trim() === "운영 데이터 관리") {
-        element.style.background = "#d88c9c";
-        element.style.color = "white";
-      }
+    nav.querySelectorAll("[data-admin-group]").forEach((node) => node.remove());
+
+    const refreshed = Array.from(nav.children);
+    const insertBeforeText = (target: string, label: string) => {
+      const node = refreshed.find((item) => item.textContent?.trim() === target);
+      if (node) nav.insertBefore(groupLabel(label), node);
+    };
+    insertBeforeText("대시보드", "대시보드");
+    insertBeforeText("상품 신청 정보", "상품 운영");
+    insertBeforeText("운영 데이터 관리", "데이터 관리");
+    insertBeforeText("운영 설정", "운영 설정");
+
+    nav.querySelectorAll("a, button").forEach((item) => {
+      const element = item as HTMLElement;
+      const label = element.textContent?.trim() ?? "";
+      const isDataPage = window.location.pathname === "/admin/data-management" && label === "운영 데이터 관리";
+      const isAlreadyActive = element.className.includes("bg-[#d88c9c]") || element.className.includes("text-white");
+      element.style.display = "block";
+      element.style.width = "100%";
+      element.style.borderRadius = "12px";
+      element.style.padding = "12px 16px";
+      element.style.marginBottom = "4px";
+      element.style.textAlign = "left";
+      element.style.fontSize = "14px";
+      element.style.color = isDataPage || isAlreadyActive ? "#b95f74" : "#5b4d50";
+      element.style.background = isDataPage || isAlreadyActive ? "#fff0f3" : "transparent";
+      element.style.fontWeight = isDataPage || isAlreadyActive ? "700" : "500";
     });
+  }
+
+  if (!aside.querySelector("[data-admin-logout]")) {
+    const logout = document.createElement("a");
+    logout.setAttribute("data-admin-logout", "true");
+    logout.href = "/";
+    logout.textContent = "로그아웃";
+    logout.style.margin = "20px 12px 0";
+    logout.style.padding = "12px 16px";
+    logout.style.border = "1px solid #eadfe1";
+    logout.style.borderRadius = "12px";
+    logout.style.color = "#5b4d50";
+    logout.style.fontSize = "14px";
+    logout.style.textAlign = "center";
+    aside.appendChild(logout);
   }
 
   const header = main.querySelector("header") as HTMLElement | null;
@@ -101,7 +166,7 @@ export default function AdminVisualTheme() {
       main.classList.add("layad-admin-background");
 
       if (window.location.pathname === "/") applyHomeTheme(main);
-      if (window.location.pathname === "/admin/data-management") applyAdminTheme(main);
+      if (window.location.pathname.startsWith("/admin")) applyAdminTheme(main);
     };
 
     applyTheme();
