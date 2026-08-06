@@ -4,13 +4,13 @@ import { useEffect } from "react";
 
 export default function AdminVisualTheme() {
   useEffect(() => {
-    if (window.location.pathname !== "/admin/data-management") return;
-
     const applyTheme = () => {
       const main = document.querySelector("main");
       if (!main) return;
 
       main.classList.add("layad-admin-background");
+
+      if (window.location.pathname !== "/admin/data-management") return;
 
       const aside = main.querySelector("aside") as HTMLElement | null;
       if (aside) {
