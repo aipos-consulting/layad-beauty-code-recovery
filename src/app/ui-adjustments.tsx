@@ -10,27 +10,23 @@ const adjustProductAnalysisUI = () => {
 
   while (node) {
     const text = node.textContent ?? "";
-    node.textContent = text
+    const replaced = text
       .replaceAll("AI 맥락 분석", "AI 분석")
       .replaceAll("적합도 분석하기", "잘 맞는지 확인하기")
       .replaceAll("내 상품 적합도 분석", "나에게 잘 맞는 상품인지 확인하기")
       .replaceAll("상품 적합도 분석", "Beauty Code 상품 궁합")
       .replaceAll("궁금한 상품명 또는 상품 링크를 등록하면 리뷰 맥락 분석을 통해 나의 Beauty Code와의 적합도를 확인할 수 있습니다.", FINAL_GUIDE)
       .replaceAll("상품명 또는 상품 링크를 등록하면 AI 분석을 시작합니다.", FINAL_GUIDE);
+
+    if (replaced !== text) node.textContent = replaced;
     node = walker.nextNode();
   }
 
   document.querySelectorAll("p").forEach((element) => {
-    const text = element.textContent?.trim() ?? "";
-
-    if (text === "16유형 분석 상태") {
+    if (element.textContent?.trim() === "16유형 분석 상태") {
       element.style.textAlign = "center";
       element.style.fontSize = "0.6875rem";
       element.style.letterSpacing = "0.08em";
-    }
-
-    if (text.startsWith("QUESTION ") && text.includes("·")) {
-      element.textContent = text.split("·")[0].trim();
     }
   });
 
@@ -52,10 +48,13 @@ const adjustProductAnalysisUI = () => {
 
 export default function UiAdjustments() {
   useEffect(() => {
-    adjustProductAnalysisUI();
-    const observer = new MutationObserver(adjustProductAnalysisUI);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    const frame = window.requestAnimationFrame(adjustProductAnalysisUI);
+    const timer = window.setTimeout(adjustProductAnalysisUI, 300);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, []);
 
   return null;
