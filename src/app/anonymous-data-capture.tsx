@@ -6,6 +6,7 @@ const ANSWERS_KEY = "layad-test-answers";
 const SESSION_KEY = "layad-supabase-session-id";
 const SAVED_CODE_KEY = "layad-saved-beauty-code";
 const SAVED_SOURCE_KEY = "layad-saved-beauty-code-source";
+const SAVING_KEY = "layad-supabase-session-saving";
 
 type AnswerMap = Record<number, string>;
 type BeautyCodeSource = "test" | "manual";
@@ -118,9 +119,56 @@ export default function AnonymousDataCapture() {
         sessionStorage.removeItem(SESSION_KEY);
         sessionStorage.removeItem(SAVED_CODE_KEY);
         sessionStorage.removeItem(SAVED_SOURCE_KEY);
+        sessionStorage.removeItem(SAVING_KEY);
         setBeautyCode(null);
         setShowAgePrompt(false);
         setSaveMessage("");
+      }
+    };
+
+    const persistAnonymousTest = async (code: string) => {
+      const savedCode = sessionStorage.getItem(SAVED_CODE_KEY);
+      const savedSource = sessionStorage.getItem(SAVED_SOURCE_KEY);
+      const sessionId = sessionStorage.getItem(SESSION_KEY);
+      if (savedCode === code && savedSource === "test" && sessionId) return;
+      if (sessionStorage.getItem(SAVING_KEY) === "1") return;
+
+      const answers = Object.entries(readAnswers()).map(([questionId, selectedCode]) => ({
+        questionId: Number(questionId),
+        selectedCode,
+      }));
+      if (answers.length !== 20) return;
+
+      sessionStorage.setItem(SAVING_KEY, "1");
+      const payload = {
+        beautyCode: code,
+        beautyCodeSource: "test" as const,
+        ageBand: null,
+        answers,
+      };
+
+      try {
+        const response = await fetch("/api/anonymous-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = (await response.json()) as { ok?: boolean; sessionId?: string; code?: string };
+        if (!response.ok || !result.ok || !result.sessionId) {
+          if (result.code === "SUPABASE_NOT_CONFIGURED") {
+            localStorage.setItem("layad-pending-session", JSON.stringify(payload));
+          }
+          return;
+        }
+
+        sessionStorage.setItem(SESSION_KEY, result.sessionId);
+        sessionStorage.setItem(SAVED_CODE_KEY, code);
+        sessionStorage.setItem(SAVED_SOURCE_KEY, "test");
+        localStorage.removeItem("layad-pending-session");
+      } catch {
+        localStorage.setItem("layad-pending-session", JSON.stringify(payload));
+      } finally {
+        sessionStorage.removeItem(SAVING_KEY);
       }
     };
 
@@ -130,13 +178,8 @@ export default function AnonymousDataCapture() {
       const code = findBeautyCode();
       if (!code) return;
       setBeautyCode(code);
-
-      const savedCode = sessionStorage.getItem(SAVED_CODE_KEY);
-      const savedSource = sessionStorage.getItem(SAVED_SOURCE_KEY);
-      const sessionId = sessionStorage.getItem(SESSION_KEY);
-      if (savedCode !== code || savedSource !== source || !sessionId) {
-        setShowAgePrompt(true);
-      }
+      setShowAgePrompt(false);
+      void persistAnonymousTest(code);
     };
 
     document.addEventListener("click", clickHandler);
@@ -166,7 +209,7 @@ export default function AnonymousDataCapture() {
         if (code) {
           setBeautyCode(code);
           setSaveMessage("");
-          setShowAgePrompt(true);
+          setShowAgePrompt(source === "manual");
         } else {
           setSaveMessage("Beauty Code를 먼저 선택해 주세요.");
         }
