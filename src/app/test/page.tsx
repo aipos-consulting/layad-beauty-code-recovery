@@ -191,7 +191,7 @@ export default function TestPage() {
   return (
     <main className="min-h-screen bg-[#fff8f8] px-5 py-6 text-[#382d2d] sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_70px_rgba(120,70,80,0.12)]">
-        <header className="flex items-center justify-between gap-3 border-b border-[#f4e5e7] px-6 py-5 sm:px-10"><Link href="/" className="text-sm font-semibold tracking-[0.2em] text-[#b97b88]">LAYAD BEAUTY CODE</Link><div className="flex items-center gap-3"><p className="text-sm text-[#8c7e7e]">{currentIndex + 1} / 20</p><LanguageSwitcher compact /></div></header>
+        <header className="flex items-center justify-between gap-3 border-b border-[#f4e5e7] px-6 py-5 sm:px-10"><Link href="/" aria-label="LAYAD 홈" className="shrink-0"><img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-[104px] object-contain sm:w-[132px]" /></Link><div className="flex items-center gap-3"><p className="whitespace-nowrap text-sm tabular-nums text-[#8c7e7e]">{currentIndex + 1}/20</p><LanguageSwitcher compact /></div></header>
         <section className="flex flex-1 items-center px-6 py-10 sm:px-12"><div className="mx-auto w-full max-w-2xl">
           <div className="h-2 overflow-hidden rounded-full bg-[#f3e8e9]"><div className="h-full rounded-full bg-[#d88c9c] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
           <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#b97b88]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
