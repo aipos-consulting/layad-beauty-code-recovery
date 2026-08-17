@@ -110,7 +110,6 @@ const ui: Record<Locale, Record<string, string>> = {
 };
 
 const axisPairs: Record<AxisKey, [Code, Code]> = { OD: ["O", "D"], GM: ["G", "M"], PC: ["P", "C"], VE: ["V", "E"] };
-const axisNames: Record<AxisKey, string> = { OD: "Oily / Dry", GM: "Glow / Matte", PC: "Perfection / Convenience – focused", VE: "Variable / Even" };
 
 export default function TestPage() {
   const { locale } = useLanguage();
@@ -163,16 +162,22 @@ export default function TestPage() {
   const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
   if (completed) return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
-      <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
+    <main className="min-h-screen bg-[#F6F4F0] px-5 py-8 text-[#222222] sm:px-8">
+      <section className="mx-auto max-w-4xl rounded-[2rem] bg-[#FBFAF8] px-6 py-10 text-center shadow-[0_24px_70px_rgba(34,34,34,0.10)] sm:px-12">
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
-        <p className="mt-5 text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
-        <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[#766767]">{text.resultRule}</p>
-        <div className="mt-9 grid gap-3 sm:grid-cols-2">{(["OD", "GM", "PC", "VE"] as AxisKey[]).map((axis) => {
-          const [first, second] = axisPairs[axis]; const result = scores[first] >= 3 ? first : second;
-          return <div key={axis} className="rounded-2xl border border-[#f1dfe2] bg-[#fffafa] p-5 text-left"><p className="text-xs font-semibold tracking-[0.16em] text-[#b97b88]">{axisNames[axis]}</p><p className="mt-2 text-2xl font-semibold">{result}</p><p className="mt-2 text-sm text-[#7e7070]">{first} {scores[first]}{text.points} · {second} {scores[second]}{text.points}</p></div>;
-        })}</div>
+        <div className="mx-auto mt-7 flex aspect-square w-full max-w-xl flex-col bg-[#222222] p-7 text-left text-[#F6F4F0] sm:p-11">
+          <div className="flex items-start justify-between gap-5">
+            <p className="text-[10px] font-semibold tracking-[-0.02em] text-[#D7D0C7]">@layad.official</p>
+            <img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-20 brightness-0 invert opacity-80 sm:w-24" />
+          </div>
+          <h1 className="mt-10 whitespace-nowrap font-brand text-[clamp(4.5rem,20vw,8.5rem)] font-bold leading-none tracking-[-0.11em] sm:mt-14">{finalCode}</h1>
+          <dl className="mt-auto space-y-0.5 text-sm font-semibold leading-[1.05] tracking-[-0.035em] sm:text-xl">
+            <div className="flex gap-1.5"><dt>Skin Type :</dt><dd className="text-[#D5B34C]">{finalCode[0] === "O" ? "Oily" : "Dry"}</dd></div>
+            <div className="flex gap-1.5"><dt>Finish Preference :</dt><dd>{finalCode[1] === "G" ? "Glow" : "Matte"}</dd></div>
+            <div className="flex gap-1.5"><dt>Application Style :</dt><dd>{finalCode[2] === "P" ? "Perfection-focused" : "Convenience-focused"}</dd></div>
+            <div className="flex gap-1.5"><dt>Skin Variability :</dt><dd>{finalCode[3] === "V" ? "Variable" : "Even"}</dd></div>
+          </dl>
+        </div>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
