@@ -170,7 +170,7 @@ export default function TestPage() {
         <div className="mx-auto mt-7 flex aspect-square w-full max-w-xl flex-col bg-[#222222] p-7 text-left text-[#F6F4F0] sm:p-11">
           <div className="flex items-start justify-between gap-5">
             <p className="text-[10px] font-semibold tracking-[-0.02em] text-[#D7D0C7]">@layad.official</p>
-            <img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-20 brightness-0 invert opacity-80 sm:w-24" />
+            <img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-20 invert mix-blend-screen opacity-90 sm:w-24" />
           </div>
           <h1 className="mt-10 whitespace-nowrap font-brand text-[clamp(4.5rem,20vw,8.5rem)] font-bold leading-none tracking-[-0.11em] sm:mt-14">{finalCode}</h1>
           <dl className="mt-auto space-y-0.5 text-sm font-semibold leading-[1.05] tracking-[-0.035em] sm:text-xl">
