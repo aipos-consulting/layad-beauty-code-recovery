@@ -189,15 +189,15 @@ export default function TestPage() {
 
   const options = [{ code: definition.options[0], title: localized.first }, { code: definition.options[1], title: localized.second }];
   return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-6 text-[#382d2d] sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_70px_rgba(120,70,80,0.12)]">
-        <header className="flex items-center justify-between gap-3 border-b border-[#f4e5e7] px-6 py-5 sm:px-10"><Link href="/" aria-label="LAYAD 홈" className="shrink-0"><img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-[104px] object-contain sm:w-[132px]" /></Link><div className="flex items-center gap-3"><p className="whitespace-nowrap text-sm tabular-nums text-[#8c7e7e]">{currentIndex + 1}/20</p><LanguageSwitcher compact /></div></header>
+    <main className="min-h-screen bg-[#F6F4F0] px-5 py-6 text-[#222222] sm:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-[#FBFAF8] shadow-[0_24px_70px_rgba(34,34,34,0.10)]">
+        <header className="flex items-center justify-between gap-3 border-b border-[#D7D0C7] px-6 py-5 sm:px-10"><Link href="/" aria-label="LAYAD 홈" className="shrink-0"><img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-[104px] object-contain sm:w-[132px]" /></Link><div className="flex items-center gap-3"><p className="whitespace-nowrap text-sm tabular-nums text-[#625D57]">{currentIndex + 1}/20</p><LanguageSwitcher compact /></div></header>
         <section className="flex flex-1 items-center px-6 py-10 sm:px-12"><div className="mx-auto w-full max-w-2xl">
-          <div className="h-2 overflow-hidden rounded-full bg-[#f3e8e9]"><div className="h-full rounded-full bg-[#d88c9c] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
-          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#b97b88]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
-          <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#827474]">{text.choose}</p>
-          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#d88c9c] bg-[#fff0f2]" : "border-[#efdee1] hover:border-[#dca7b1] hover:bg-[#fffafa]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
-          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.previous}</button>}</div>
+          <div className="h-2 overflow-hidden rounded-full bg-[#E7E1D9]"><div className="h-full rounded-full bg-[#8F8276] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#7B7168]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
+          <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#625D57]">{text.choose}</p>
+          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#8F8276] bg-[#E7E1D9]" : "border-[#D7D0C7] bg-[#FBFAF8] hover:border-[#A99F93] hover:bg-[#F1EDE8]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
+          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.previous}</button>}</div>
         </div></section>
       </div>
     </main>
