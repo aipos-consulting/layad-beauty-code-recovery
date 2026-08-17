@@ -30,6 +30,18 @@ function openAIConfig() {
   };
 }
 
+function defaultSetting(): Setting {
+  return {
+    setting_key: "default",
+    mode: "pilot",
+    monthly_budget_usd: 20,
+    warning_low_percent: 50,
+    warning_high_percent: 80,
+    hard_stop_enabled: true,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 function supabaseHeaders(key: string): Record<string, string> {
   const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
   if (!key.startsWith("sb_secret_")) headers.Authorization = `Bearer ${key}`;
@@ -49,17 +61,9 @@ async function db(url: string, key: string, path: string, init: RequestInit = {}
 
 async function readSetting(url: string, key: string): Promise<Setting> {
   const response = await db(url, key, "ai_operation_settings?setting_key=eq.default&select=*&limit=1");
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) throw new Error(`Supabase settings ${response.status}: ${await response.text()}`);
   const rows = await response.json() as Setting[];
-  return rows[0] ?? {
-    setting_key: "default",
-    mode: "pilot",
-    monthly_budget_usd: 20,
-    warning_low_percent: 50,
-    warning_high_percent: 80,
-    hard_stop_enabled: true,
-    updated_at: new Date().toISOString(),
-  };
+  return rows[0] ?? defaultSetting();
 }
 
 function startDaysAgo(days: number) {
@@ -103,43 +107,51 @@ function summarize(points: CostPoint[], budget: number) {
 
 export async function GET() {
   const { url, key } = supabaseConfig();
-  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   const openai = openAIConfig();
 
-  try {
-    const setting = await readSetting(url, key);
-    let points: CostPoint[] = [];
-    let costMessage = "OPENAI_ADMIN_KEY와 OPENAI_PROJECT_ID를 설정하면 실제 비용 추세가 표시됩니다.";
-    if (openai.adminKey && openai.projectId) {
-      try {
-        points = await fetchCosts(openai.adminKey, openai.projectId, 180);
-        costMessage = "OpenAI 프로젝트 실제 비용 데이터를 조회했습니다.";
-      } catch (error) {
-        costMessage = error instanceof Error ? error.message : "OpenAI 비용 조회 실패";
-      }
+  let setting = defaultSetting();
+  let settingSource: "database" | "fallback" = "fallback";
+  let settingMessage = key ? "" : "Supabase 서버 키가 설정되지 않아 Pilot $20 기본값을 사용합니다.";
+
+  if (key) {
+    try {
+      setting = await readSetting(url, key);
+      settingSource = "database";
+    } catch (error) {
+      settingMessage = error instanceof Error ? error.message : "운영 한도 DB 조회 실패";
     }
-    const summary = summarize(points, Number(setting.monthly_budget_usd));
-    return NextResponse.json({
-      ok: true,
-      setting: { ...setting, hard_stop_enabled: true },
-      connection: {
-        apiKeyConfigured: Boolean(openai.apiKey),
-        adminKeyConfigured: Boolean(openai.adminKey),
-        projectIdConfigured: Boolean(openai.projectId),
-        model: openai.model,
-        costGuardReady: Boolean(openai.adminKey && openai.projectId),
-      },
-      costs: { points, ...summary, message: costMessage },
-      policy: { hardStopMandatory: true, resumeRule: "increase_budget" },
-    });
-  } catch (error) {
-    return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "운영 설정 조회 실패" }, { status: 500 });
   }
+
+  let points: CostPoint[] = [];
+  let costMessage = "OPENAI_ADMIN_KEY와 OPENAI_PROJECT_ID를 설정하면 실제 비용 추세가 표시됩니다.";
+  if (openai.adminKey && openai.projectId) {
+    try {
+      points = await fetchCosts(openai.adminKey, openai.projectId, 180);
+      costMessage = "OpenAI 프로젝트 실제 비용 데이터를 조회했습니다.";
+    } catch (error) {
+      costMessage = error instanceof Error ? error.message : "OpenAI 비용 조회 실패";
+    }
+  }
+
+  const summary = summarize(points, Number(setting.monthly_budget_usd));
+  return NextResponse.json({
+    ok: true,
+    setting: { ...setting, hard_stop_enabled: true },
+    connection: {
+      apiKeyConfigured: Boolean(openai.apiKey),
+      adminKeyConfigured: Boolean(openai.adminKey),
+      projectIdConfigured: Boolean(openai.projectId),
+      model: openai.model,
+      costGuardReady: Boolean(openai.adminKey && openai.projectId),
+    },
+    costs: { points, ...summary, message: costMessage },
+    policy: { hardStopMandatory: true, resumeRule: "increase_budget" },
+    diagnostics: { settingSource, settingMessage },
+  });
 }
 
 export async function POST(request: NextRequest) {
   const { url, key } = supabaseConfig();
-  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   let body: { action?: "save" | "test"; mode?: Mode; monthlyBudgetUsd?: number };
   try { body = await request.json(); }
   catch { return NextResponse.json({ ok: false, message: "잘못된 요청입니다." }, { status: 400 }); }
@@ -147,14 +159,20 @@ export async function POST(request: NextRequest) {
   if (body.action === "test") {
     const openai = openAIConfig();
     if (!openai.apiKey) return NextResponse.json({ ok: false, code: "OPENAI_NOT_CONFIGURED", message: "OPENAI_API_KEY가 설정되지 않았습니다." }, { status: 503 });
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${openai.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: openai.model, input: "Return only OK.", max_output_tokens: 8, store: false }),
-    });
-    if (!response.ok) return NextResponse.json({ ok: false, message: `OpenAI 연결 실패 (${response.status})`, detail: await response.text() }, { status: 502 });
-    return NextResponse.json({ ok: true, message: `OpenAI 연결 정상 · ${openai.model}` });
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openai.apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: openai.model, input: "Return only OK.", max_output_tokens: 8, store: false }),
+      });
+      if (!response.ok) return NextResponse.json({ ok: false, message: `OpenAI 연결 실패 (${response.status})`, detail: await response.text() }, { status: 502 });
+      return NextResponse.json({ ok: true, message: `OpenAI 연결 정상 · ${openai.model}` });
+    } catch (error) {
+      return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "OpenAI 연결 테스트 실패" }, { status: 502 });
+    }
   }
+
+  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED", message: "Supabase 서버 키가 설정되지 않아 운영 한도를 저장할 수 없습니다." }, { status: 503 });
 
   const presets: Record<Exclude<Mode, "custom">, number> = { pilot: 20, standard: 50, growth: 100 };
   const mode = body.mode ?? "pilot";
@@ -163,12 +181,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "월 한도는 0보다 크고 10,000달러 이하로 입력해 주세요." }, { status: 400 });
   }
 
-  const response = await db(url, key, "ai_operation_settings?setting_key=eq.default", {
-    method: "PATCH",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ mode, monthly_budget_usd: budget, hard_stop_enabled: true, updated_at: new Date().toISOString() }),
-  });
-  if (!response.ok) return NextResponse.json({ ok: false, message: await response.text() }, { status: 500 });
-  const rows = await response.json();
-  return NextResponse.json({ ok: true, setting: { ...rows[0], hard_stop_enabled: true } });
+  try {
+    const response = await db(url, key, "ai_operation_settings?setting_key=eq.default", {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ mode, monthly_budget_usd: budget, hard_stop_enabled: true, updated_at: new Date().toISOString() }),
+    });
+    if (!response.ok) return NextResponse.json({ ok: false, message: await response.text() }, { status: 500 });
+    const rows = await response.json();
+    return NextResponse.json({ ok: true, setting: { ...rows[0], hard_stop_enabled: true } });
+  } catch (error) {
+    return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "운영 한도 저장 실패" }, { status: 500 });
+  }
 }
