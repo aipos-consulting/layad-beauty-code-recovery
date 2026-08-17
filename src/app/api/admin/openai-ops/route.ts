@@ -12,9 +12,11 @@ type Setting = {
 };
 type CostPoint = { date: string; cost: number };
 
+const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
+
 function supabaseConfig() {
   return {
-    url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+    url: SUPABASE_URL,
     key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY,
   };
 }
@@ -101,7 +103,7 @@ function summarize(points: CostPoint[], budget: number) {
 
 export async function GET() {
   const { url, key } = supabaseConfig();
-  if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
+  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   const openai = openAIConfig();
 
   try {
@@ -137,7 +139,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const { url, key } = supabaseConfig();
-  if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
+  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   let body: { action?: "save" | "test"; mode?: Mode; monthlyBudgetUsd?: number };
   try { body = await request.json(); }
   catch { return NextResponse.json({ ok: false, message: "잘못된 요청입니다." }, { status: 400 }); }
