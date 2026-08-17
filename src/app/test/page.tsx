@@ -110,7 +110,7 @@ const ui: Record<Locale, Record<string, string>> = {
 };
 
 const axisPairs: Record<AxisKey, [Code, Code]> = { OD: ["O", "D"], GM: ["G", "M"], PC: ["P", "C"], VE: ["V", "E"] };
-const axisNames: Record<AxisKey, string> = { OD: "Oily / Dry", GM: "Glow / Matte", PC: "Precise / Convenient", VE: "Variable / Even" };
+const axisNames: Record<AxisKey, string> = { OD: "Oily / Dry", GM: "Glow / Matte", PC: "Perfection / Convenience – focused", VE: "Variable / Even" };
 
 export default function TestPage() {
   const { locale } = useLanguage();
@@ -194,9 +194,9 @@ export default function TestPage() {
         <header className="flex items-center justify-between gap-3 border-b border-[#f4e5e7] px-6 py-5 sm:px-10"><Link href="/" className="text-sm font-semibold tracking-[0.2em] text-[#b97b88]">LAYAD BEAUTY CODE</Link><div className="flex items-center gap-3"><p className="text-sm text-[#8c7e7e]">{currentIndex + 1} / 20</p><LanguageSwitcher compact /></div></header>
         <section className="flex flex-1 items-center px-6 py-10 sm:px-12"><div className="mx-auto w-full max-w-2xl">
           <div className="h-2 overflow-hidden rounded-full bg-[#f3e8e9]"><div className="h-full rounded-full bg-[#d88c9c] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
-          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#b97b88]">QUESTION {String(currentIndex + 1).padStart(2, "0")} · {definition.axisKey.slice(0, 1)} / {definition.axisKey.slice(1)}</p>
+          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#b97b88]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
           <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#827474]">{text.choose}</p>
-          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#d88c9c] bg-[#fff0f2]" : "border-[#efdee1] hover:border-[#dca7b1] hover:bg-[#fffafa]"}`}><div className="flex items-start gap-4"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${active ? "bg-[#d88c9c] text-white" : "bg-[#f7eaec] text-[#a56f7a]"}`}>{option.code}</span><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></div></button>; })}</div>
+          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#d88c9c] bg-[#fff0f2]" : "border-[#efdee1] hover:border-[#dca7b1] hover:bg-[#fffafa]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
           <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.previous}</button>}</div>
         </div></section>
       </div>
