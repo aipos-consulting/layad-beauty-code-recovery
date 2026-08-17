@@ -3,20 +3,29 @@ import { NextRequest, NextResponse } from "next/server";
 type Entity = "requests" | "products" | "sessions" | "audit";
 type Action = "hard-delete" | "update-row";
 
+const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
+
 function config() {
   return {
-    url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+    url: SUPABASE_URL,
     key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY,
   };
+}
+
+function supabaseHeaders(key: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: key,
+    "Content-Type": "application/json",
+  };
+  if (!key.startsWith("sb_secret_")) headers.Authorization = `Bearer ${key}`;
+  return headers;
 }
 
 async function db(url: string, key: string, path: string, init: RequestInit = {}) {
   return fetch(`${url}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+      ...supabaseHeaders(key),
       ...(init.headers ?? {}),
     },
     cache: "no-store",
@@ -52,7 +61,7 @@ const editableFields: Record<Exclude<Entity, "audit">, string[]> = {
 
 export async function GET(request: NextRequest) {
   const { url, key } = config();
-  if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
+  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
 
   const entity = (request.nextUrl.searchParams.get("entity") ?? "requests") as Entity;
   const search = (request.nextUrl.searchParams.get("search") ?? "").trim().toLowerCase();
@@ -74,7 +83,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { url, key } = config();
-  if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
+  if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
 
   let body: { entity: Exclude<Entity, "audit">; id: string; action: Action; values?: Record<string, unknown> };
   try { body = await request.json(); }
