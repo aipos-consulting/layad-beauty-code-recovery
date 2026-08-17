@@ -39,11 +39,11 @@ textarea {
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
-:lang(en) body,
-:lang(en) button,
-:lang(en) input,
-:lang(en) select,
-:lang(en) textarea {
+.layad-landing:lang(en),
+.layad-landing:lang(en) button,
+.layad-landing:lang(en) input,
+.layad-landing:lang(en) select,
+.layad-landing:lang(en) textarea {
   font-family: var(--font-source-code), monospace;
 }
 
