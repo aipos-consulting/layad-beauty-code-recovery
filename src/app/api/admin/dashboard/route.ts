@@ -4,7 +4,7 @@ const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","D
 const REGION_NAMES: Record<string, string> = {"11":"서울","26":"부산","27":"대구","28":"인천","29":"광주","30":"대전","31":"울산","41":"경기","42":"강원","43":"충북","44":"충남","45":"전북","46":"전남","47":"경북","48":"경남","50":"제주","13":"도쿄","CA":"캘리포니아","NY":"뉴욕"};
 
 function config(){return{url:process.env.SUPABASE_URL??process.env.NEXT_PUBLIC_SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SECRET_KEY};}
-function authHeaders(key:string){return key.startsWith("sb_secret_")?{apikey:key}:{apikey:key,Authorization:`Bearer ${key}`};}
+function authHeaders(key:string):Record<string,string>{const headers:Record<string,string>={apikey:key};if(!key.startsWith("sb_secret_"))headers.Authorization=`Bearer ${key}`;return headers;}
 async function readTable<T>(url:string,key:string,path:string):Promise<T>{const r=await fetch(`${url}/rest/v1/${path}`,{headers:authHeaders(key),cache:"no-store"});if(!r.ok)throw new Error(`Supabase read failed: ${r.status} ${await r.text()}`);return await r.json() as T;}
 async function optional<T>(url:string,key:string,path:string,fallback:T){try{return{data:await readTable<T>(url,key,path),warning:null as string|null};}catch(e){return{data:fallback,warning:e instanceof Error?e.message:"조회 실패"};}}
 function normalize(value:string){try{return new URL(value).hostname.replace(/^www\./,"");}catch{return value.trim().replace(/\s+/g," ").slice(0,80);}}
