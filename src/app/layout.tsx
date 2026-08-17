@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { League_Spartan, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
@@ -9,13 +9,13 @@ import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import { LanguageProvider } from "./i18n";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const leagueSpartan = League_Spartan({
+  variable: "--font-league-spartan",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sourceCode = Source_Code_Pro({
+  variable: "--font-source-code",
   subsets: ["latin"],
 });
 
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="ko" className={`${leagueSpartan.variable} ${sourceCode.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <LanguageProvider>
           {children}

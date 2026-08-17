@@ -1,28 +1,5 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
-
-@font-face {
-  font-family: "GmarketSans";
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff") format("woff");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "GmarketSans";
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff") format("woff");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "GmarketSans";
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
 
 :root {
   --background: #ffffff;
@@ -32,14 +9,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "GmarketSans", Arial, Helvetica, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: var(--font-source-code);
 }
 
 html,
 body {
   overflow-wrap: break-word;
   word-break: keep-all;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body,
@@ -49,7 +28,27 @@ select,
 textarea {
   background: var(--background);
   color: var(--foreground);
-  font-family: "GmarketSans", Arial, Helvetica, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+:lang(ko) body,
+:lang(ko) button,
+:lang(ko) input,
+:lang(ko) select,
+:lang(ko) textarea {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.layad-landing:lang(en),
+.layad-landing:lang(en) button,
+.layad-landing:lang(en) input,
+.layad-landing:lang(en) select,
+.layad-landing:lang(en) textarea {
+  font-family: var(--font-source-code), monospace;
+}
+
+.font-brand {
+  font-family: var(--font-league-spartan), Arial, Helvetica, sans-serif;
 }
 
 h1,

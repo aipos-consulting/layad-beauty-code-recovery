@@ -184,9 +184,10 @@ export default function AdminVisualTheme() {
     const applyTheme = () => {
       const main = document.querySelector("main") as HTMLElement | null;
       if (!main) return;
-      main.classList.add("layad-admin-background");
+      const isAdminPage = window.location.pathname.startsWith("/admin");
+      main.classList.toggle("layad-admin-background", isAdminPage);
       if (window.location.pathname === "/") applyHomeTheme(main);
-      if (window.location.pathname.startsWith("/admin")) applyAdminTheme(main);
+      if (isAdminPage) applyAdminTheme(main);
     };
 
     const frame = window.requestAnimationFrame(applyTheme);

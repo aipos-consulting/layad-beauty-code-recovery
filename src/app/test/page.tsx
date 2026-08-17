@@ -110,7 +110,6 @@ const ui: Record<Locale, Record<string, string>> = {
 };
 
 const axisPairs: Record<AxisKey, [Code, Code]> = { OD: ["O", "D"], GM: ["G", "M"], PC: ["P", "C"], VE: ["V", "E"] };
-const axisNames: Record<AxisKey, string> = { OD: "Oily / Dry", GM: "Glow / Matte", PC: "Precise / Convenient", VE: "Variable / Even" };
 
 export default function TestPage() {
   const { locale } = useLanguage();
@@ -162,17 +161,25 @@ export default function TestPage() {
 
   const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
+  const highlightedTrait = (value: string) => <><span className="text-[#D5B34C]">{value[0]}</span>{value.slice(1)}</>;
+
   if (completed) return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
-      <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
+    <main className="min-h-screen bg-[#F6F4F0] px-5 py-8 text-[#222222] sm:px-8">
+      <section className="mx-auto max-w-4xl rounded-[2rem] bg-[#FBFAF8] px-6 py-10 text-center shadow-[0_24px_70px_rgba(34,34,34,0.10)] sm:px-12">
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
-        <p className="mt-5 text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
-        <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[#766767]">{text.resultRule}</p>
-        <div className="mt-9 grid gap-3 sm:grid-cols-2">{(["OD", "GM", "PC", "VE"] as AxisKey[]).map((axis) => {
-          const [first, second] = axisPairs[axis]; const result = scores[first] >= 3 ? first : second;
-          return <div key={axis} className="rounded-2xl border border-[#f1dfe2] bg-[#fffafa] p-5 text-left"><p className="text-xs font-semibold tracking-[0.16em] text-[#b97b88]">{axisNames[axis]}</p><p className="mt-2 text-2xl font-semibold">{result}</p><p className="mt-2 text-sm text-[#7e7070]">{first} {scores[first]}{text.points} · {second} {scores[second]}{text.points}</p></div>;
-        })}</div>
+        <div className="mx-auto mt-7 flex aspect-square w-full max-w-xl flex-col bg-[#222222] p-7 text-left text-[#F6F4F0] sm:p-11">
+          <div className="flex items-start justify-between gap-5">
+            <p className="text-[10px] font-semibold tracking-[-0.02em] text-[#D7D0C7]">@layad.official</p>
+            <img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-20 invert mix-blend-screen opacity-90 sm:w-24" />
+          </div>
+          <h1 className="mt-10 whitespace-nowrap font-brand text-[clamp(4.5rem,20vw,8.5rem)] font-bold leading-none tracking-[-0.11em] sm:mt-14">{finalCode}</h1>
+          <dl className="mt-auto space-y-0.5 text-sm font-semibold leading-[1.05] tracking-[-0.035em] sm:text-xl">
+            <div className="flex gap-1.5"><dt>Skin Type :</dt><dd>{highlightedTrait(finalCode[0] === "O" ? "Oily" : "Dry")}</dd></div>
+            <div className="flex gap-1.5"><dt>Finish Preference :</dt><dd>{highlightedTrait(finalCode[1] === "G" ? "Glow" : "Matte")}</dd></div>
+            <div className="flex gap-1.5"><dt>Application Style :</dt><dd>{highlightedTrait(finalCode[2] === "P" ? "Perfection-focused" : "Convenience-focused")}</dd></div>
+            <div className="flex gap-1.5"><dt>Skin Variability :</dt><dd>{highlightedTrait(finalCode[3] === "V" ? "Variable" : "Even")}</dd></div>
+          </dl>
+        </div>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
@@ -189,15 +196,15 @@ export default function TestPage() {
 
   const options = [{ code: definition.options[0], title: localized.first }, { code: definition.options[1], title: localized.second }];
   return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-6 text-[#382d2d] sm:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_70px_rgba(120,70,80,0.12)]">
-        <header className="flex items-center justify-between gap-3 border-b border-[#f4e5e7] px-6 py-5 sm:px-10"><Link href="/" className="text-sm font-semibold tracking-[0.2em] text-[#b97b88]">LAYAD BEAUTY CODE</Link><div className="flex items-center gap-3"><p className="text-sm text-[#8c7e7e]">{currentIndex + 1} / 20</p><LanguageSwitcher compact /></div></header>
+    <main className="min-h-screen bg-[#F6F4F0] px-5 py-6 text-[#222222] sm:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-[#FBFAF8] shadow-[0_24px_70px_rgba(34,34,34,0.10)]">
+        <header className="flex items-center justify-between gap-3 border-b border-[#D7D0C7] px-6 py-5 sm:px-10"><Link href="/" aria-label="LAYAD 홈" className="shrink-0"><img src="/layad-logo.svg" alt="LAYAD Seoul" className="h-auto w-[104px] object-contain sm:w-[132px]" /></Link><div className="flex items-center gap-3"><p className="whitespace-nowrap text-sm tabular-nums text-[#625D57]">{currentIndex + 1}/20</p><LanguageSwitcher compact /></div></header>
         <section className="flex flex-1 items-center px-6 py-10 sm:px-12"><div className="mx-auto w-full max-w-2xl">
-          <div className="h-2 overflow-hidden rounded-full bg-[#f3e8e9]"><div className="h-full rounded-full bg-[#d88c9c] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
-          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#b97b88]">QUESTION {String(currentIndex + 1).padStart(2, "0")} · {definition.axisKey.slice(0, 1)} / {definition.axisKey.slice(1)}</p>
-          <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#827474]">{text.choose}</p>
-          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#d88c9c] bg-[#fff0f2]" : "border-[#efdee1] hover:border-[#dca7b1] hover:bg-[#fffafa]"}`}><div className="flex items-start gap-4"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${active ? "bg-[#d88c9c] text-white" : "bg-[#f7eaec] text-[#a56f7a]"}`}>{option.code}</span><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></div></button>; })}</div>
-          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6]">{text.previous}</button>}</div>
+          <div className="h-2 overflow-hidden rounded-full bg-[#E7E1D9]"><div className="h-full rounded-full bg-[#8F8276] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+          <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#7B7168]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
+          <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#625D57]">{text.choose}</p>
+          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing} onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#8F8276] bg-[#E7E1D9]" : "border-[#D7D0C7] bg-[#FBFAF8] hover:border-[#A99F93] hover:bg-[#F1EDE8]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
+          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.previous}</button>}</div>
         </div></section>
       </div>
     </main>
