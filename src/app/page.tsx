@@ -41,7 +41,7 @@ export default function Home() {
 
       <section className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-6xl flex-col px-5 pb-12 sm:px-8">
         <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center sm:pb-20">
-          <h1 className="font-brand uppercase leading-[0.8] tracking-[-0.075em]">
+          <h1 className="font-brand leading-[0.8] tracking-[-0.075em]">
             <span className="block text-[3.25rem] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
             <span className="mt-2 block text-[5.25rem] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
           </h1>
