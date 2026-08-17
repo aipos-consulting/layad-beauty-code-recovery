@@ -41,11 +41,11 @@ export default function Home() {
 
       <section className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-6xl flex-col px-5 pb-12 sm:px-8">
         <div className="flex flex-1 flex-col items-center justify-start pt-[18vh] pb-16 text-center sm:pt-[16vh] sm:pb-20">
-          <h1 className="w-full -translate-y-[3mm] font-brand leading-[0.79] tracking-[-0.12em]">
+          <h1 className="w-full -translate-y-[5mm] font-brand leading-[0.79] tracking-[-0.12em]">
             <span className="block whitespace-nowrap text-[clamp(2.75rem,13vw,3.25rem)] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
             <span className="block whitespace-nowrap text-[clamp(3.75rem,19vw,5.25rem)] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
           </h1>
-          <p className="mt-7 text-lg font-medium leading-[1.25] tracking-[-0.035em] sm:text-2xl">{text.question}</p>
+          <p className="mt-7 -translate-y-[5mm] text-lg font-medium leading-[1.25] tracking-[-0.035em] sm:text-2xl">{text.question}</p>
 
           <div className="mt-12 grid w-full max-w-md gap-4 sm:mt-16">
             <Link href="/test" className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#222222] px-8 py-4 text-base font-semibold leading-none tracking-[-0.025em] text-[#F6F4F0] shadow-[0_12px_30px_rgba(34,34,34,0.14)] transition hover:-translate-y-0.5 hover:bg-[#3a3836]">
