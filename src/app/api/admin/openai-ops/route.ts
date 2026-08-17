@@ -7,10 +7,9 @@ type Setting = {
   monthly_budget_usd: number;
   warning_low_percent: number;
   warning_high_percent: number;
-  hard_stop_enabled: boolean;
+  hard_stop_enabled: true;
   updated_at: string;
 };
-
 type CostPoint = { date: string; cost: number };
 
 function supabaseConfig() {
@@ -57,11 +56,6 @@ async function readSetting(url: string, key: string): Promise<Setting> {
   };
 }
 
-function utcStartOfMonth() {
-  const now = new Date();
-  return Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) / 1000);
-}
-
 function startDaysAgo(days: number) {
   return Math.floor((Date.now() - days * 24 * 60 * 60 * 1000) / 1000);
 }
@@ -79,9 +73,7 @@ async function fetchCosts(adminKey: string, projectId: string, days = 180): Prom
     cache: "no-store",
   });
   if (!response.ok) throw new Error(`OpenAI costs ${response.status}: ${await response.text()}`);
-  const payload = await response.json() as {
-    data?: Array<{ start_time: number; results?: Array<{ amount?: { value?: number }; project_id?: string | null }> }>;
-  };
+  const payload = await response.json() as { data?: Array<{ start_time: number; results?: Array<{ amount?: { value?: number } }> }> };
   return (payload.data ?? []).map(bucket => ({
     date: new Date(bucket.start_time * 1000).toISOString().slice(0, 10),
     cost: (bucket.results ?? []).reduce((sum, row) => sum + Number(row.amount?.value ?? 0), 0),
@@ -100,7 +92,7 @@ function summarize(points: CostPoint[], budget: number) {
   const day = now.getUTCDate();
   const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
   const forecast = day > 0 ? (monthCost / day) * daysInMonth : monthCost;
-  return { todayCost, recent7, monthCost, remaining, usagePercent, forecast };
+  return { todayCost, recent7, monthCost, remaining, usagePercent, forecast, blocked: monthCost >= budget };
 }
 
 export async function GET() {
@@ -111,7 +103,7 @@ export async function GET() {
   try {
     const setting = await readSetting(url, key);
     let points: CostPoint[] = [];
-    let costMessage = "OpenAI Admin Key와 Project ID를 설정하면 실제 비용 추세가 표시됩니다.";
+    let costMessage = "OPENAI_ADMIN_KEY와 OPENAI_PROJECT_ID를 설정하면 실제 비용 추세가 표시됩니다.";
     if (openai.adminKey && openai.projectId) {
       try {
         points = await fetchCosts(openai.adminKey, openai.projectId, 180);
@@ -123,7 +115,7 @@ export async function GET() {
     const summary = summarize(points, Number(setting.monthly_budget_usd));
     return NextResponse.json({
       ok: true,
-      setting,
+      setting: { ...setting, hard_stop_enabled: true },
       connection: {
         apiKeyConfigured: Boolean(openai.apiKey),
         adminKeyConfigured: Boolean(openai.adminKey),
@@ -132,6 +124,7 @@ export async function GET() {
         costGuardReady: Boolean(openai.adminKey && openai.projectId),
       },
       costs: { points, ...summary, message: costMessage },
+      policy: { hardStopMandatory: true, resumeRule: "increase_budget" },
     });
   } catch (error) {
     return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "운영 설정 조회 실패" }, { status: 500 });
@@ -141,7 +134,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const { url, key } = supabaseConfig();
   if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
-  let body: { action?: "save" | "test"; mode?: Mode; monthlyBudgetUsd?: number; hardStopEnabled?: boolean };
+  let body: { action?: "save" | "test"; mode?: Mode; monthlyBudgetUsd?: number };
   try { body = await request.json(); }
   catch { return NextResponse.json({ ok: false, message: "잘못된 요청입니다." }, { status: 400 }); }
 
@@ -167,16 +160,9 @@ export async function POST(request: NextRequest) {
   const response = await db(url, key, "ai_operation_settings?setting_key=eq.default", {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({
-      mode,
-      monthly_budget_usd: budget,
-      hard_stop_enabled: body.hardStopEnabled ?? true,
-      updated_at: new Date().toISOString(),
-    }),
+    body: JSON.stringify({ mode, monthly_budget_usd: budget, hard_stop_enabled: true, updated_at: new Date().toISOString() }),
   });
   if (!response.ok) return NextResponse.json({ ok: false, message: await response.text() }, { status: 500 });
   const rows = await response.json();
-  return NextResponse.json({ ok: true, setting: rows[0] });
+  return NextResponse.json({ ok: true, setting: { ...rows[0], hard_stop_enabled: true } });
 }
-
-export { utcStartOfMonth };
