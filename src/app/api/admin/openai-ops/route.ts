@@ -28,13 +28,17 @@ function openAIConfig() {
   };
 }
 
+function supabaseHeaders(key: string) {
+  return key.startsWith("sb_secret_")
+    ? { apikey: key, "Content-Type": "application/json" }
+    : { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+}
+
 async function db(url: string, key: string, path: string, init: RequestInit = {}) {
   return fetch(`${url}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+      ...supabaseHeaders(key),
       ...(init.headers ?? {}),
     },
     cache: "no-store",
