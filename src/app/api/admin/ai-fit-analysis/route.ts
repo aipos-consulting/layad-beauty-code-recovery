@@ -23,6 +23,41 @@ function parseOutputText(payload: unknown) {
   return response.output?.flatMap(item => item.content ?? []).map(item => item.text ?? "").join("") ?? "";
 }
 
+async function checkCostGuard(url: string, key: string) {
+  const settingResponse = await db(url, key, "ai_operation_settings?setting_key=eq.default&select=monthly_budget_usd,hard_stop_enabled&limit=1");
+  if (!settingResponse.ok) throw new Error("AI 운영 한도 설정을 읽지 못했습니다.");
+  const settings = await settingResponse.json() as Array<{ monthly_budget_usd: number; hard_stop_enabled: boolean }>;
+  const setting = settings[0] ?? { monthly_budget_usd: 20, hard_stop_enabled: true };
+  if (!setting.hard_stop_enabled) return { allowed: true, spent: 0, budget: Number(setting.monthly_budget_usd) };
+
+  const adminKey = process.env.OPENAI_ADMIN_KEY;
+  const projectId = process.env.OPENAI_PROJECT_ID;
+  if (!adminKey || !projectId) {
+    return { allowed: false, spent: 0, budget: Number(setting.monthly_budget_usd), code: "COST_GUARD_NOT_CONFIGURED" };
+  }
+
+  const now = new Date();
+  const start = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) / 1000);
+  const params = new URLSearchParams({
+    start_time: String(start),
+    end_time: String(Math.floor(Date.now() / 1000) + 1),
+    bucket_width: "1d",
+    limit: "31",
+  });
+  params.append("project_ids", projectId);
+  const response = await fetch(`https://api.openai.com/v1/organization/costs?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${adminKey}`, "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return { allowed: false, spent: 0, budget: Number(setting.monthly_budget_usd), code: "COST_GUARD_CHECK_FAILED" };
+  }
+  const payload = await response.json() as { data?: Array<{ results?: Array<{ amount?: { value?: number } }> }> };
+  const spent = (payload.data ?? []).reduce((sum, bucket) => sum + (bucket.results ?? []).reduce((inner, row) => inner + Number(row.amount?.value ?? 0), 0), 0);
+  const budget = Number(setting.monthly_budget_usd);
+  return { allowed: spent < budget, spent, budget, code: spent >= budget ? "MONTHLY_BUDGET_REACHED" : undefined };
+}
+
 export async function POST(request: NextRequest) {
   let body: { requestId?: string };
   try {
@@ -49,6 +84,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED", message: "데이터 저장 설정을 확인해 주세요." }, { status: 503 });
   }
 
+  try {
+    const guard = await checkCostGuard(url, key);
+    if (!guard.allowed) {
+      const message = guard.code === "MONTHLY_BUDGET_REACHED"
+        ? `월 AI 운영 한도 $${guard.budget.toFixed(2)}에 도달했습니다. 자동 분석을 중지하고 수동 분석으로 전환합니다.`
+        : "AI 비용 한도를 안전하게 검증할 수 없습니다. OPENAI_ADMIN_KEY와 OPENAI_PROJECT_ID를 설정한 뒤 다시 시도해 주세요.";
+      return NextResponse.json({ ok: false, code: guard.code, message, spent: guard.spent, budget: guard.budget }, { status: 429 });
+    }
+  } catch (error) {
+    return NextResponse.json({ ok: false, code: "COST_GUARD_ERROR", message: error instanceof Error ? error.message : "AI 비용 한도 확인 실패" }, { status: 503 });
+  }
+
   const requestResponse = await db(url, key, `product_analysis_requests?id=eq.${body.requestId}&select=id,input_type,input_value&limit=1`);
   if (!requestResponse.ok) {
     return NextResponse.json({ ok: false, code: "DATABASE_READ_FAILED" }, { status: 500 });
@@ -67,7 +114,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+      model: process.env.OPENAI_MODEL ?? process.env.OPENAI_ANALYSIS_MODEL ?? "gpt-5-mini",
       store: false,
       tools: [{ type: "web_search" }],
       input: prompt,
