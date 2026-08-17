@@ -64,6 +64,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         .admin-route-content table { max-width: 100%; }
         .admin-route-content header > div > p:first-child { display: none !important; }
         .admin-route-content header > div > h1 { margin-top: 0 !important; }
+        .admin-route-content main > div > div:first-child > div:first-child > p:first-child { display: none !important; }
+        .admin-route-content main > div > div:first-child > div:first-child > h1 { margin-top: 0 !important; }
       `}</style>
     </div>
   );
