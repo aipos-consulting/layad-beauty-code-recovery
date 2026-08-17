@@ -28,10 +28,10 @@ function openAIConfig() {
   };
 }
 
-function supabaseHeaders(key: string) {
-  return key.startsWith("sb_secret_")
-    ? { apikey: key, "Content-Type": "application/json" }
-    : { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+function supabaseHeaders(key: string): Record<string, string> {
+  const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
+  if (!key.startsWith("sb_secret_")) headers.Authorization = `Bearer ${key}`;
+  return headers;
 }
 
 async function db(url: string, key: string, path: string, init: RequestInit = {}) {
