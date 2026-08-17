@@ -41,9 +41,9 @@ export default function Home() {
 
       <section className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-6xl flex-col px-5 pb-12 sm:px-8">
         <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center sm:pb-20">
-          <h1 className="font-brand leading-[0.79] tracking-[-0.12em]">
-            <span className="block text-[3.25rem] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
-            <span className="block text-[5.25rem] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
+          <h1 className="w-full font-brand leading-[0.79] tracking-[-0.12em]">
+            <span className="block whitespace-nowrap text-[clamp(2.75rem,13vw,3.25rem)] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
+            <span className="block whitespace-nowrap text-[clamp(3.75rem,19vw,5.25rem)] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
           </h1>
           <p className="mt-7 text-lg font-medium leading-[1.25] tracking-[-0.035em] sm:text-2xl">{text.question}</p>
 
