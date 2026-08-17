@@ -161,6 +161,8 @@ export default function TestPage() {
 
   const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
+  const highlightedTrait = (value: string) => <><span className="text-[#D5B34C]">{value[0]}</span>{value.slice(1)}</>;
+
   if (completed) return (
     <main className="min-h-screen bg-[#F6F4F0] px-5 py-8 text-[#222222] sm:px-8">
       <section className="mx-auto max-w-4xl rounded-[2rem] bg-[#FBFAF8] px-6 py-10 text-center shadow-[0_24px_70px_rgba(34,34,34,0.10)] sm:px-12">
@@ -172,10 +174,10 @@ export default function TestPage() {
           </div>
           <h1 className="mt-10 whitespace-nowrap font-brand text-[clamp(4.5rem,20vw,8.5rem)] font-bold leading-none tracking-[-0.11em] sm:mt-14">{finalCode}</h1>
           <dl className="mt-auto space-y-0.5 text-sm font-semibold leading-[1.05] tracking-[-0.035em] sm:text-xl">
-            <div className="flex gap-1.5"><dt>Skin Type :</dt><dd className="text-[#D5B34C]">{finalCode[0] === "O" ? "Oily" : "Dry"}</dd></div>
-            <div className="flex gap-1.5"><dt>Finish Preference :</dt><dd>{finalCode[1] === "G" ? "Glow" : "Matte"}</dd></div>
-            <div className="flex gap-1.5"><dt>Application Style :</dt><dd>{finalCode[2] === "P" ? "Perfection-focused" : "Convenience-focused"}</dd></div>
-            <div className="flex gap-1.5"><dt>Skin Variability :</dt><dd>{finalCode[3] === "V" ? "Variable" : "Even"}</dd></div>
+            <div className="flex gap-1.5"><dt>Skin Type :</dt><dd>{highlightedTrait(finalCode[0] === "O" ? "Oily" : "Dry")}</dd></div>
+            <div className="flex gap-1.5"><dt>Finish Preference :</dt><dd>{highlightedTrait(finalCode[1] === "G" ? "Glow" : "Matte")}</dd></div>
+            <div className="flex gap-1.5"><dt>Application Style :</dt><dd>{highlightedTrait(finalCode[2] === "P" ? "Perfection-focused" : "Convenience-focused")}</dd></div>
+            <div className="flex gap-1.5"><dt>Skin Variability :</dt><dd>{highlightedTrait(finalCode[3] === "V" ? "Variable" : "Even")}</dd></div>
           </dl>
         </div>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
