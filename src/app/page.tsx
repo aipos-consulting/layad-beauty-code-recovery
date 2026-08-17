@@ -41,25 +41,25 @@ export default function Home() {
 
       <section className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-6xl flex-col px-5 pb-12 sm:px-8">
         <div className="flex flex-1 flex-col items-center justify-center pb-16 text-center sm:pb-20">
-          <h1 className="font-brand leading-[0.8] tracking-[-0.075em]">
+          <h1 className="font-brand leading-[0.72] tracking-[-0.09em]">
             <span className="block text-[3.25rem] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
-            <span className="mt-2 block text-[5.25rem] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
+            <span className="block text-[5.25rem] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
           </h1>
-          <p className="mt-8 text-lg font-medium sm:text-2xl">{text.question}</p>
+          <p className="mt-7 text-lg font-medium leading-[1.25] tracking-[-0.035em] sm:text-2xl">{text.question}</p>
 
           <div className="mt-12 grid w-full max-w-md gap-4 sm:mt-16">
-            <Link href="/test" className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#222222] px-8 py-4 text-base font-semibold text-[#F6F4F0] shadow-[0_12px_30px_rgba(34,34,34,0.14)] transition hover:-translate-y-0.5 hover:bg-[#3a3836]">
+            <Link href="/test" className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#222222] px-8 py-4 text-base font-semibold leading-none tracking-[-0.025em] text-[#F6F4F0] shadow-[0_12px_30px_rgba(34,34,34,0.14)] transition hover:-translate-y-0.5 hover:bg-[#3a3836]">
               {text.start}
             </Link>
-            <Link href="/select-type" className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#A99F93] bg-[#E7E1D9] px-8 py-4 text-base font-semibold text-[#222222] transition hover:-translate-y-0.5 hover:bg-[#DDD5CB]">
+            <Link href="/select-type" className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#A99F93] bg-[#E7E1D9] px-8 py-4 text-base font-semibold leading-none tracking-[-0.025em] text-[#222222] transition hover:-translate-y-0.5 hover:bg-[#DDD5CB]">
               {text.knowCode}
             </Link>
           </div>
         </div>
 
         <aside className="mx-auto w-full max-w-3xl border-t border-[#D7D0C7] py-7 text-center">
-          <p className="text-xs font-semibold">© 2026 LAYAD. All rights reserved.</p>
-          <p className="mx-auto mt-3 max-w-2xl text-[11px] leading-5 text-[#625D57]">{text.copyright}</p>
+          <p className="text-xs font-semibold tracking-[-0.02em]">© 2026 LAYAD. All rights reserved.</p>
+          <p className="mx-auto mt-3 max-w-2xl text-[11px] leading-[1.55] tracking-[-0.02em] text-[#625D57]">{text.copyright}</p>
         </aside>
       </section>
     </main>
