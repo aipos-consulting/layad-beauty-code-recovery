@@ -34,14 +34,14 @@ export default function Home() {
   const text = copy[locale];
 
   return (
-    <main className="min-h-screen bg-[#F6F4F0] text-[#222222]">
+    <main className="layad-landing min-h-screen bg-[#F6F4F0] text-[#222222]">
       <header className="mx-auto flex max-w-6xl items-center justify-end px-5 py-5 sm:px-8 sm:py-7">
         <LanguageSwitcher compact />
       </header>
 
       <section className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-6xl flex-col px-5 pb-12 sm:px-8">
         <div className="flex flex-1 flex-col items-center justify-start pt-[18vh] pb-16 text-center sm:pt-[16vh] sm:pb-20">
-          <h1 className="w-full font-brand leading-[0.79] tracking-[-0.12em]">
+          <h1 className="w-full -translate-y-[3mm] font-brand leading-[0.79] tracking-[-0.12em]">
             <span className="block whitespace-nowrap text-[clamp(2.75rem,13vw,3.25rem)] font-semibold sm:text-[4.75rem] lg:text-[5.5rem]">Layad</span>
             <span className="block whitespace-nowrap text-[clamp(3.75rem,19vw,5.25rem)] font-bold sm:text-[7.75rem] lg:text-[9rem]">16 Codes</span>
           </h1>
