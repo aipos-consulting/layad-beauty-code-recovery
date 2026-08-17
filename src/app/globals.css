@@ -17,6 +17,8 @@ html,
 body {
   overflow-wrap: break-word;
   word-break: keep-all;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body,
