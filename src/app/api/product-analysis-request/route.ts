@@ -49,12 +49,12 @@ async function hasCompleteFits(productId: string, url: string, key: string) {
 
 async function hasActiveAnalysis(productId: string, url: string, key: string) {
   const response = await supabase(
-    `product_analysis_requests?product_id=eq.${productId}&status=in.(submitted,collecting_reviews,analyzing)&deleted_at=is.null&select=id&limit=1`,
+    `product_analysis_requests?product_id=eq.${productId}&status=in.(collecting_reviews,analyzing)&analysis_run_id=not.is.null&deleted_at=is.null&select=id,analysis_run_id&limit=1`,
     { method: "GET" }, url, key,
   );
   if (!response.ok) return false;
-  const rows = (await response.json()) as Array<{ id: string }>;
-  return Boolean(rows[0]?.id);
+  const rows = (await response.json()) as Array<{ id: string; analysis_run_id: string | null }>;
+  return Boolean(rows[0]?.analysis_run_id);
 }
 
 async function createOrGetProvisionalProduct(body: ProductRequestInput, inputValue: string, url: string, key: string) {
