@@ -16,6 +16,24 @@ async function db(path: string, url: string, key: string) {
   return fetch(`${url}/rest/v1/${path}`, { headers: headers(key), cache: "no-store" });
 }
 
+async function productHasCompleteFits(productId: string, url: string, key: string) {
+  const response = await db(`product_type_fits?product_id=eq.${productId}&select=beauty_code&limit=17`, url, key);
+  if (!response.ok) return false;
+  const rows = (await response.json()) as Array<{ beauty_code: string }>;
+  return rows.length === 16 && new Set(rows.map((row) => row.beauty_code)).size === 16;
+}
+
+async function inheritedFailure(productId: string, ownRequestId: string, url: string, key: string) {
+  const response = await db(
+    `product_analysis_requests?product_id=eq.${productId}&id=neq.${ownRequestId}&status=in.(failed,insufficient_reviews)&select=status,error_message,updated_at&order=updated_at.desc&limit=1`,
+    url,
+    key,
+  );
+  if (!response.ok) return null;
+  const rows = (await response.json()) as Array<{ status: string; error_message: string | null }>;
+  return rows[0] ?? null;
+}
+
 export async function GET(request: NextRequest) {
   const { url, key } = getConfig();
   if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
@@ -34,7 +52,20 @@ export async function GET(request: NextRequest) {
   const rows = (await requestResponse.json()) as Array<{ id: string; status: string; error_message: string | null; product_id: string | null; created_at: string }>;
   const latest = rows[0];
   if (!latest) return NextResponse.json({ ok: true, status: "not_found" });
-  if (latest.status !== "completed" || !latest.product_id) return NextResponse.json({ ok: true, requestId: latest.id, status: latest.status, errorMessage: latest.error_message });
+
+  let resolvedStatus = latest.status;
+  if (latest.product_id && latest.status !== "completed") {
+    if (await productHasCompleteFits(latest.product_id, url, key)) {
+      resolvedStatus = "completed";
+    } else if (["submitted", "collecting_reviews", "analyzing"].includes(latest.status)) {
+      const failure = await inheritedFailure(latest.product_id, latest.id, url, key);
+      if (failure) return NextResponse.json({ ok: true, requestId: latest.id, status: failure.status, errorMessage: failure.error_message });
+    }
+  }
+
+  if (resolvedStatus !== "completed" || !latest.product_id) {
+    return NextResponse.json({ ok: true, requestId: latest.id, status: latest.status, errorMessage: latest.error_message });
+  }
 
   const [productResponse, fitsResponse, sessionResponse] = await Promise.all([
     db(`products?id=eq.${latest.product_id}&select=canonical_name,brand,category,verification_status&limit=1`, url, key),
