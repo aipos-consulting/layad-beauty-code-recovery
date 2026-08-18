@@ -11,7 +11,16 @@ Before changing code, read `LAYAD_AIPOS.md`. For product-fit, review, keyword, A
 - `docs/CORE_INTELLIGENCE_ARCHITECTURE.md`
 - `.codex/skills/layad-product-intelligence/SKILL.md`
 
-If code conflicts with these documents, do not silently preserve the code behavior. Report the gap and implement only after the governing rule is clear.
+For Core Intelligence work, document precedence is:
+1. `LAYAD_AIPOS.md`
+2. `docs/CORE_INTELLIGENCE_ARCHITECTURE.md`
+3. this `AGENTS.md`
+4. `.codex/skills/layad-product-intelligence/SKILL.md`
+5. older task/design documents under `docs/`
+
+Historical documents such as `docs/20_manual_auto_analysis_design.md` and `docs/CODEX_TASK_REVIEW_AI_PRODUCT_FIT_IMPLEMENTATION.md` remain useful as implementation history, but any rule that says the model directly owns final 16-type scoring, manual analysis is the normal customer path, or every result requires operator approval before customer display is superseded by the current AIPOS/Core Intelligence architecture unless explicitly re-approved later.
+
+If code or a historical document conflicts with the governing documents, do not silently preserve the older behavior. Report the gap and follow the highest-precedence current rule.
 
 ## Core Intelligence non-negotiable rules
 1. A product is analyzed once per approved analysis version. Reuse stored `product_type_fits` for an already analyzed product. Do not call OpenAI again merely because another user requests the same product.
@@ -30,6 +39,7 @@ If code conflicts with these documents, do not silently preserve the code behavi
 ## Required tests for Core Intelligence changes
 At minimum verify:
 - existing analyzed product => OpenAI call count 0 and stored result returned;
+- same product already being analyzed => later requests join the active analysis and do not create a second OpenAI run;
 - new product => analysis is queued/executed once for the active analysis version;
 - missing/insufficient evidence => no fabricated completed score;
 - budget exceeded or cost guard unavailable => automatic AI call blocked with recoverable status;
