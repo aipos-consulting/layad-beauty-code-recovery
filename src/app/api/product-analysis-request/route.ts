@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 
 type ProductRequestInput = { sessionId: string; inputType: "name" | "url"; inputValue: string };
 type ProductCandidate = { id: string; canonical_name: string | null; product_url: string | null };
@@ -134,7 +134,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, requestId, productId: product.id, status: "collecting_reviews", mode: "joined_existing_analysis", reused: true, message: "같은 상품의 분석이 이미 진행 중입니다. 기존 분석에 합류합니다." });
     }
 
-    return NextResponse.json({ ok: true, requestId, productId: product.id, status: "submitted", mode: "new_analysis", reused: false, message: "신규 상품 분석 요청이 접수되었습니다." });
+    const runUrl = new URL("/api/product-analysis-run", request.url).toString();
+    after(async () => {
+      try {
+        const runResponse = await fetch(runUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId }),
+          cache: "no-store",
+        });
+        if (!runResponse.ok) {
+          console.error("Scheduled product analysis failed", runResponse.status, await runResponse.text());
+        }
+      } catch (error) {
+        console.error("Scheduled product analysis request failed", error);
+      }
+    });
+
+    return NextResponse.json({
+      ok: true,
+      requestId,
+      productId: product.id,
+      status: "collecting_reviews",
+      mode: "new_analysis",
+      reused: true,
+      analysisScheduled: true,
+      message: "신규 상품 분석 요청이 접수되어 AI 분석을 시작합니다.",
+    });
   } catch (error) {
     console.error("Product request processing failed", error);
     return NextResponse.json({ ok: false, code: "PRODUCT_REQUEST_FAILED", message: error instanceof Error ? error.message : "상품 신청 처리에 실패했습니다." }, { status: 500 });
