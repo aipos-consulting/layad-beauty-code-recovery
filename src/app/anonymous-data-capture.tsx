@@ -99,10 +99,11 @@ export default function AnonymousDataCapture() {
         }
       }
 
-      if (
-        source === "manual" &&
-        button.textContent?.includes("이 유형으로 계속하기")
-      ) {
+      const isManualContinue =
+        button.textContent?.includes("선택한 유형으로 계속하기") ||
+        button.textContent?.includes("이 유형으로 계속하기");
+
+      if (source === "manual" && isManualContinue) {
         const code = findBeautyCode();
         if (code) {
           sessionStorage.removeItem(SESSION_KEY);
