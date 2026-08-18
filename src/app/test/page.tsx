@@ -117,7 +117,6 @@ export default function TestPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, Code>>({});
   const [completed, setCompleted] = useState(false);
-  const [advancing, setAdvancing] = useState(false);
   const [productInput, setProductInput] = useState("");
   const [productError, setProductError] = useState("");
   const [analysisRequests, setAnalysisRequests] = useState<ProductAnalysisRequest[]>([]);
@@ -139,20 +138,12 @@ export default function TestPage() {
   }).join("") as BeautyTypeCode, [scores]);
 
   const choose = (code: Code) => {
-    if (advancing && currentIndex !== definitions.length - 1) return;
-    setAdvancing(true);
     setAnswers((previous) => ({ ...previous, [definition.id]: code }));
-
     if (currentIndex === definitions.length - 1) {
       setCompleted(true);
-      setAdvancing(false);
       return;
     }
-
-    window.setTimeout(() => {
-      setCurrentIndex((index) => index + 1);
-      setAdvancing(false);
-    }, 180);
+    setCurrentIndex((index) => index + 1);
   };
 
   const submitProduct = (event: FormEvent<HTMLFormElement>) => {
@@ -165,7 +156,7 @@ export default function TestPage() {
     setProductInput(""); setProductError("");
   };
 
-  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
+  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
   const highlightedTrait = (value: string) => <><span className="text-[#D5B34C]">{value[0]}</span>{value.slice(1)}</>;
 
@@ -209,8 +200,8 @@ export default function TestPage() {
           <div className="h-2 overflow-hidden rounded-full bg-[#E7E1D9]"><div className="h-full rounded-full bg-[#8F8276] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
           <p className="mt-7 text-xs font-semibold tracking-[0.2em] text-[#7B7168]">QUESTION {String(currentIndex + 1).padStart(2, "0")}</p>
           <h1 className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">{localized.question}</h1><p className="mt-3 text-sm leading-6 text-[#625D57]">{text.choose}</p>
-          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" disabled={advancing && currentIndex !== definitions.length - 1} onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition disabled:cursor-wait ${active ? "border-[#8F8276] bg-[#E7E1D9]" : "border-[#D7D0C7] bg-[#FBFAF8] hover:border-[#A99F93] hover:bg-[#F1EDE8]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
-          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.home}</Link> : <button type="button" disabled={advancing} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.previous}</button>}</div>
+          <div className="mt-7 grid gap-4">{options.map((option) => { const active = selected === option.code; return <button key={option.code} type="button" onClick={() => choose(option.code)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition ${active ? "border-[#8F8276] bg-[#E7E1D9]" : "border-[#D7D0C7] bg-[#FBFAF8] hover:border-[#A99F93] hover:bg-[#F1EDE8]"}`}><span className="whitespace-pre-line text-base font-medium leading-7">{option.title}</span></button>; })}</div>
+          <div className="mt-8 flex items-center justify-start">{currentIndex === 0 ? <Link href="/" className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.home}</Link> : <button type="button" onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-full px-5 py-3 text-sm text-[#625D57] hover:bg-[#EDE8E2]">{text.previous}</button>}</div>
         </div></section>
       </div>
     </main>
