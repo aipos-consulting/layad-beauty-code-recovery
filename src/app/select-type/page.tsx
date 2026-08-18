@@ -64,6 +64,22 @@ export default function SelectTypePage() {
   const [requests, setRequests] = useState<ProductAnalysisRequest[]>([]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedCode = params.get("code");
+    const requestedStep = params.get("step");
+    const code = BEAUTY_TYPES.find((item) => item === requestedCode) ?? null;
+
+    if (code && requestedStep === "age") {
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SAVED_CODE_KEY);
+      sessionStorage.removeItem(SAVED_SOURCE_KEY);
+      setSelectedCode(code);
+      setConfirmed(true);
+      setShowAgePrompt(true);
+      setSessionReady(false);
+      return;
+    }
+
     setSessionReady(Boolean(sessionStorage.getItem(SESSION_KEY)));
   }, []);
 
@@ -110,6 +126,7 @@ export default function SelectTypePage() {
       setSessionReady(true);
       setShowAgePrompt(false);
       setProductError("");
+      window.history.replaceState({}, "", "/select-type");
     } catch {
       setAgeError("네트워크 문제로 저장하지 못했습니다. 다시 시도해 주세요.");
     } finally {
@@ -206,17 +223,21 @@ export default function SelectTypePage() {
 
         {!confirmed ? (
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <button
-              type="button"
-              disabled={!selectedCode}
-              onClick={() => {
-                setConfirmed(true);
-                setShowAgePrompt(true);
-              }}
-              className="inline-flex h-12 min-w-56 items-center justify-center rounded-full bg-[#d88c9c] px-7 text-sm font-semibold text-white transition enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]"
-            >
-              선택한 유형으로 계속하기
-            </button>
+            {selectedCode ? (
+              <a
+                href={`/select-type?code=${encodeURIComponent(selectedCode)}&step=age`}
+                className="inline-flex h-12 min-w-56 items-center justify-center rounded-full bg-[#d88c9c] px-7 text-sm font-semibold text-white transition hover:bg-[#c8798a]"
+              >
+                선택한 유형으로 계속하기
+              </a>
+            ) : (
+              <span
+                aria-disabled="true"
+                className="inline-flex h-12 min-w-56 cursor-not-allowed items-center justify-center rounded-full bg-[#d8cccc] px-7 text-sm font-semibold text-white"
+              >
+                선택한 유형으로 계속하기
+              </span>
+            )}
             <Link href="/test" className="inline-flex h-12 min-w-56 items-center justify-center rounded-full border border-[#d88c9c] px-7 text-sm font-semibold text-[#a85f6e] hover:bg-[#fff5f6]">
               Beauty Code 테스트하기
             </Link>
