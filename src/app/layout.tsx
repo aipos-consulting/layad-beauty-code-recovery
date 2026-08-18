@@ -8,6 +8,7 @@ import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import MobileProductFitFix from "./mobile-product-fit-fix";
+import MobileSelectTypeLinkFix from "./mobile-select-type-link-fix";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AdminDataManagementNav />
           <AdminVisualTheme />
           <MobileProductFitFix />
+          <MobileSelectTypeLinkFix />
         </LanguageProvider>
       </body>
     </html>
