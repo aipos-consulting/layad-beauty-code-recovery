@@ -188,18 +188,23 @@ export default function AnalysisProcessingFeedback() {
 
         activeRequestIdRef.current = payload.requestId;
         if (input) input.value = "";
-        setStage("collecting");
 
         if (!payload.reused) {
-          void fetch("/api/product-analysis-run", {
+          setStage("analyzing");
+          const runResponse = await fetch("/api/product-analysis-run", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ requestId: payload.requestId }),
-            keepalive: true,
-          }).catch(() => undefined);
+          });
+          const runPayload = (await runResponse.json().catch(() => ({}))) as ResultPayload;
+          if (!runResponse.ok || !runPayload.ok) {
+            throw new Error(runPayload.message || `AI 분석 실행 실패 (${runResponse.status})`);
+          }
+        } else {
+          setStage("collecting");
         }
 
-        timerRef.current = window.setTimeout(poll, payload.reused ? 50 : 800);
+        timerRef.current = window.setTimeout(poll, 50);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : t.saveFailed);
         setStage("failed");
