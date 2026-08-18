@@ -189,6 +189,16 @@ export default function AnalysisProcessingFeedback() {
         activeRequestIdRef.current = payload.requestId;
         if (input) input.value = "";
         setStage("collecting");
+
+        if (!payload.reused) {
+          void fetch("/api/product-analysis-run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestId: payload.requestId }),
+            keepalive: true,
+          }).catch(() => undefined);
+        }
+
         timerRef.current = window.setTimeout(poll, payload.reused ? 50 : 800);
       } catch (error) {
         setMessage(error instanceof Error ? error.message : t.saveFailed);
