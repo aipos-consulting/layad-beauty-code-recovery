@@ -69,11 +69,14 @@ export default function SelectTypePage() {
     const requestedStep = params.get("step");
     const code = BEAUTY_TYPES.find((item) => item === requestedCode) ?? null;
 
+    if (code) {
+      setSelectedCode(code);
+    }
+
     if (code && requestedStep === "age") {
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SAVED_CODE_KEY);
       sessionStorage.removeItem(SAVED_SOURCE_KEY);
-      setSelectedCode(code);
       setConfirmed(true);
       setShowAgePrompt(true);
       setSessionReady(false);
@@ -168,91 +171,78 @@ export default function SelectTypePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
-      <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
+    <main className="min-h-screen bg-[#F6F4F0] px-5 py-8 text-[#222222] sm:px-8">
+      <section className="mx-auto max-w-4xl rounded-[2rem] border border-[#D7D0C7] bg-[#FBFAF7] px-6 py-10 shadow-[0_24px_70px_rgba(34,34,34,0.08)] sm:px-12">
         <div className="text-center">
-          <p className="text-xs font-semibold tracking-[0.22em] text-[#b97b88]">SELECT YOUR BEAUTY CODE</p>
+          <p className="text-xs font-semibold tracking-[0.22em] text-[#625D57]">SELECT YOUR BEAUTY CODE</p>
           <h1 className="mt-4 text-3xl font-semibold">내 Beauty Code 선택</h1>
-          <p className="mt-3 text-sm leading-7 text-[#766767]">알고 있는 Beauty Code를 선택해 주세요.</p>
+          <p className="mt-3 text-sm leading-7 text-[#625D57]">알고 있는 Beauty Code를 선택해 주세요.</p>
         </div>
 
-        <div className="mx-auto mt-7 min-h-32 max-w-xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-6 text-center">
+        <div className="mx-auto mt-7 min-h-32 max-w-xl rounded-3xl border border-[#D7D0C7] bg-[#F0ECE6] p-6 text-center">
           {selectedCode ? (
             <>
-              <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">선택한 BEAUTY CODE</p>
-              <p className="mt-3 text-4xl font-semibold tracking-[0.18em] text-[#d88c9c]">{selectedCode}</p>
-              <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-[#6f6063]">
+              <p className="text-xs font-semibold tracking-[0.18em] text-[#625D57]">선택한 BEAUTY CODE</p>
+              <p className="mt-3 text-4xl font-semibold tracking-[0.18em] text-[#222222]">{selectedCode}</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-[#625D57]">
                 {selectedCode.split("").map((letter) => (
                   <span key={letter}><b>{letter}</b> · {codeLabels[letter]}</span>
                 ))}
               </div>
             </>
           ) : (
-            <p className="flex min-h-20 items-center justify-center text-sm text-[#8b7b7e]">Beauty Code를 선택해 주세요.</p>
+            <p className="flex min-h-20 items-center justify-center text-sm text-[#746D65]">Beauty Code를 선택해 주세요.</p>
           )}
         </div>
 
-        <div className="mt-7 grid grid-cols-4 gap-2 sm:grid-cols-8 sm:gap-3">
-          {BEAUTY_TYPES.map((code) => {
-            const active = code === selectedCode;
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => {
-                  setSelectedCode(code);
-                  setConfirmed(false);
-                  setSessionReady(false);
-                  setRequests([]);
-                  setProductError("");
-                  sessionStorage.removeItem(SESSION_KEY);
-                  sessionStorage.removeItem(SAVED_CODE_KEY);
-                  sessionStorage.removeItem(SAVED_SOURCE_KEY);
-                }}
-                className={`rounded-xl border px-2 py-3 text-center text-[11px] font-semibold transition sm:text-xs ${
-                  active
-                    ? "border-[#d88c9c] bg-[#fff0f2] text-[#a85f6e] shadow-sm"
-                    : "border-[#ead7db] bg-white text-[#7f7073] hover:border-[#dca7b1] hover:bg-[#fffafa]"
-                }`}
-              >
-                {code}
-              </button>
-            );
-          })}
-        </div>
-
         {!confirmed ? (
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            {selectedCode ? (
-              <a
-                href={`/select-type?code=${encodeURIComponent(selectedCode)}&step=age`}
-                className="inline-flex h-12 min-w-56 items-center justify-center rounded-full bg-[#d88c9c] px-7 text-sm font-semibold text-white transition hover:bg-[#c8798a]"
-              >
-                선택한 유형으로 계속하기
-              </a>
-            ) : (
-              <span
-                aria-disabled="true"
-                className="inline-flex h-12 min-w-56 cursor-not-allowed items-center justify-center rounded-full bg-[#d8cccc] px-7 text-sm font-semibold text-white"
-              >
-                선택한 유형으로 계속하기
-              </span>
-            )}
-            <Link href="/test" className="inline-flex h-12 min-w-56 items-center justify-center rounded-full border border-[#d88c9c] px-7 text-sm font-semibold text-[#a85f6e] hover:bg-[#fff5f6]">
-              Beauty Code 테스트하기
-            </Link>
-          </div>
+          <form action="/select-type" method="get" className="mt-7">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-8 sm:gap-3">
+              {BEAUTY_TYPES.map((code) => {
+                const active = code === selectedCode;
+                return (
+                  <label key={code} className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="code"
+                      value={code}
+                      required
+                      defaultChecked={active}
+                      onChange={() => setSelectedCode(code)}
+                      className="peer sr-only"
+                    />
+                    <span className="flex rounded-xl border border-[#CFC7BD] bg-[#FBFAF7] px-2 py-3 text-center text-[11px] font-semibold text-[#625D57] transition hover:border-[#9F968B] hover:bg-[#F0ECE6] peer-checked:border-[#222222] peer-checked:bg-[#222222] peer-checked:text-[#F6F4F0] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#222222] sm:text-xs">
+                      <span className="w-full">{code}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <input
+                type="submit"
+                name="step"
+                value="age"
+                aria-label="선택한 유형으로 계속하기"
+                className="inline-flex h-12 min-w-56 cursor-pointer items-center justify-center rounded-full bg-[#222222] px-7 text-sm font-semibold text-[#F6F4F0] transition hover:bg-[#3A3836]"
+              />
+              <Link href="/test" className="inline-flex h-12 min-w-56 items-center justify-center rounded-full border border-[#A99F93] bg-[#E7E1D9] px-7 text-sm font-semibold text-[#222222] transition hover:bg-[#DDD5CB]">
+                Beauty Code 테스트하기
+              </Link>
+            </div>
+          </form>
         ) : null}
 
         {confirmed && selectedCode ? (
-          <section className="mt-10 border-t border-[#f1dfe2] pt-9">
+          <section className="mt-10 border-t border-[#D7D0C7] pt-9">
             <div className="text-center">
-              <p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p>
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#625D57]">PRODUCT FIT ANALYSIS</p>
               <h2 className="mt-3 text-2xl font-semibold">상품 적합도 분석</h2>
-              <p className="mt-3 text-sm leading-7 text-[#766767]">상품명 또는 상품 링크를 등록하면 AI 분석을 시작합니다.</p>
+              <p className="mt-3 text-sm leading-7 text-[#625D57]">상품명 또는 상품 링크를 등록하면 AI 분석을 시작합니다.</p>
             </div>
 
-            <form onSubmit={submitProduct} className="mx-auto mt-7 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
+            <form onSubmit={submitProduct} className="mx-auto mt-7 max-w-2xl rounded-3xl border border-[#D7D0C7] bg-[#F0ECE6] p-5 sm:p-6">
               <label htmlFor="manual-product-input" className="text-sm font-semibold">상품명 또는 상품 링크</label>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                 <input
@@ -264,28 +254,28 @@ export default function SelectTypePage() {
                   }}
                   placeholder="예: 프라이머 상품명 또는 https://..."
                   maxLength={2000}
-                  className="min-w-0 flex-1 rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none focus:border-[#d88c9c] focus:ring-2 focus:ring-[#f4dce1]"
+                  className="min-w-0 flex-1 rounded-2xl border border-[#CFC7BD] bg-[#FBFAF7] px-4 py-3 text-sm outline-none focus:border-[#222222] focus:ring-2 focus:ring-[#D7D0C7]"
                 />
-                <button type="submit" disabled={!productInput.trim() || !sessionReady} className="rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]">
+                <button type="submit" disabled={!productInput.trim() || !sessionReady} className="rounded-2xl bg-[#222222] px-6 py-3 text-sm font-semibold text-[#F6F4F0] enabled:hover:bg-[#3A3836] disabled:cursor-not-allowed disabled:bg-[#B9B1A8]">
                   적합도 분석하기
                 </button>
               </div>
-              {!sessionReady ? <p className="mt-3 text-sm text-[#806f72]">연령대 선택과 익명 저장 완료 후 분석할 수 있습니다.</p> : null}
-              {productError ? <p className="mt-3 text-sm font-medium text-[#b84f63]">{productError}</p> : null}
+              {!sessionReady ? <p className="mt-3 text-sm text-[#625D57]">연령대 선택과 익명 저장 완료 후 분석할 수 있습니다.</p> : null}
+              {productError ? <p className="mt-3 text-sm font-medium text-[#9A4E56]">{productError}</p> : null}
             </form>
 
             <div className="mt-6 space-y-4">
               {requests.map((request) => (
-                <article key={request.id} className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6">
+                <article key={request.id} className="rounded-3xl border-2 border-[#222222] bg-[#F0ECE6] p-6">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-[#a85f6e]">{request.userBeautyCode}</span>
-                    <span className="rounded-full border border-[#e6a8b5] bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">분석 준비 중</span>
+                    <span className="text-sm font-semibold text-[#222222]">{request.userBeautyCode}</span>
+                    <span className="rounded-full border border-[#A99F93] bg-[#FBFAF7] px-3 py-1 text-xs font-semibold text-[#625D57]">분석 준비 중</span>
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">상품 분석 요청이 접수되었습니다.</h3>
                   <dl className="mt-4 grid gap-3 text-sm">
-                    <div className="flex justify-between gap-4"><dt className="text-[#806f72]">등록 유형</dt><dd className="font-semibold">{request.inputType === "url" ? "상품 링크" : "상품명"}</dd></div>
-                    <div className="flex justify-between gap-4"><dt className="text-[#806f72]">등록값</dt><dd className="min-w-0 text-right font-semibold">{request.productUrl ? <a href={request.productUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">등록한 상품 링크</a> : request.productName}</dd></div>
-                    <div className="flex justify-between gap-4"><dt className="text-[#806f72]">요청 시각</dt><dd className="font-semibold">{formatRequestTime(request.createdAt)}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-[#625D57]">등록 유형</dt><dd className="font-semibold">{request.inputType === "url" ? "상품 링크" : "상품명"}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-[#625D57]">등록값</dt><dd className="min-w-0 text-right font-semibold">{request.productUrl ? <a href={request.productUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">등록한 상품 링크</a> : request.productName}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-[#625D57]">요청 시각</dt><dd className="font-semibold">{formatRequestTime(request.createdAt)}</dd></div>
                   </dl>
                 </article>
               ))}
@@ -294,16 +284,16 @@ export default function SelectTypePage() {
         ) : null}
 
         <div className="mt-9 text-center">
-          <Link href="/" className="text-sm text-[#7e7070] hover:underline">처음 화면으로</Link>
+          <Link href="/" className="text-sm text-[#625D57] hover:underline">처음 화면으로</Link>
         </div>
       </section>
 
       {showAgePrompt && selectedCode ? (
         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/35 px-4">
-          <section className="w-full max-w-md rounded-3xl bg-white p-6 text-[#382d2d] shadow-2xl sm:p-8">
-            <p className="text-center text-xs font-semibold tracking-[0.18em] text-[#b97b88]">OPTIONAL</p>
+          <section className="w-full max-w-md rounded-3xl border border-[#D7D0C7] bg-[#FBFAF7] p-6 text-[#222222] shadow-2xl sm:p-8">
+            <p className="text-center text-xs font-semibold tracking-[0.18em] text-[#625D57]">OPTIONAL</p>
             <h2 className="mt-3 text-center text-xl font-semibold">연령대를 선택해 주세요</h2>
-            <p className="mt-3 text-center text-sm leading-6 text-[#766767]">
+            <p className="mt-3 text-center text-sm leading-6 text-[#625D57]">
               서비스 개선을 위한 선택 항목입니다. 정확한 나이와 생년월일은 저장하지 않습니다.
             </p>
             <div className="mt-6 grid grid-cols-2 gap-2">
@@ -313,7 +303,7 @@ export default function SelectTypePage() {
                   type="button"
                   disabled={savingAge}
                   onClick={() => saveAgeSession(option.value)}
-                  className="rounded-2xl border border-[#ead7db] bg-[#fffafa] px-3 py-3 text-sm font-semibold transition hover:border-[#d88c9c] hover:bg-[#fff0f2] disabled:opacity-60"
+                  className="rounded-2xl border border-[#CFC7BD] bg-[#F0ECE6] px-3 py-3 text-sm font-semibold transition hover:border-[#222222] hover:bg-[#E7E1D9] disabled:opacity-60"
                 >
                   {option.label}
                 </button>
@@ -323,11 +313,11 @@ export default function SelectTypePage() {
               type="button"
               disabled={savingAge}
               onClick={() => saveAgeSession(null)}
-              className="mt-4 w-full rounded-full px-4 py-3 text-sm text-[#7e7070] hover:bg-[#fff5f6] disabled:opacity-60"
+              className="mt-4 w-full rounded-full px-4 py-3 text-sm text-[#625D57] hover:bg-[#F0ECE6] disabled:opacity-60"
             >
               선택하지 않고 저장
             </button>
-            {ageError ? <p className="mt-4 text-center text-sm font-medium text-[#b84f63]">{ageError}</p> : null}
+            {ageError ? <p className="mt-4 text-center text-sm font-medium text-[#9A4E56]">{ageError}</p> : null}
           </section>
         </div>
       ) : null}
