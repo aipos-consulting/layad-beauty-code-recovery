@@ -1,4 +1,5 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { POST as runProductAnalysis } from "../product-analysis-run/route";
 
 type ProductRequestInput = { sessionId: string; inputType: "name" | "url"; inputValue: string };
 type ProductCandidate = { id: string; canonical_name: string | null; product_url: string | null };
@@ -134,32 +135,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, requestId, productId: product.id, status: "collecting_reviews", mode: "joined_existing_analysis", reused: true, message: "같은 상품의 분석이 이미 진행 중입니다. 기존 분석에 합류합니다." });
     }
 
-    const runUrl = new URL("/api/product-analysis-run", request.url).toString();
-    after(async () => {
-      try {
-        const runResponse = await fetch(runUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId }),
-          cache: "no-store",
-        });
-        if (!runResponse.ok) {
-          console.error("Scheduled product analysis failed", runResponse.status, await runResponse.text());
-        }
-      } catch (error) {
-        console.error("Scheduled product analysis request failed", error);
-      }
+    const runRequest = new NextRequest(new URL("/api/product-analysis-run", request.url), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId }),
     });
+    const runResponse = await runProductAnalysis(runRequest);
+    const runPayload = await runResponse.json() as {
+      ok?: boolean;
+      status?: string;
+      code?: string;
+      message?: string;
+      analysisRunId?: string;
+      reviewCount?: number;
+      inputTokens?: number | null;
+      outputTokens?: number | null;
+    };
+
+    if (!runResponse.ok || !runPayload.ok) {
+      return NextResponse.json({
+        ok: false,
+        requestId,
+        productId: product.id,
+        code: runPayload.code ?? "AUTO_ANALYSIS_FAILED",
+        message: runPayload.message ?? "OpenAI 상품 분석을 완료하지 못했습니다.",
+      }, { status: runResponse.status });
+    }
 
     return NextResponse.json({
       ok: true,
       requestId,
       productId: product.id,
-      status: "collecting_reviews",
-      mode: "new_analysis",
+      status: runPayload.status ?? "completed",
+      mode: "new_analysis_completed",
       reused: true,
-      analysisScheduled: true,
-      message: "신규 상품 분석 요청이 접수되어 AI 분석을 시작합니다.",
+      analysisRunId: runPayload.analysisRunId,
+      reviewCount: runPayload.reviewCount,
+      inputTokens: runPayload.inputTokens,
+      outputTokens: runPayload.outputTokens,
+      message: "신규 상품 분석을 완료했습니다.",
     });
   } catch (error) {
     console.error("Product request processing failed", error);
