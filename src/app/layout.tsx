@@ -9,7 +9,6 @@ import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import MobileProductFitFix from "./mobile-product-fit-fix";
 import MobileSelectTypeLinkFix from "./mobile-select-type-link-fix";
-import TestFinalStepFix from "./test-final-step-fix";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -41,7 +40,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AdminVisualTheme />
           <MobileProductFitFix />
           <MobileSelectTypeLinkFix />
-          <TestFinalStepFix />
         </LanguageProvider>
       </body>
     </html>

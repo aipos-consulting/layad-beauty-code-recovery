@@ -142,9 +142,15 @@ export default function TestPage() {
     if (advancing) return;
     setAdvancing(true);
     setAnswers((previous) => ({ ...previous, [definition.id]: code }));
+
+    if (currentIndex === definitions.length - 1) {
+      setCompleted(true);
+      setAdvancing(false);
+      return;
+    }
+
     window.setTimeout(() => {
-      if (currentIndex === definitions.length - 1) setCompleted(true);
-      else setCurrentIndex((index) => index + 1);
+      setCurrentIndex((index) => index + 1);
       setAdvancing(false);
     }, 180);
   };
