@@ -32,8 +32,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <LanguageProvider>
           {children}
           <UiAdjustments />
-          <AnonymousDataCapture />
           <AnalysisProcessingFeedback />
+          <AnonymousDataCapture />
           <AdminAiWorkflow />
           <AdminDataManagementNav />
           <AdminVisualTheme />
