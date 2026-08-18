@@ -7,6 +7,7 @@ import AnalysisProcessingFeedback from "./analysis-processing-feedback";
 import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
+import ProductFitInputBridge from "./product-fit-input-bridge";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AdminAiWorkflow />
           <AdminDataManagementNav />
           <AdminVisualTheme />
+          <ProductFitInputBridge />
         </LanguageProvider>
       </body>
     </html>
