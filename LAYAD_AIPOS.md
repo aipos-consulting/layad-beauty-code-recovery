@@ -8,14 +8,12 @@ AIPOS는 AI PROCESS OPERATING STANDARD의 약자로, AI 기반 MVP 개발 과정
 
 ## 2. Source of Truth
 
-2026-08-17 기준 운영 기준은 다음과 같습니다.
+2026-08-18 기준 운영 기준은 다음과 같습니다.
 
 - GitHub Organization: `aipos-consulting`
 - Production Repository: `aipos-consulting/layad-beauty-code-recovery`
 - Production Branch: `main`
-- 최신 UI 복구 작업 브랜치: `recovery/owner-ui-20260817`
-- 해당 브랜치 마지막 UI 커밋: `f8cd87704934e88652bdea34a4adb9d4f4918b6d`
-- 최신 UI를 main에 병합한 커밋: `eeadd0210ae5384d7efb9a3046df0f6bfa653276`
+- Core Intelligence governance 작업 브랜치: `architecture/core-intelligence-governance-20260818`
 - Vercel Project: `layad-makeup-type-test`
 - Framework Preset: `Next.js`
 - Root Directory: repository root (`./` 또는 빈 값)
@@ -28,8 +26,11 @@ AIPOS는 AI PROCESS OPERATING STANDARD의 약자로, AI 기반 MVP 개발 과정
 
 요구사항 접수
 → ChatGPT/AIPOS 기준화
+→ Core Intelligence 영향 여부 판정
+→ `AGENTS.md` 및 해당 Skill 확인
 → 작업 브랜치 생성 또는 기존 작업 브랜치 확인
 → Codex/개발 작업
+→ 자동검증/테스트
 → Preview 배포 및 화면 검증
 → 사용자 승인
 → `main` 병합
@@ -56,6 +57,8 @@ AIPOS는 AI PROCESS OPERATING STANDARD의 약자로, AI 기반 MVP 개발 과정
 7. Framework Preset
 8. Supabase Project
 9. 필요한 Environment Variables
+10. Core Intelligence 영향 여부
+11. 적용할 `AGENTS.md`와 Skill
 
 확인이 끝나기 전에는 Repository 변경, Branch 변경, Production 배포, DB 마이그레이션을 수행하지 않습니다.
 
@@ -65,6 +68,7 @@ AIPOS는 AI PROCESS OPERATING STANDARD의 약자로, AI 기반 MVP 개발 과정
 - 기존 기능이 훼손되지 않았는지 확인
 - 작업 브랜치와 커밋 SHA 기록
 - 비밀키와 환경변수가 GitHub에 포함되지 않았는지 확인
+- Core Intelligence 변경이면 필수 invariant 테스트 수행
 
 ### Gate 2. Preview 검증
 
@@ -135,7 +139,7 @@ Vercel에서 반드시 확인합니다.
 
 ## 6. Supabase 운영 구조
 
-2026-08-17 기준 운영 스키마에는 다음 주요 테이블이 있습니다.
+2026-08-18 기준 운영 스키마에는 다음 주요 테이블이 있습니다.
 
 - `test_sessions`
 - `test_answers`
@@ -154,7 +158,7 @@ Vercel에서 반드시 확인합니다.
 ## 7. 브랜치 운영 원칙
 
 - `main`: Production 승인본
-- 기능/디자인/복구 작업: 별도 branch
+- 기능/디자인/복구/아키텍처 작업: 별도 branch
 - Preview 검증 전 main 직접 수정은 지양
 - 긴급 수정도 원칙적으로 branch → 검증 → main 반영
 - 작업 종료 시 미병합 branch가 있는지 확인
@@ -182,11 +186,60 @@ LAYAD는 AIPOS Consulting의 정부지원사업 MVP 개발 표준 프로세스�
 
 표준 구성은 다음과 같습니다.
 
-`PROJECT_AIPOS.md + Daily PM + GitHub + Supabase + Vercel + Release Gate`
+`PROJECT_AIPOS.md + AGENTS.md + Project Skill + Daily PM + GitHub + Supabase + Vercel + Release Gate`
 
 향후 고객 MVP도 착수 시 이 구조를 기본 생성하고, 모든 작업은 요구사항부터 Production 및 DB 검증까지 추적 가능하도록 운영합니다.
 
+## 10. LAYAD Core Intelligence 운영 원칙
+
+상품 적합도, 리뷰 분석, Keyword Intelligence, 16유형 점수, OpenAI 분석, 비용통제는 LAYAD의 핵심 사업가치와 데이터 IP를 구성하므로 일반 UI 기능과 분리하여 관리합니다. 상세 기준은 `docs/CORE_INTELLIGENCE_ARCHITECTURE.md`를 따릅니다.
+
+### 10.1 확정 원칙
+
+1. **상품 1회 분석**: 동일 canonical product의 승인된 현재 analysis version 결과가 존재하면 재분석하지 않고 DB 결과를 재사용합니다.
+2. **Evidence First**: 실제 리뷰/공개 근거 없이 Production 적합도 점수를 임의 생성하지 않습니다.
+3. **Keyword 자산화**: 승인 Keyword Master와 신규 Candidate를 분리하고, Candidate는 승인 없이 Master로 승격하거나 Production 지식으로 취급하지 않습니다.
+4. **OpenAI Assist**: OpenAI는 리뷰 해석, 문맥 모호성 해결, Evidence 추출, 신규 Keyword 후보 발견에 사용하고 최종 16유형 점수는 LAYAD 알고리즘이 계산합니다.
+5. **비용 통제**: 자동 AI 호출은 Cost Guard를 반드시 통과하며 월 한도 Hard Stop을 유지합니다.
+6. **자동 기본 / 수동 예외**: 정상 고객 경로는 자동처리이며 수동 ChatGPT 복사·붙여넣기는 실패·한도초과·저신뢰 등 예외 상황의 fallback으로만 사용합니다.
+7. **무한 대기 금지**: 고객 화면에는 bounded wait, 진행상태, timeout/지연 메시지, 재확인 및 종료 오류 처리가 있어야 합니다.
+8. **추적성**: analysis version, 리뷰 수, Evidence 수, confidence, token usage, cost, status를 추적 가능하게 저장합니다.
+
+### 10.2 Core Intelligence 개발 Gate
+
+Core Intelligence 관련 변경은 다음을 추가로 확인합니다.
+
+- 기존상품 재요청 시 OpenAI 0회 호출 검증
+- 신규상품/현재 version에 대해 중복 active run 방지
+- Evidence 부족 시 점수 조작/추정 금지
+- Keyword Master 우선 조회 및 Candidate 승인절차 검증
+- Cost Guard 실패/한도초과 시 fail-closed
+- 고정 Evidence 입력에 대한 deterministic scoring 검증
+- 30초 목표 bounded wait 및 사용자 상태표시 검증
+- 스키마 변경은 migration과 함께 반영
+- 알고리즘/Keyword semantics/AI 역할 변경 시 AIPOS 또는 Core Architecture 동시 갱신
+
+### 10.3 2026-08-18 확인된 구현 GAP
+
+- 사용자 상품 신청 API가 현재 자동 분석보다 `submitted`/수동 검토 흐름에 가깝습니다.
+- 사용자 요청 입구에서 기존 분석 상품의 결과를 우선 재사용하는 규칙이 강제되어 있지 않습니다.
+- 리뷰 DB와 Evidence 스키마는 존재하지만 실제 리뷰 수집→Evidence→4축→16유형 계산이 end-to-end로 연결되지 않았습니다.
+- 별도 Keyword Master/Candidate DB 및 Admin 승인 workflow가 없습니다.
+- OpenAI Admin 분석 API는 16개 점수를 직접 생성할 수 있어 향후 Evidence 추출 역할로 축소해야 합니다.
+- 수동 ChatGPT workflow가 현재 Admin 기본 흐름에 남아 있습니다.
+- 사용자 화면은 처리 진척이 없는 상태에서도 spinner가 길게 지속될 수 있습니다.
+
+### 10.4 추진 순서
+
+P0. Governance 고정: AIPOS, AGENTS, Product Intelligence Skill, Core Architecture
+P1. 사용자 신뢰성: timeout/status/error UX
+P2. 상품 1회 분석: canonical product/alias, cache hit, duplicate-run 방지
+P3. Review Evidence Pipeline: 실제 리뷰→Evidence→4축→16유형 deterministic scoring
+P4. Keyword Intelligence: Master/Candidate DB + Admin 승인
+P5. 자동 AI Orchestration: Cost Guard 기반 Evidence 추출 + 수동 fallback
+P6. KPI/Admin: 상품 재사용률, OpenAI 회피율, Evidence/Keyword/Confidence, 신규상품당 비용, 자동/수동 비율
+
 ---
 
-최종 갱신: 2026-08-17
-상태: 운영 기준 적용
+최종 갱신: 2026-08-18
+상태: Core Intelligence governance 착수
