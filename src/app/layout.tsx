@@ -8,6 +8,7 @@ import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import ProductFitInputBridge from "./product-fit-input-bridge";
+import UserBottomTabs from "./user-bottom-tabs";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -28,9 +29,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" className={`${leagueSpartan.variable} ${sourceCode.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col pb-20 md:pb-0">
         <LanguageProvider>
           {children}
+          <UserBottomTabs />
           <UiAdjustments />
           <AnalysisProcessingFeedback />
           <AnonymousDataCapture />
