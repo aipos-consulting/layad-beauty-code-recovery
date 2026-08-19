@@ -19,6 +19,9 @@ export async function GET() {
   let budgetSettingReachable = false;
   let costGuardReachable = false;
   let budgetAvailable: boolean | null = null;
+  let settingsStatus: number | null = null;
+  let runsStatus: number | null = null;
+  let settingsError: string | null = null;
 
   if (serviceKey) {
     const headers = supabaseHeaders(serviceKey);
@@ -35,9 +38,15 @@ export async function GET() {
           signal: AbortSignal.timeout(8000),
         }),
       ]);
+      settingsStatus = settingsResponse.status;
+      runsStatus = runsResponse.status;
       databaseReachable = settingsResponse.ok || runsResponse.ok;
       budgetSettingReachable = settingsResponse.ok;
       analysisRunTableReachable = runsResponse.ok;
+
+      if (!settingsResponse.ok) {
+        settingsError = (await settingsResponse.text()).slice(0, 500);
+      }
 
       if (settingsResponse.ok && openaiAdminKey && openaiProjectId) {
         const settings = (await settingsResponse.json()) as Array<{ monthly_budget_usd?: number }>;
@@ -66,8 +75,9 @@ export async function GET() {
           budgetAvailable = spent < budget;
         }
       }
-    } catch {
+    } catch (error) {
       databaseReachable = false;
+      settingsError = error instanceof Error ? error.message.slice(0, 500) : "unknown error";
     }
   }
 
@@ -91,7 +101,12 @@ export async function GET() {
     && checks.costGuardReachable
     && checks.budgetAvailable !== false;
 
-  return NextResponse.json({ ok: true, ready, checks }, {
+  return NextResponse.json({
+    ok: true,
+    ready,
+    checks,
+    diagnostics: { settingsStatus, runsStatus, settingsError },
+  }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
 }
