@@ -15,11 +15,13 @@ const menuGroups: MenuGroup[] = [
 ];
 
 function isActive(pathname: string, href: string) {
+  if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isHomeDashboard = pathname === "/admin";
 
   return (
     <div className="min-h-screen bg-[#fbf7f7] text-[#382d2d] lg:flex">
@@ -45,16 +47,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <div className="border-b border-[#eadfe1] bg-white px-4 py-3 lg:hidden">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="border-b border-[#eadfe1] bg-white px-3 py-3 lg:hidden">
+          <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {menuGroups.map(group => group.items.map(item => (
-              <Link key={item.href} href={item.href} className={`shrink-0 rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>
+              <Link key={item.href} href={item.href} className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>
                 {item.label}
               </Link>
             )))}
           </div>
         </div>
-        <div className="admin-route-content min-w-0 overflow-x-hidden">{children}</div>
+        <div className={`admin-route-content min-w-0 overflow-x-hidden ${isHomeDashboard ? "admin-home-dashboard" : ""}`}>{children}</div>
       </div>
 
       <style>{`
@@ -62,6 +64,49 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         .admin-route-content main { width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; }
         .admin-route-content main > div { min-width: 0 !important; width: 100% !important; }
         .admin-route-content table { max-width: 100%; }
+
+        @media (max-width: 1023px) {
+          .admin-home-dashboard,
+          .admin-home-dashboard main,
+          .admin-home-dashboard main > div,
+          .admin-home-dashboard main > div > section {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+          }
+          .admin-home-dashboard main > div {
+            display: block !important;
+            min-height: 0 !important;
+          }
+          .admin-home-dashboard main > div > aside {
+            display: none !important;
+          }
+          .admin-home-dashboard main > div > section {
+            display: block !important;
+          }
+          .admin-home-dashboard main > div > section > header {
+            display: none !important;
+          }
+          .admin-home-dashboard main > div > section > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: none !important;
+            padding: 16px !important;
+          }
+          .admin-home-dashboard article,
+          .admin-home-dashboard section,
+          .admin-home-dashboard div {
+            min-width: 0 !important;
+          }
+          .admin-home-dashboard .grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .admin-home-dashboard pre,
+          .admin-home-dashboard select,
+          .admin-home-dashboard input {
+            max-width: 100% !important;
+          }
+        }
       `}</style>
     </div>
   );
