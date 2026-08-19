@@ -19,6 +19,8 @@ type ProductBatchItem = {
 };
 type ValidationRow = { index:number; name:string; errors:string[]; duplicate:boolean; duplicateReason?:"existing"|"input" };
 
+type ExistingProduct = { id:string; completed:boolean };
+
 function cfg(){ return { key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY }; }
 function headers(key:string, extra?:HeadersInit):HeadersInit { const base:Record<string,string>={apikey:key,"Content-Type":"application/json"}; if(!key.startsWith("sb_secret_")) base.Authorization=`Bearer ${key}`; return {...base,...(extra??{})}; }
 async function db(path:string, init:RequestInit, key:string){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:headers(key,init.headers),cache:"no-store"}); }
@@ -41,12 +43,16 @@ function validateShape(item:ProductBatchItem,index:number){
   return { index, name:p?.canonical_name??`#${index+1}`, errors };
 }
 
-async function findExistingProductId(item:ProductBatchItem,key:string){
+async function findExistingProduct(item:ProductBatchItem,key:string):Promise<ExistingProduct|null>{
   const name=item.product?.canonical_name?.trim(); if(!name) return null;
   const lookup=await db(`products?normalized_name=eq.${encodeURIComponent(norm(name))}&deleted_at=is.null&select=id&limit=1`,{method:"GET"},key);
   if(!lookup.ok) throw new Error(`중복 상품 확인 실패: ${await lookup.text()}`);
   const rows=await lookup.json() as Array<{id:string}>;
-  return rows[0]?.id??null;
+  const id=rows[0]?.id; if(!id) return null;
+  const fits=await db(`product_type_fits?product_id=eq.${id}&select=beauty_code`,{method:"GET"},key);
+  if(!fits.ok) throw new Error(`기존 적합도 확인 실패: ${await fits.text()}`);
+  const fitRows=await fits.json() as Array<{beauty_code:string}>;
+  return { id, completed:new Set(fitRows.map(x=>x.beauty_code.trim())).size===16 };
 }
 
 async function validateBatch(items:ProductBatchItem[],key:string){
@@ -59,22 +65,28 @@ async function validateBatch(items:ProductBatchItem[],key:string){
     if(normalized&&seen.has(normalized)){ duplicate=true; duplicateReason="input"; }
     else if(normalized){
       seen.add(normalized);
-      const existingId=await findExistingProductId(items[i],key);
-      if(existingId){ duplicate=true; duplicateReason="existing"; }
+      const existing=await findExistingProduct(items[i],key);
+      if(existing?.completed){ duplicate=true; duplicateReason="existing"; }
     }
     rows.push({...base,duplicate,duplicateReason});
   }
   return rows;
 }
 
-async function createProduct(item:ProductBatchItem,key:string){
+async function getOrCreateProduct(item:ProductBatchItem,key:string){
   const name=item.product.canonical_name.trim(); const normalized=norm(name);
+  const existing=await findExistingProduct(item,key);
+  if(existing){
+    const patch=await db(`products?id=eq.${existing.id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({canonical_name:name,normalized_name:normalized,brand:item.product.brand??null,category:item.product.category??null,product_url:item.product.product_url??null,verification_status:"verified",updated_at:new Date().toISOString()})},key);
+    if(!patch.ok) throw new Error(`상품 갱신 실패: ${await patch.text()}`);
+    return existing.id;
+  }
   const ins=await db("products",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({canonical_name:name,normalized_name:normalized,brand:item.product.brand??null,category:item.product.category??null,product_url:item.product.product_url??null,verification_status:"verified"})},key);
   if(!ins.ok) throw new Error(`상품 저장 실패: ${await ins.text()}`); const rows=await ins.json() as Array<{id:string}>; if(!rows[0]?.id) throw new Error("상품 ID 생성 실패"); return rows[0].id;
 }
 
 async function importOne(item:ProductBatchItem,key:string){
-  const productId=await createProduct(item,key);
+  const productId=await getOrCreateProduct(item,key);
   const runRes=await db("review_analysis_runs",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({product_id:productId,status:"completed",provider:"chatgpt-manual",model_name:"ChatGPT",prompt_version:PROMPT_VERSION,analysis_version:ANALYSIS_VERSION,input_review_count:item.reviews.length,started_at:new Date().toISOString(),completed_at:new Date().toISOString()})},key);
   if(!runRes.ok) throw new Error(`분석 기록 저장 실패: ${await runRes.text()}`); const runId=(await runRes.json() as Array<{id:string}>)[0]?.id;
   if(!runId) throw new Error("분석 기록 ID 생성 실패");
