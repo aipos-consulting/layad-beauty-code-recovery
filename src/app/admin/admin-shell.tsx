@@ -15,7 +15,7 @@ const menuGroups: MenuGroup[] = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/admin" ? pathname === href : pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export default function AdminShell({ children }: { children: ReactNode }) {
