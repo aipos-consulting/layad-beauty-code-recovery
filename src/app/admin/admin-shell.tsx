@@ -9,7 +9,7 @@ type MenuGroup = { label: string; items: MenuItem[] };
 
 const menuGroups: MenuGroup[] = [
   { label: "대시보드", items: [{ label: "대시보드", href: "/admin" }, { label: "사용자 통계 상세", href: "/admin/statistics" }] },
-  { label: "상품 운영", items: [{ label: "상품 신청 정보", href: "/admin/requests" }, { label: "분석 작업", href: "/admin/analysis" }, { label: "상품 일괄 분석", href: "/admin/batch-import" }, { label: "상품 관리", href: "/admin/products" }, { label: "적합도 결과", href: "/admin/results" }] },
+  { label: "상품 운영", items: [{ label: "상품 신청 정보", href: "/admin/requests" }, { label: "분석 작업", href: "/admin/analysis" }, { label: "상품 일괄 분석", href: "/admin/batch-import" }, { label: "분석 데이터 조회", href: "/admin/analysis-data" }, { label: "상품 관리", href: "/admin/products" }, { label: "적합도 결과", href: "/admin/results" }] },
   { label: "데이터 관리", items: [{ label: "운영 데이터 관리", href: "/admin/data-management" }] },
   { label: "운영 설정", items: [{ label: "운영 설정", href: "/admin/settings" }] },
 ];
