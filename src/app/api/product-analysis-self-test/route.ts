@@ -22,6 +22,7 @@ export async function GET() {
   let settingsStatus: number | null = null;
   let runsStatus: number | null = null;
   let settingsError: string | null = null;
+  let runsError: string | null = null;
 
   if (serviceKey) {
     const headers = supabaseHeaders(serviceKey);
@@ -46,6 +47,9 @@ export async function GET() {
 
       if (!settingsResponse.ok) {
         settingsError = (await settingsResponse.text()).slice(0, 500);
+      }
+      if (!runsResponse.ok) {
+        runsError = (await runsResponse.text()).slice(0, 500);
       }
 
       if (settingsResponse.ok && openaiAdminKey && openaiProjectId) {
@@ -105,7 +109,13 @@ export async function GET() {
     ok: true,
     ready,
     checks,
-    diagnostics: { settingsStatus, runsStatus, settingsError },
+    diagnostics: {
+      settingsStatus,
+      runsStatus,
+      settingsError,
+      runsError,
+      supabaseKeyType: serviceKey?.startsWith("sb_secret_") ? "secret" : serviceKey ? "legacy-or-other" : "missing",
+    },
   }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
