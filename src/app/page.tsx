@@ -7,24 +7,28 @@ const copy: Record<Locale, {
   question: string;
   start: string;
   knowCode: string;
+  community: string;
   copyright: string;
 }> = {
   ko: {
     question: "당신의 코드는 무엇인가요?",
     start: "내 Code 찾기",
     knowCode: "내 Code 직접 선택",
+    community: "16 Codes Beauty Talk",
     copyright: "본 웹사이트의 텍스트, 이미지, 디자인, 프로그램, 분류체계 및 기타 모든 콘텐츠는 LAYAD의 저작권과 지식재산권 보호 대상입니다. 상업적 목적의 사용 시 반드시 사전 서면 허가가 필요합니다. 무단 사용의 경우 법적 책임을 물을 수 있습니다.",
   },
   en: {
     question: "What is your code?",
     start: "Find my Code",
     knowCode: "Choose my Code",
+    community: "16 Codes Beauty Talk",
     copyright: "All text, images, designs, software, classification systems, and other content on this website are protected by LAYAD copyright and intellectual property rights. Prior written permission is required for commercial use. Unauthorized use may result in legal liability.",
   },
   ja: {
     question: "あなたのコードは何ですか？",
     start: "自分のCodeを見つける",
     knowCode: "自分のCodeを選ぶ",
+    community: "16 Codes Beauty Talk",
     copyright: "本ウェブサイトの文章、画像、デザイン、プログラム、分類体系およびその他すべてのコンテンツは、LAYADの著作権・知的財産権により保護されています。商用利用には事前の書面による許可が必要です。無断使用には法的責任を問う場合があります。",
   },
 };
@@ -53,6 +57,9 @@ export default function Home() {
             </Link>
             <Link href="/select-type" className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#A99F93] bg-[#E7E1D9] px-8 py-4 text-base font-semibold leading-none tracking-[-0.025em] text-[#222222] transition hover:-translate-y-0.5 hover:bg-[#DDD5CB]">
               {text.knowCode}
+            </Link>
+            <Link href="/community" className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#C9B3AD] bg-[#EFE5E1] px-8 py-4 text-base font-semibold leading-none tracking-[-0.025em] text-[#6D4847] transition hover:-translate-y-0.5 hover:bg-[#E8DAD5]">
+              {text.community}
             </Link>
           </div>
         </div>
