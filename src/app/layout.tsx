@@ -7,6 +7,7 @@ import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import ProductFitInputBridge from "./product-fit-input-bridge";
+import ProductFitResultFeedback from "./product-fit-result-feedback";
 import UserBottomTabs from "./user-bottom-tabs";
 import { LanguageProvider } from "./i18n";
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AdminDataManagementNav />
           <AdminVisualTheme />
           <ProductFitInputBridge />
+          <ProductFitResultFeedback />
         </LanguageProvider>
       </body>
     </html>
