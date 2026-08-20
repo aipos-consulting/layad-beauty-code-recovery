@@ -33,36 +33,22 @@ export function classifyProductInput(value: string): ProductInputType {
 export function validateProductInput(value: string): { valid: boolean; message?: string } {
   const trimmed = value.trim();
 
-  if (!trimmed) {
-    return { valid: false, message: "상품명 또는 상품 링크를 입력해 주세요." };
-  }
-
-  if (DANGEROUS_SCHEME_PATTERN.test(trimmed)) {
-    return { valid: false, message: "상품 링크는 http:// 또는 https:// 형식이어야 합니다." };
-  }
+  if (!trimmed) return { valid: false, message: "상품명 또는 상품 링크를 입력해 주세요." };
+  if (DANGEROUS_SCHEME_PATTERN.test(trimmed)) return { valid: false, message: "상품 링크는 http:// 또는 https:// 형식이어야 합니다." };
 
   const inputType = classifyProductInput(trimmed);
-
   if (inputType === "name") {
-    if (trimmed.length > 200) {
-      return { valid: false, message: "상품명은 200자 이하로 입력해 주세요." };
-    }
+    if (trimmed.length > 200) return { valid: false, message: "상품명은 200자 이하로 입력해 주세요." };
     return { valid: true };
   }
 
-  if (trimmed.length > 2000) {
-    return { valid: false, message: "상품 링크는 2,000자 이하로 입력해 주세요." };
-  }
-
+  if (trimmed.length > 2000) return { valid: false, message: "상품 링크는 2,000자 이하로 입력해 주세요." };
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return { valid: false, message: "상품 링크는 http:// 또는 https:// 형식이어야 합니다." };
-    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { valid: false, message: "상품 링크는 http:// 또는 https:// 형식이어야 합니다." };
   } catch {
     return { valid: false, message: "유효하지 않은 상품 링크입니다." };
   }
-
   return { valid: true };
 }
 
@@ -76,6 +62,22 @@ export function createProductAnalysisRequest(
   const randomId = typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  if (typeof window !== "undefined") {
+    void fetch("/api/product-analysis-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beautyCode, inputType, inputValue }),
+      keepalive: true,
+    }).then(async (response) => {
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { message?: string } | null;
+        console.error("Product analysis request was not persisted", payload?.message ?? response.status);
+      }
+    }).catch((error) => {
+      console.error("Product analysis request network failure", error);
+    });
+  }
 
   return {
     id: randomId,
