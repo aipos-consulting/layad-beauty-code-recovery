@@ -9,6 +9,7 @@ import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import ProductFitInputBridge from "./product-fit-input-bridge";
 import UserBottomTabs from "./user-bottom-tabs";
+import BeautyTypeResultDescription from "./beauty-type-result-description";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <LanguageProvider>
           {children}
           <UserBottomTabs />
+          <BeautyTypeResultDescription />
           <UiAdjustments />
           <AnalysisProcessingFeedback />
           <AnonymousDataCapture />
