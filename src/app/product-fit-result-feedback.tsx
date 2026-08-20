@@ -168,9 +168,9 @@ export default function ProductFitResultFeedback() {
               {view.fits.map((fit) => (
                 <div
                   key={fit.beautyCode}
-                  className={`rounded-xl border px-2 py-3 text-center ${fit.beautyCode === view.beautyCode ? "border-[#c86f82] bg-[#fff0f2]" : "border-[#ead7db] bg-white"}`}
+                  className={`min-w-0 rounded-xl border px-1.5 py-3 text-center ${fit.beautyCode === view.beautyCode ? "border-[#c86f82] bg-[#fff0f2]" : "border-[#ead7db] bg-white"}`}
                 >
-                  <div className="text-xs font-semibold text-[#6d5960]">{fit.beautyCode}</div>
+                  <div className="whitespace-nowrap text-[11px] font-semibold tracking-[-0.02em] text-[#6d5960] sm:text-xs">{fit.beautyCode}</div>
                   <div className="mt-1 text-sm font-bold text-[#4f4144]">{fit.fitScore}</div>
                 </div>
               ))}
