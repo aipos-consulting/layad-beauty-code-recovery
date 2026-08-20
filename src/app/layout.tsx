@@ -33,15 +33,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko" className={`${leagueSpartan.variable} ${sourceCode.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col pb-20 md:pb-0">
         <LanguageProvider>
-          <ToneSurface>{children}</ToneSurface>
-          <UserBottomTabs />
-          <UiAdjustments />
-          <AnonymousDataCapture />
-          <AdminAiWorkflow />
-          <AdminDataManagementNav />
-          <AdminVisualTheme />
-          <ProductFitInputBridge />
-          <ProductFitResultFeedback />
+          <ToneSurface>
+            {children}
+            <UserBottomTabs />
+            <UiAdjustments />
+            <AnonymousDataCapture />
+            <AdminAiWorkflow />
+            <AdminDataManagementNav />
+            <AdminVisualTheme />
+            <ProductFitInputBridge />
+            <ProductFitResultFeedback />
+          </ToneSurface>
         </LanguageProvider>
       </body>
     </html>
