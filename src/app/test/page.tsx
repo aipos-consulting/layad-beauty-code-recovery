@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useMemo, useState } from "react";
 import { BEAUTY_TYPES, type BeautyTypeCode } from "@/lib/review-product-fit";
-import { BEAUTY_TYPE_DESCRIPTIONS_KO } from "@/lib/beauty-type-descriptions";
+import { BEAUTY_TYPE_DESCRIPTIONS } from "@/lib/beauty-type-descriptions-localized";
 import { createProductAnalysisRequest, validateProductInput, type ProductAnalysisRequest } from "@/lib/product-analysis-request";
 import { LanguageSwitcher, type Locale, useLanguage } from "../i18n";
 
@@ -163,6 +163,9 @@ export default function TestPage() {
 
   const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
+  const typeDescription = BEAUTY_TYPE_DESCRIPTIONS[locale][finalCode];
+  const typeTitle = locale === "ko" ? `${finalCode} 유형 설명` : locale === "ja" ? `${finalCode} タイプ説明` : `${finalCode} Type Profile`;
+
   if (completed) return (
     <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
       <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
@@ -174,11 +177,11 @@ export default function TestPage() {
           const [first, second] = axisPairs[axis]; const result = scores[first] >= 3 ? first : second;
           return <div key={axis} className="rounded-2xl border border-[#f1dfe2] bg-[#fffafa] p-5 text-left"><p className="text-xs font-semibold tracking-[0.16em] text-[#b97b88]">{axisNames[axis]}</p><p className="mt-2 text-2xl font-semibold">{result}</p><p className="mt-2 text-sm text-[#7e7070]">{first} {scores[first]}{text.points} · {second} {scores[second]}{text.points}</p></div>;
         })}</div>
-        {locale === "ko" && BEAUTY_TYPE_DESCRIPTIONS_KO[finalCode] ? (
+        {typeDescription ? (
           <section className="mt-8 rounded-3xl border border-[#f1dfe2] bg-[#fffafa] px-5 py-6 text-left sm:px-7 sm:py-7">
             <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">LAYAD 16 TYPE</p>
-            <h2 className="mt-2 text-xl font-semibold text-[#4d3f42] sm:text-2xl">{finalCode} 유형 설명</h2>
-            <div className="mt-5 whitespace-pre-line text-sm leading-7 text-[#6f6063] sm:text-[15px]">{BEAUTY_TYPE_DESCRIPTIONS_KO[finalCode]}</div>
+            <h2 className="mt-2 text-xl font-semibold text-[#4d3f42] sm:text-2xl">{typeTitle}</h2>
+            <div className="mt-5 whitespace-pre-line text-sm leading-7 text-[#6f6063] sm:text-[15px]">{typeDescription}</div>
           </section>
         ) : null}
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
