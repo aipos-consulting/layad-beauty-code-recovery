@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { League_Spartan, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
+import "./tone.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
 import AdminAiWorkflow from "./admin-ai-workflow";
@@ -8,6 +9,7 @@ import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import ProductFitInputBridge from "./product-fit-input-bridge";
 import ProductFitResultFeedback from "./product-fit-result-feedback";
+import ToneSurface from "./tone-surface";
 import UserBottomTabs from "./user-bottom-tabs";
 import { LanguageProvider } from "./i18n";
 
@@ -31,7 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko" className={`${leagueSpartan.variable} ${sourceCode.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col pb-20 md:pb-0">
         <LanguageProvider>
-          {children}
+          <ToneSurface>{children}</ToneSurface>
           <UserBottomTabs />
           <UiAdjustments />
           <AnonymousDataCapture />
