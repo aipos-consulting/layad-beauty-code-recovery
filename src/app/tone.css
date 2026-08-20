@@ -1,0 +1,119 @@
+.layad-user-tone {
+  --layad-bg: #F6F4F0;
+  --layad-fg: #222222;
+  --layad-panel: #EEE9E2;
+  --layad-panel-strong: #E7E1D9;
+  --layad-line: #D7D0C7;
+  --layad-line-strong: #A99F93;
+  --layad-muted: #625D57;
+  --layad-dark: #222222;
+  min-height: 100vh;
+  background: var(--layad-bg);
+  color: var(--layad-fg);
+}
+
+.layad-user-tone > main,
+.layad-user-tone main {
+  background-color: var(--layad-bg) !important;
+  color: var(--layad-fg) !important;
+}
+
+.layad-user-tone input,
+.layad-user-tone select,
+.layad-user-tone textarea {
+  background-color: #FBFAF7 !important;
+  border-color: var(--layad-line) !important;
+  color: var(--layad-fg) !important;
+}
+
+.layad-user-tone input::placeholder,
+.layad-user-tone textarea::placeholder {
+  color: #857E76 !important;
+}
+
+.layad-user-tone a,
+.layad-user-tone button {
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.layad-user-tone button:focus-visible,
+.layad-user-tone a:focus-visible,
+.layad-user-tone input:focus-visible,
+.layad-user-tone select:focus-visible,
+.layad-user-tone textarea:focus-visible {
+  outline: 2px solid var(--layad-line-strong);
+  outline-offset: 2px;
+}
+
+/* Keep the original landing page as the visual source of truth. */
+.layad-user-tone .layad-landing {
+  background-color: var(--layad-bg) !important;
+  color: var(--layad-fg) !important;
+}
+
+/* Neutralize the former pink page wash while preserving component structure. */
+.layad-user-tone main [class*="bg-[#fff"],
+.layad-user-tone main [class*="bg-white"] {
+  background-color: #FBFAF7 !important;
+}
+
+.layad-user-tone main [class*="border-[#e"],
+.layad-user-tone main [class*="border-[#f"] {
+  border-color: var(--layad-line) !important;
+}
+
+/* Primary actions follow the landing page's black pill language. */
+.layad-user-tone main button[class*="bg-[#d88c9c]"],
+.layad-user-tone main button[class*="bg-[#c86f82]"],
+.layad-user-tone main a[class*="bg-[#d88c9c]"],
+.layad-user-tone main a[class*="bg-[#c86f82]"] {
+  background-color: var(--layad-dark) !important;
+  border-color: var(--layad-dark) !important;
+  color: var(--layad-bg) !important;
+}
+
+.layad-user-tone main button[class*="bg-[#d88c9c]"]:hover,
+.layad-user-tone main button[class*="bg-[#c86f82]"]:hover,
+.layad-user-tone main a[class*="bg-[#d88c9c]"]:hover,
+.layad-user-tone main a[class*="bg-[#c86f82]"]:hover {
+  background-color: #3A3836 !important;
+}
+
+/* Secondary/selectable surfaces use the warm beige family from the first screen. */
+.layad-user-tone main [class*="bg-[#fff0f2]"],
+.layad-user-tone main [class*="bg-[#fff4f6]"],
+.layad-user-tone main [class*="bg-[#fffafa]"] {
+  background-color: var(--layad-panel) !important;
+}
+
+.layad-user-tone main [class*="text-[#806f72]"],
+.layad-user-tone main [class*="text-[#6d5960]"],
+.layad-user-tone main [class*="text-[#5f5053]"] {
+  color: var(--layad-muted) !important;
+}
+
+/* Product-fit modal: match landing page without changing result logic. */
+.layad-user-tone + div,
+.layad-user-tone ~ div {
+  font-family: inherit;
+}
+
+.layad-tone-modal {
+  background-color: #FBFAF7 !important;
+  color: var(--layad-fg) !important;
+}
+
+.layad-tone-modal .layad-tone-score {
+  background-color: var(--layad-panel-strong) !important;
+}
+
+.layad-tone-modal .layad-tone-primary {
+  background-color: var(--layad-dark) !important;
+  color: var(--layad-bg) !important;
+}
+
+@media (max-width: 640px) {
+  .layad-user-tone {
+    min-height: 100dvh;
+  }
+}
