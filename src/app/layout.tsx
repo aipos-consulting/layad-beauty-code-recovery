@@ -11,6 +11,7 @@ import ProductFitInputBridge from "./product-fit-input-bridge";
 import ProductFitResultFeedback from "./product-fit-result-feedback";
 import ToneSurface from "./tone-surface";
 import UserBottomTabs from "./user-bottom-tabs";
+import UserSaveBridge from "./user-save-bridge";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <ToneSurface>
             {children}
             <UserBottomTabs />
+            <UserSaveBridge />
             <UiAdjustments />
             <AnonymousDataCapture />
             <AdminAiWorkflow />
