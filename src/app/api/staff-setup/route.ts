@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
   if (listError) return NextResponse.json({ ok: false, message: "운영 계정 확인에 실패했습니다." }, { status: 500 });
 
   let user = usersData.users.find(item => item.email?.toLowerCase() === SETUP_EMAIL);
+  if (user?.app_metadata?.staff_role === "admin") {
+    return NextResponse.json({ ok: false, message: "초기설정이 이미 완료된 계정입니다. 로그인 화면을 이용해 주세요." }, { status: 409 });
+  }
+
   if (user) {
-    const { data: roleData } = await supabase.from("staff_roles").select("role").eq("user_id", user.id).maybeSingle();
-    if (roleData?.role === "admin") {
-      return NextResponse.json({ ok: false, message: "초기설정이 이미 완료된 계정입니다. 로그인 화면을 이용해 주세요." }, { status: 409 });
-    }
     const { data: updated, error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
       password,
       email_confirm: true,
@@ -55,11 +55,12 @@ export async function POST(request: NextRequest) {
     user = created.user;
   }
 
-  const { error: roleError } = await supabase.from("staff_roles").upsert({ user_id: user.id, role: "admin", updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-  if (roleError) {
-    await supabase.auth.admin.deleteUser(user.id).catch(() => undefined);
-    return NextResponse.json({ ok: false, message: "권한 부여에 실패했습니다." }, { status: 500 });
-  }
+  // staff_roles is a secondary mirror only. Auth app_metadata is the source of truth.
+  const { error: roleError } = await supabase.from("staff_roles").upsert(
+    { user_id: user.id, role: "admin", updated_at: new Date().toISOString() },
+    { onConflict: "user_id" },
+  );
+  if (roleError) console.warn("staff_roles mirror write failed", roleError.message);
 
-  return NextResponse.json({ ok: true, email: SETUP_EMAIL, role: "admin" });
+  return NextResponse.json({ ok: true, email: SETUP_EMAIL, role: "admin", roleMirror: roleError ? "pending" : "synced" });
 }
