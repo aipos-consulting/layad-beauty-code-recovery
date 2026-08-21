@@ -20,17 +20,25 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({ email, password }),
     cache: "no-store",
   });
-  const token = await tokenResponse.json().catch(() => ({})) as { access_token?: string; expires_in?: number; user?: { id?: string }; error_description?: string; msg?: string };
+  const token = await tokenResponse.json().catch(() => ({})) as {
+    access_token?: string;
+    expires_in?: number;
+    user?: { id?: string; app_metadata?: { staff_role?: "ceo" | "admin" } };
+  };
   if (!tokenResponse.ok || !token.access_token || !token.user?.id) {
     return NextResponse.json({ ok: false, message: "로그인 정보를 확인해 주세요." }, { status: 401 });
   }
 
-  const roleResponse = await fetch(`${supabaseUrl}/rest/v1/staff_roles?user_id=eq.${encodeURIComponent(token.user.id)}&select=role&limit=1`, {
-    headers: { apikey: publishableKey, Authorization: `Bearer ${token.access_token}` },
-    cache: "no-store",
-  });
-  const roles = await roleResponse.json().catch(() => []) as Array<{ role?: string }>;
-  const role = roles[0]?.role;
+  let role = token.user.app_metadata?.staff_role;
+  if (!role) {
+    const roleResponse = await fetch(`${supabaseUrl}/rest/v1/staff_roles?user_id=eq.${encodeURIComponent(token.user.id)}&select=role&limit=1`, {
+      headers: { apikey: publishableKey, Authorization: `Bearer ${token.access_token}` },
+      cache: "no-store",
+    });
+    const roles = await roleResponse.json().catch(() => []) as Array<{ role?: "ceo" | "admin" }>;
+    role = roles[0]?.role;
+  }
+
   const allowed = target === "admin" ? role === "admin" : role === "ceo" || role === "admin";
   if (!allowed) return NextResponse.json({ ok: false, message: "이 계정에는 해당 화면 접근 권한이 없습니다." }, { status: 403 });
 
