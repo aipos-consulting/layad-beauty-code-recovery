@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     beautyCode?: string;
     source?: string;
     axisScores?: Record<string, number>;
+    clientRef?: string;
     productRef?: string;
     productName?: string;
     fitScore?: number | null;
@@ -41,11 +42,13 @@ export async function POST(request: NextRequest) {
   if (body.action === "save-code") {
     const beautyCode = String(body.beautyCode ?? "").trim().toUpperCase();
     if (!/^[OD][GM][PC][VE]$/.test(beautyCode)) return NextResponse.json({ ok: false, message: "Beauty Code를 확인해 주세요." }, { status: 400 });
+    const clientRef = body.clientRef ? String(body.clientRef).slice(0, 120) : null;
     const { data, error } = await supabase.rpc("save_user_beauty_code", {
       p_user_id: user.id,
       p_beauty_code: beautyCode,
       p_source: String(body.source ?? "test"),
       p_axis_scores: body.axisScores ?? {},
+      p_client_ref: clientRef,
     });
     if (error) return NextResponse.json({ ok: false, message: "Beauty Code 저장에 실패했습니다. 다시 시도해 주세요." }, { status: 500 });
     await supabase.from("user_profiles").upsert({ user_id: user.id, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
