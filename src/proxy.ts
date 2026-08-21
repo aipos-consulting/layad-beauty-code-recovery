@@ -29,7 +29,7 @@ async function resolveRole(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (path === "/ceo/login" || path === "/admin/login" || path.startsWith("/api/staff-auth/") || path === "/staff-setup" || path === "/api/staff-setup") return NextResponse.next();
+  if (path === "/ceo/login" || path === "/ceo/activate" || path === "/api/ceo-activate" || path === "/admin/login" || path.startsWith("/api/staff-auth/") || path === "/staff-setup" || path === "/api/staff-setup") return NextResponse.next();
 
   const protectsCeo = path === "/ceo" || path.startsWith("/ceo/") || path === "/api/admin/dashboard" || path === "/api/admin/ai-usage";
   const protectsAdmin = path === "/admin" || path.startsWith("/admin/") || (path.startsWith("/api/admin/") && !protectsCeo);
@@ -47,4 +47,4 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/ceo/:path*", "/admin/:path*", "/api/admin/:path*", "/api/staff-auth/:path*", "/staff-setup", "/api/staff-setup"] };
+export const config = { matcher: ["/ceo/:path*", "/admin/:path*", "/api/admin/:path*", "/api/staff-auth/:path*", "/api/ceo-activate", "/staff-setup", "/api/staff-setup"] };
