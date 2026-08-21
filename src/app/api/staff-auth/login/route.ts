@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const STAFF_COOKIE = "layad_staff_access_v2";
 
 export async function POST(request: NextRequest) {
   if (!supabaseUrl || !publishableKey) {
@@ -43,12 +44,13 @@ export async function POST(request: NextRequest) {
   if (!allowed) return NextResponse.json({ ok: false, message: "이 계정에는 해당 화면 접근 권한이 없습니다." }, { status: 403 });
 
   const response = NextResponse.json({ ok: true, role, redirectTo: target === "admin" ? "/admin" : "/ceo" });
-  response.cookies.set("layad_staff_access", token.access_token, {
+  response.cookies.set(STAFF_COOKIE, token.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: Math.max(60, Number(token.expires_in ?? 3600)),
   });
+  response.cookies.set("layad_staff_access", "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
   return response;
 }
