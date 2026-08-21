@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type MenuItem = { label: string; href: string };
 type MenuGroup = { label: string; items: MenuItem[] };
@@ -22,9 +22,20 @@ function isActive(pathname: string, href: string) {
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
   const isLogin = pathname === "/admin/login";
   const isHomeDashboard = pathname === "/admin";
   if (isLogin) return <>{children}</>;
+
+  async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/staff-auth/logout", { method: "POST", cache: "no-store" });
+    } finally {
+      window.location.replace("/admin/login");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#fbf7f7] text-[#382d2d] lg:flex">
@@ -33,11 +44,20 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <nav className="mt-7 flex-1 space-y-6">
           {menuGroups.map(group => <section key={group.label}><p className="px-3 text-[11px] font-semibold tracking-[.12em] text-[#a39598]">{group.label}</p><div className="mt-2 space-y-1">{group.items.map(item => <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-3 text-sm transition ${isActive(pathname, item.href) ? "bg-[#fff0f3] font-semibold text-[#a94f65]" : "text-[#65585b] hover:bg-[#fbf3f5]"}`}>{item.label}</Link>)}</div></section>)}
         </nav>
-        <div className="mt-6 space-y-2"><Link href="/ceo" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">CEO Dashboard</Link><Link href="/" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">사용자 화면</Link></div>
+        <div className="mt-6 space-y-2">
+          <Link href="/ceo" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">CEO Dashboard</Link>
+          <Link href="/" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">사용자 화면</Link>
+          <button type="button" onClick={() => void logout()} disabled={loggingOut} className="block w-full rounded-xl border border-[#e5c7cc] px-3 py-3 text-center text-sm font-semibold text-[#a94f65] hover:bg-[#fff0f3] disabled:opacity-50">{loggingOut ? "로그아웃 중..." : "로그아웃"}</button>
+        </div>
       </aside>
 
       <div className="min-w-0 flex-1">
-        <div className="border-b border-[#eadfe1] bg-white px-3 py-3 lg:hidden"><div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{menuGroups.map(group => group.items.map(item => <Link key={item.href} href={item.href} className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>{item.label}</Link>))}</div></div>
+        <div className="border-b border-[#eadfe1] bg-white px-3 py-3 lg:hidden">
+          <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {menuGroups.map(group => group.items.map(item => <Link key={item.href} href={item.href} className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>{item.label}</Link>))}
+            <button type="button" onClick={() => void logout()} disabled={loggingOut} className="shrink-0 whitespace-nowrap rounded-full border border-[#e5c7cc] bg-white px-4 py-2 text-sm font-semibold text-[#a94f65] disabled:opacity-50">{loggingOut ? "로그아웃 중..." : "로그아웃"}</button>
+          </div>
+        </div>
         <div className={`admin-route-content min-w-0 overflow-x-hidden ${isHomeDashboard ? "admin-home-dashboard" : ""}`}>{children}</div>
       </div>
 
