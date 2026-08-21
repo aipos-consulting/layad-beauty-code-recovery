@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       sessionId = await createSession(request, body.beautyCode, key);
     }
 
-    let product = await findExactProduct(body.inputType, inputValue, key);
+    let product: ProductCandidate | null = await findExactProduct(body.inputType, inputValue, key);
     let resolvedByBrand = false;
     let resolvedByAlias = false;
 
