@@ -12,8 +12,11 @@ async function resolveRole(request: NextRequest) {
     cache: "no-store",
   });
   if (!userResponse.ok) return null;
-  const user = await userResponse.json() as { id?: string };
+  const user = await userResponse.json() as { id?: string; app_metadata?: { staff_role?: "ceo" | "admin" } };
   if (!user.id) return null;
+
+  const metadataRole = user.app_metadata?.staff_role;
+  if (metadataRole === "ceo" || metadataRole === "admin") return metadataRole;
 
   const roleResponse = await fetch(`${supabaseUrl}/rest/v1/staff_roles?user_id=eq.${encodeURIComponent(user.id)}&select=role&limit=1`, {
     headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
@@ -26,7 +29,7 @@ async function resolveRole(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (path === "/ceo/login" || path === "/admin/login" || path.startsWith("/api/staff-auth/")) return NextResponse.next();
+  if (path === "/ceo/login" || path === "/admin/login" || path.startsWith("/api/staff-auth/") || path === "/staff-setup" || path === "/api/staff-setup") return NextResponse.next();
 
   const protectsCeo = path === "/ceo" || path.startsWith("/ceo/") || path === "/api/admin/dashboard" || path === "/api/admin/ai-usage";
   const protectsAdmin = path === "/admin" || path.startsWith("/admin/") || (path.startsWith("/api/admin/") && !protectsCeo);
@@ -44,4 +47,4 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/ceo/:path*", "/admin/:path*", "/api/admin/:path*", "/api/staff-auth/:path*"] };
+export const config = { matcher: ["/ceo/:path*", "/admin/:path*", "/api/admin/:path*", "/api/staff-auth/:path*", "/staff-setup", "/api/staff-setup"] };
