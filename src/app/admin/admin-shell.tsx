@@ -12,7 +12,7 @@ const menuGroups: MenuGroup[] = [
   { label: "상품 운영", items: [{ label: "상품 신청 정보", href: "/admin/requests" }, { label: "분석 작업", href: "/admin/analysis" }, { label: "상품 일괄 분석", href: "/admin/batch-import" }, { label: "분석 데이터 조회", href: "/admin/analysis-data" }, { label: "키워드 테이블 조회", href: "/admin/keywords" }, { label: "스마트스토어 연결", href: "/admin/smartstore" }, { label: "상품 관리", href: "/admin/products" }, { label: "적합도 결과", href: "/admin/results" }] },
   { label: "커뮤니티", items: [{ label: "커뮤니티 관리", href: "/admin/community" }] },
   { label: "데이터 관리", items: [{ label: "운영 데이터 관리", href: "/admin/data-management" }] },
-  { label: "시스템", items: [{ label: "운영 설정 · Cost Control", href: "/admin/settings" }] },
+  { label: "시스템", items: [{ label: "접근 권한 관리", href: "/admin/access-management" }, { label: "운영 설정 · Cost Control", href: "/admin/settings" }] },
 ];
 
 function isActive(pathname: string, href: string) {
