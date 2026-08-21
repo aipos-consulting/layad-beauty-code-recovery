@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const STAFF_COOKIE = "layad_staff_access_v2";
 
 async function resolveRole(request: NextRequest) {
-  const token = request.cookies.get("layad_staff_access")?.value;
+  const token = request.cookies.get(STAFF_COOKIE)?.value;
   if (!token || !supabaseUrl || !publishableKey) return null;
 
   const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
