@@ -15,6 +15,10 @@ type ProductCandidate = {
   category: string | null;
 };
 
+type ProductAliasRow = {
+  product_id: string;
+};
+
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -68,6 +72,17 @@ async function createSession(request: NextRequest, beautyCode: string, key: stri
   return rows[0].id;
 }
 
+async function findProductById(productId: string, key: string) {
+  const response = await db(
+    `products?id=eq.${encodeURIComponent(productId)}&deleted_at=is.null&select=id,canonical_name,product_url,brand,category&limit=1`,
+    { method: "GET" },
+    key,
+  );
+  if (!response.ok) throw new Error(`상품 조회 실패: ${response.status}`);
+  const rows = await response.json() as ProductCandidate[];
+  return rows[0] ?? null;
+}
+
 async function findExactProduct(inputType: "name" | "url", inputValue: string, key: string) {
   const path = inputType === "url"
     ? `products?product_url=eq.${encodeURIComponent(inputValue)}&deleted_at=is.null&select=id,canonical_name,product_url,brand,category&limit=1`
@@ -76,6 +91,18 @@ async function findExactProduct(inputType: "name" | "url", inputValue: string, k
   if (!response.ok) throw new Error(`상품 조회 실패: ${response.status}`);
   const rows = await response.json() as ProductCandidate[];
   return rows[0] ?? null;
+}
+
+async function findAliasProduct(inputValue: string, key: string) {
+  const response = await db(
+    `product_aliases?normalized_alias=eq.${encodeURIComponent(normalize(inputValue))}&select=product_id&limit=1`,
+    { method: "GET" },
+    key,
+  );
+  if (!response.ok) throw new Error(`상품 별칭 조회 실패: ${response.status}`);
+  const rows = await response.json() as ProductAliasRow[];
+  if (!rows[0]?.product_id) return null;
+  return await findProductById(rows[0].product_id, key);
 }
 
 async function findByBrand(inputValue: string, key: string) {
@@ -141,6 +168,12 @@ export async function POST(request: NextRequest) {
 
     let product = await findExactProduct(body.inputType, inputValue, key);
     let resolvedByBrand = false;
+    let resolvedByAlias = false;
+
+    if (!product && body.inputType === "name") {
+      product = await findAliasProduct(inputValue, key);
+      resolvedByAlias = Boolean(product);
+    }
 
     if (!product && body.inputType === "name") {
       const brandMatches = await findByBrand(inputValue, key);
@@ -160,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const count = await fitCount(product.id, key);
     const status = count === 16 ? "completed" : "submitted";
-    const storedInput = resolvedByBrand && product.canonical_name ? product.canonical_name : inputValue;
+    const storedInput = (resolvedByBrand || resolvedByAlias) && product.canonical_name ? product.canonical_name : inputValue;
 
     const insert = await db("product_analysis_requests", {
       method: "POST",
@@ -187,10 +220,11 @@ export async function POST(request: NextRequest) {
       productName: product.canonical_name ?? storedInput,
       status,
       resolvedByBrand,
+      resolvedByAlias,
       message: status === "completed"
         ? "이미 분석된 상품 결과가 있습니다."
-        : resolvedByBrand
-          ? `${inputValue} 브랜드의 ${product.canonical_name} 상품으로 연결해 분석 대기에 등록했습니다.`
+        : resolvedByBrand || resolvedByAlias
+          ? `${inputValue}을(를) ${product.canonical_name} 상품으로 연결해 분석 대기에 등록했습니다.`
           : "상품 분석 요청을 대기열에 등록했습니다.",
     });
   } catch (error) {
