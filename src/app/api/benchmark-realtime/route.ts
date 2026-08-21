@@ -36,15 +36,15 @@ function outputText(payload: OpenAIResponse) {
 function toEvidence(result: AIResult): EvidenceForScoring[] {
   const rows: EvidenceForScoring[] = [];
   result.reviews.forEach((review, reviewIndex) => {
-    review.features.forEach((feature, featureIndex) => {
+    review.features.forEach((feature) => {
       rows.push({
-        reviewId: `bench-${reviewIndex}`,
-        featureId: `bench-${reviewIndex}-${featureIndex}`,
+        reviewKey: `bench-${reviewIndex}`,
         axis: feature.axis,
         code: feature.code,
         sentiment: feature.sentiment,
         intensity: Math.max(0, Math.min(1, feature.intensity)),
         confidence: Math.max(0, Math.min(1, feature.confidence)),
+        verified: /^https?:\/\/(?:www\.)?oliveyoung\.co\.kr\//i.test(review.sourceUrl),
       });
     });
   });
@@ -95,7 +95,7 @@ export async function GET() {
     required: ["reviews"]
   };
 
-  const prompt = `Realtime benchmark for LAYAD. Exact product: ${PRODUCT}. Use web search. Find only 3 to 5 PUBLIC consumer-review evidence items for this exact cosmetic product. Stop as soon as enough evidence is found. Do not collect long quotes. Each review should be a short paraphrase with its real source URL. Extract at most 4 strong product-use features and map only to OD, GM, PC, VE with code, sentiment, intensity and confidence. Return fewer reviews rather than searching broadly or fabricating evidence. This is a latency-sensitive benchmark: prioritize fast, high-confidence evidence over exhaustive coverage.`;
+  const prompt = `Realtime benchmark for LAYAD. Exact product: ${PRODUCT}. Search ONLY Olive Young Korea. Find the first 3 to 5 PUBLIC consumer-review evidence items for this exact cosmetic product and stop immediately once enough evidence is found. Do not search other domains. Do not collect long quotes. Each review should be a short paraphrase with its real Olive Young source URL. Extract at most 4 strong product-use features and map only to OD, GM, PC, VE with code, sentiment, intensity and confidence. Return fewer reviews rather than searching broadly or fabricating evidence. Latency target is under 10 seconds, so prioritize fast, high-confidence evidence over exhaustive coverage.`;
 
   const openaiStart = performance.now();
   try {
@@ -105,7 +105,11 @@ export async function GET() {
       body: JSON.stringify({
         model: MODEL,
         store: false,
-        tools: [{ type: "web_search" }],
+        tools: [{
+          type: "web_search",
+          filters: { allowed_domains: ["oliveyoung.co.kr"] },
+          search_context_size: "low"
+        }],
         input: prompt,
         text: { format: { type: "json_schema", name: "layad_realtime_benchmark", strict: true, schema } }
       }),
@@ -113,11 +117,11 @@ export async function GET() {
     });
     const openaiMs = Math.round(performance.now() - openaiStart);
     if (!response.ok) {
-      return NextResponse.json({ ok: false, product: PRODUCT, model: MODEL, openaiMs, totalMs: Math.round(performance.now() - totalStart), status: response.status, error: (await response.text()).slice(0, 1000) }, { status: 502 });
+      return NextResponse.json({ ok: false, product: PRODUCT, model: MODEL, mode: "oliveyoung-first", openaiMs, totalMs: Math.round(performance.now() - totalStart), status: response.status, error: (await response.text()).slice(0, 1000) }, { status: 502 });
     }
     const payload = await response.json() as OpenAIResponse;
     const text = outputText(payload);
-    if (!text) return NextResponse.json({ ok: false, product: PRODUCT, model: MODEL, openaiMs, totalMs: Math.round(performance.now() - totalStart), error: "empty_output" }, { status: 502 });
+    if (!text) return NextResponse.json({ ok: false, product: PRODUCT, model: MODEL, mode: "oliveyoung-first", openaiMs, totalMs: Math.round(performance.now() - totalStart), error: "empty_output" }, { status: 502 });
 
     const parseStart = performance.now();
     const parsed = JSON.parse(text) as AIResult;
@@ -131,6 +135,7 @@ export async function GET() {
       ok: true,
       product: PRODUCT,
       model: MODEL,
+      mode: "oliveyoung-first",
       reviewCount: parsed.reviews.length,
       featureCount: evidences.length,
       openaiMs,
@@ -146,6 +151,7 @@ export async function GET() {
       ok: false,
       product: PRODUCT,
       model: MODEL,
+      mode: "oliveyoung-first",
       openaiMs,
       totalMs: Math.round(performance.now() - totalStart),
       within10s: false,
