@@ -3,8 +3,6 @@ import { League_Spartan, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
 import UiAdjustments from "./ui-adjustments";
 import AnonymousDataCapture from "./anonymous-data-capture";
-import AnalysisProcessingFeedback from "./analysis-processing-feedback";
-import RealtimeProductAnalysisBridge from "./realtime-product-analysis-bridge";
 import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
@@ -35,8 +33,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
           <UserBottomTabs />
           <UiAdjustments />
-          <AnalysisProcessingFeedback />
-          <RealtimeProductAnalysisBridge />
           <AnonymousDataCapture />
           <AdminAiWorkflow />
           <AdminDataManagementNav />
