@@ -64,19 +64,9 @@ export function createProductAnalysisRequest(
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   if (typeof window !== "undefined") {
-    void fetch("/api/product-analysis-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beautyCode, inputType, inputValue }),
-      keepalive: true,
-    }).then(async (response) => {
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { message?: string } | null;
-        console.error("Product analysis request was not persisted", payload?.message ?? response.status);
-      }
-    }).catch((error) => {
-      console.error("Product analysis request network failure", error);
-    });
+    window.dispatchEvent(new CustomEvent("layad:product-fit-request", {
+      detail: { beautyCode, inputType, inputValue },
+    }));
   }
 
   return {
