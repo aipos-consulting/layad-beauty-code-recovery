@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BEAUTY_TYPE_DESCRIPTIONS_KO } from "@/lib/beauty-type-descriptions";
 
 const PENDING_KEY = "layad-pending-beauty-code-v1";
 const PENDING_PRODUCT_KEY = "layad-pending-saved-product-v1";
@@ -108,6 +109,8 @@ export default function MyPage() {
   );
 
   const current = data?.codes.find(code => code.is_current) ?? data?.codes[0] ?? null;
+  const currentDescription = current ? BEAUTY_TYPE_DESCRIPTIONS_KO[current.beauty_code] : null;
+
   return (
     <main className="min-h-screen bg-[#fff8f8] px-5 py-10 text-[#382d2d] sm:px-8">
       <div className="mx-auto max-w-4xl">
@@ -122,7 +125,20 @@ export default function MyPage() {
 
         <section className="mt-7 rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]">
           <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">현재 Beauty Code</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">다시 테스트</Link></div>
-          {current ? <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center"><p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p><p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>{current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}</div> : <div className="mt-6 rounded-3xl border border-dashed border-[#e6cfd4] p-7 text-center"><p className="text-sm text-[#806f72]">아직 저장된 Beauty Code가 없습니다.</p><Link href="/test" className="mt-4 inline-block rounded-full bg-[#d88c9c] px-5 py-2.5 text-sm font-semibold text-white">테스트 시작</Link></div>}
+          {current ? (
+            <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
+              <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
+              <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
+              {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
+              {currentDescription ? (
+                <div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6">
+                  <p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">TYPE PROFILE</p>
+                  <h3 className="mt-2 text-lg font-semibold text-[#4f4144]">{current.beauty_code} 유형 설명</h3>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{currentDescription}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : <div className="mt-6 rounded-3xl border border-dashed border-[#e6cfd4] p-7 text-center"><p className="text-sm text-[#806f72]">아직 저장된 Beauty Code가 없습니다.</p><Link href="/test" className="mt-4 inline-block rounded-full bg-[#d88c9c] px-5 py-2.5 text-sm font-semibold text-white">테스트 시작</Link></div>}
         </section>
 
         <div className="mt-7 grid gap-7 md:grid-cols-2">
