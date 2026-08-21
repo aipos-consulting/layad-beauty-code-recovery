@@ -7,7 +7,7 @@ const tabs = [
   { label: "홈", href: "/", icon: "⌂" },
   { label: "테스트", href: "/test", icon: "✦" },
   { label: "커뮤니티", href: "/community", icon: "♡" },
-  { label: "내 코드", href: "/select-type", icon: "◎" },
+  { label: "My Page", href: "/mypage", icon: "◎" },
 ];
 
 function active(pathname:string, href:string){
@@ -17,7 +17,7 @@ function active(pathname:string, href:string){
 
 export default function UserBottomTabs(){
   const pathname=usePathname();
-  if(pathname.startsWith("/admin")) return null;
+  if(pathname.startsWith("/admin") || pathname.startsWith("/ceo")) return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#d8d0c7] bg-[#F6F4F0]/95 pb-[max(env(safe-area-inset-bottom),8px)] backdrop-blur md:hidden" aria-label="사용자 메뉴">
       <div className="mx-auto grid max-w-lg grid-cols-4">
