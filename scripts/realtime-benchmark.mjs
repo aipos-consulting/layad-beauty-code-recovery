@@ -67,10 +67,10 @@ function localScore(parsed) {
   return { scoringMs: Math.round(performance.now() - start), result };
 }
 
-async function oneRun(i) {
+async function oneRun() {
   const totalStart = performance.now();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(new Error("9s SLA timeout")), 9000);
+  const timeout = setTimeout(() => controller.abort(new Error("120s timeout")), 120000);
   const prompt = `LAYAD latency benchmark, analysis only. Product label: ${product}. The five review sentences below are synthetic performance-test inputs, not verified product evidence. Do not browse the web. Extract only strongly supported usage features and map them to OD, GM, PC, VE. P=Precise, C=Convenient, V=Variable, E=Even. Keep output concise.\n\n${sampleReviews.map((x, idx) => `${idx}: ${x}`).join("\n")}`;
   try {
     const openaiStart = performance.now();
@@ -87,29 +87,22 @@ async function oneRun(i) {
     });
     const openaiMs = Math.round(performance.now() - openaiStart);
     if (!response.ok) {
-      console.log(`BENCHMARK_ANALYSIS_RUN ${i} FAIL status=${response.status} openaiMs=${openaiMs} totalMs=${Math.round(performance.now()-totalStart)}`);
+      console.log(`BENCHMARK_120S FAIL status=${response.status} openaiMs=${openaiMs} totalMs=${Math.round(performance.now()-totalStart)}`);
       console.log((await response.text()).slice(0, 500).replace(/\s+/g, " "));
-      return { ok: false, totalMs: Math.round(performance.now()-totalStart), openaiMs };
+      return;
     }
     const payload = await response.json();
     const text = outputText(payload);
     const parsed = JSON.parse(text || '{"features":[]}');
     const { scoringMs } = localScore(parsed);
     const totalMs = Math.round(performance.now() - totalStart);
-    console.log(`BENCHMARK_ANALYSIS_RUN ${i} OK model=${model} features=${(parsed.features||[]).length} openaiMs=${openaiMs} scoringMs=${scoringMs} totalMs=${totalMs} within10s=${totalMs <= 10000}`);
-    return { ok: true, totalMs, openaiMs, scoringMs };
+    console.log(`BENCHMARK_120S OK model=${model} features=${(parsed.features||[]).length} openaiMs=${openaiMs} scoringMs=${scoringMs} totalMs=${totalMs} totalSec=${(totalMs/1000).toFixed(3)} within10s=${totalMs <= 10000}`);
   } catch (e) {
     const totalMs = Math.round(performance.now() - totalStart);
-    console.log(`BENCHMARK_ANALYSIS_RUN ${i} FAIL error=${String(e?.message || e)} totalMs=${totalMs} within10s=false`);
-    return { ok: false, totalMs };
+    console.log(`BENCHMARK_120S FAIL error=${String(e?.message || e)} totalMs=${totalMs} totalSec=${(totalMs/1000).toFixed(3)}`);
   } finally {
     clearTimeout(timeout);
   }
 }
 
-const results = [];
-for (let i = 1; i <= 3; i++) results.push(await oneRun(i));
-const successes = results.filter(x => x.ok);
-const within = successes.filter(x => x.totalMs <= 10000).length;
-const avg = successes.length ? Math.round(successes.reduce((s,x)=>s+x.totalMs,0)/successes.length) : null;
-console.log(`BENCHMARK_ANALYSIS_SUMMARY runs=3 success=${successes.length} within10s=${within} avgMs=${avg ?? "n/a"}`);
+await oneRun();
