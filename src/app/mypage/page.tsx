@@ -119,6 +119,12 @@ export default function MyPage() {
           <button onClick={logout} className="rounded-full border border-[#ead7db] px-5 py-2.5 text-sm font-semibold text-[#806f72]">로그아웃</button>
         </header>
 
+        <div className="mt-5">
+          <Link href="/fit" className="inline-flex items-center rounded-full border border-[#e5bcc4] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e] shadow-sm">
+            ← 상품 적합도 분석으로 돌아가기
+          </Link>
+        </div>
+
         {message ? <p className="mt-6 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#9a5a18]">{message}</p> : null}
         {pending ? <section className="mt-6 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">저장 대기 중인 Beauty Code가 있습니다.</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">이전 저장 중 오류가 있었더라도 결과는 브라우저에 남아 있습니다.</p><button onClick={savePending} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "저장 중..." : "다시 저장하기"}</button></section> : null}
         {pendingProduct ? <section className="mt-4 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">저장 대기 중인 상품이 있습니다.</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">로그인 전 또는 네트워크 오류 시 보관한 상품 적합도 결과입니다.</p><button onClick={savePendingProduct} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "저장 중..." : "상품 저장하기"}</button></section> : null}
