@@ -4,15 +4,83 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 const PENDING_KEY = "layad-pending-beauty-code-v1";
+const PENDING_PRODUCT_KEY = "layad-pending-saved-product-v1";
+const LAST_FIT_STATE_KEY = "layad-last-product-fit-state-v1";
+const LAST_SAVED_REQUEST_KEY = "layad-last-saved-product-request-v1";
 
 function makeRef() {
   try { return crypto.randomUUID(); } catch { return `layad-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
 
+type StoredFitState = {
+  beautyCode?: string;
+  result?: {
+    productName?: string;
+    score?: number;
+    requestId?: string;
+    sessionId?: string;
+  };
+};
+
 export default function UserSaveBridge() {
   const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname === "/fit") {
+      let saving = false;
+
+      const saveFitResult = async () => {
+        if (saving || !document.getElementById("fit-analysis-result")) return;
+
+        let saved: StoredFitState | null = null;
+        try {
+          const raw = localStorage.getItem(LAST_FIT_STATE_KEY);
+          if (!raw) return;
+          saved = JSON.parse(raw) as StoredFitState;
+        } catch {
+          return;
+        }
+
+        const requestId = saved?.result?.requestId?.trim();
+        const productName = saved?.result?.productName?.trim();
+        const beautyCode = saved?.beautyCode?.trim().toUpperCase();
+        const fitScore = saved?.result?.score;
+        if (!requestId || !productName || typeof fitScore !== "number") return;
+        if (localStorage.getItem(LAST_SAVED_REQUEST_KEY) === requestId) return;
+
+        const pending = {
+          productRef: requestId,
+          productName,
+          beautyCode,
+          fitScore,
+        };
+
+        saving = true;
+        localStorage.setItem(PENDING_PRODUCT_KEY, JSON.stringify(pending));
+        try {
+          const response = await fetch("/api/mypage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save-product", ...pending }),
+          });
+          const payload = await response.json().catch(() => ({})) as { ok?: boolean };
+          if (response.ok && payload.ok) {
+            localStorage.removeItem(PENDING_PRODUCT_KEY);
+            localStorage.setItem(LAST_SAVED_REQUEST_KEY, requestId);
+          }
+        } catch {
+          // Keep the pending product so My Page can retry saving it.
+        } finally {
+          saving = false;
+        }
+      };
+
+      void saveFitResult();
+      const observer = new MutationObserver(() => { void saveFitResult(); });
+      observer.observe(document.body, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    }
+
     if (pathname !== "/test") return;
 
     const install = () => {
