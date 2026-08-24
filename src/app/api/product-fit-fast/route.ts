@@ -5,17 +5,22 @@ export const maxDuration = 30;
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const MODEL = "gpt-5.4-nano";
-const ANALYSIS_VERSION = "layad-chatgpt-reference-v7-direct16-fallback";
+const ANALYSIS_VERSION = "layad-v8-current-analysis-original-score";
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
-type BeautyCode = typeof BEAUTY_CODES[number];
+type AxisScores = {
+  dry: number;
+  glow: number;
+  precise: number;
+  variable: number;
+};
 type AiResult = {
   canonical_name?: string;
   brand?: string | null;
   category?: string | null;
   confidence?: number;
   evidence_count?: number;
-  fits?: Partial<Record<BeautyCode, number>>;
+  axis_scores?: Partial<AxisScores>;
 };
 type BeginRow = { request_id:string; session_id:string; product_id:string; product_name:string|null; request_status:string; resolved_by_alias:boolean; cached_fit_score:number|null; cached_confidence:number|null; cached_review_count:number|null; ai_mode:string|null };
 
@@ -25,7 +30,7 @@ function normalize(v:string){ return v.normalize("NFKC").trim().replace(/\s+/g,"
 function device(ua:string){ if(/ipad|tablet/i.test(ua)) return "tablet"; if(/mobile|iphone|android/i.test(ua)) return "mobile"; return ua?"desktop":"unknown"; }
 async function resolveUrl(value:string){ try{ const p=new URL(value); const r=await fetch(p.toString(),{method:"GET",redirect:"follow",cache:"no-store",headers:{"User-Agent":"Mozilla/5.0 (compatible; LAYADProductResolver/2.0)"},signal:AbortSignal.timeout(3500)}); return new URL(r.url||p.toString()).toString(); }catch{return value;} }
 function outputText(p:unknown){ const d=p as {output?:Array<{content?:Array<{type?:string;text?:string}>}>}; for(const i of d.output??[]) for(const c of i.content??[]) if(c.type==="output_text"&&c.text) return c.text; return ""; }
-function clampScore(v:unknown){ const n=Math.round(Number(v)); return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50; }
+function clamp(v:unknown){ const n=Number(v); return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50; }
 function parse(text:string):AiResult {
   const cleaned=text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim();
   if(!cleaned) throw new Error("OpenAI 응답에 분석 JSON이 없습니다.");
@@ -33,25 +38,21 @@ function parse(text:string):AiResult {
   const end=cleaned.lastIndexOf("}");
   if(start<0||end<=start) throw new Error("OpenAI 분석 JSON이 완전하지 않습니다.");
   const parsed=JSON.parse(cleaned.slice(start,end+1)) as AiResult;
-  const missing=BEAUTY_CODES.filter(code=>parsed.fits?.[code]===undefined || !Number.isFinite(Number(parsed.fits?.[code])));
-  if(missing.length) throw new Error(`16유형 점수가 완전하지 않습니다: ${missing.join(",")}`);
+  const a=parsed.axis_scores;
+  if(!a || [a.dry,a.glow,a.precise,a.variable].some(v=>!Number.isFinite(Number(v)))) throw new Error("4축 분석 점수가 완전하지 않습니다.");
   return parsed;
 }
 
-const codeList=BEAUTY_CODES.join(", ");
 function buildPrompt(inputValue:string, fallback=false){
-  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${inputValue}\n\nBeauty Code 공식 축 정의\n- O/D: 피부 유분·건조 성향과 제품의 궁합\n- G/M: Glow(윤광·촉촉한 표현) / Matte(보송·매트한 표현)\n- P = Precise: 정교함·완성도 중심. 제품을 세밀하게 조절하고, 레이어링·커버·발색·지속력·피니시를 원하는 수준으로 최적화할 가치가 큰 경우 P 적합도가 높다. 사용이 쉽다는 이유만으로 C로 판단하지 않는다.\n- C = Convenient: 간편함·편의성 중심. 빠르고 단순하며 수정이 쉽고, 특별한 기술이나 세밀한 조절 없이도 무난한 결과를 얻는 것이 핵심 가치인 경우 C 적합도가 높다.\n- V = Variable: 제품·환경·사용량·도구·피부 상태 등에 따라 결과가 달라지는 성향\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 공식 상품 정보와 공개 리뷰/사용 경험을 우선 참고하세요. ${fallback?"웹 검색 도구를 사용할 수 없는 대체 분석입니다. 확실히 알 수 없는 특성은 중립적으로 평가하고 confidence를 0.35 이하로 낮추세요.":"웹 검색으로 상품을 먼저 정확히 식별하세요."}\n\n중요: 신호 몇 개를 산식으로 합성하지 말고, 상품 전체 특성을 종합하여 16개 유형을 서로 직접 비교 평가하세요. P/C는 반드시 위 공식 정의에 따라 판단하고, P를 단순히 '바르기 어려움'으로 해석하지 마세요. 같은 O/D, G/M, V/E 조건에서는 P와 C 중 제품의 핵심 가치에 더 맞는 쪽이 분명히 높아야 합니다. 실제 근거가 있으면 유형별 상대 차이가 드러나도록 점수를 사용하세요. 모든 점수를 동일하게 만들지 마세요.\n\n다음 16개 코드를 빠짐없이 0~100 정수로 평가하세요: ${codeList}.\n\nJSON만 반환하세요. 형식: {"canonical_name":"상품명","brand":"브랜드 또는 null","category":"카테고리 또는 null","confidence":0.0,"evidence_count":0,"fits":{"OGPV":0,"OGPE":0,"OGCV":0,"OGCE":0,"OMPV":0,"OMPE":0,"OMCV":0,"OMCE":0,"DGPV":0,"DGPE":0,"DGCV":0,"DGCE":0,"DMPV":0,"DMPE":0,"DMCV":0,"DMCE":0}}`;
+  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${inputValue}\n\n현재 LAYAD 분석 메커니즘을 유지하되, 최종 점수는 초기 LAYAD 공식 평가체계로 계산합니다. 당신은 최종 16유형 점수를 만들지 말고, 공개 근거로 아래 4개 방향성 점수만 판정하세요.\n\n공식 축 정의\n1. dry 0~100: 100에 가까울수록 D(건성 대응)에 강함. 보습, 당김·각질·들뜸 억제, 수분 유지, 건조 피부 베이스 적합성을 봅니다. 0에 가까울수록 O(유분 대응) 성향입니다.\n2. glow 0~100: 100에 가까울수록 G(Glow). 수분광·윤기·얇고 자연스러운 피부 표현에 적합합니다. 0에 가까울수록 M(Matte) 성향입니다.\n3. precise 0~100: 100에 가까울수록 P(Precise). 난이도가 아니라 정교한 조절, 레이어링, 커버·발색·피니시 최적화, 완성도 향상의 가치가 큰 제품입니다. 사용이 쉽더라도 이런 가치가 크면 P입니다. 0에 가까울수록 C(Convenient): 빠름, 단순함, 원스텝, 수정 용이성, 별도 조절 없이 무난한 결과가 핵심 가치입니다.\n4. variable 0~100: 100에 가까울수록 V(Variable). 계절·피부 컨디션·사용량·도구·환경에 맞춰 조절 가치가 크고 결과가 달라질 수 있습니다. 0에 가까울수록 E(Even): 비교적 일정하고 안정적인 결과입니다.\n\n점수 앵커\n- 매우 강함: 85~95\n- 강함: 70~84\n- 중립/혼합: 45~55\n- 약함: 20~40\n- 극단값 0 또는 100은 명확한 공개 근거가 있을 때만 사용\n\n초기 LAYAD 점수체계는 D/O 30점, G/M 25점, P/C 20점, V/E 25점의 총 100점 구조입니다. 예를 들어 어떤 제품이 D=90, G=76, P=90, V=92라면 DGPV 점수는 약 87점입니다. 이 예시는 점수 스케일을 설명하기 위한 것이며 특정 상품을 강제로 맞추기 위한 값이 아닙니다.\n\n${fallback?"웹 검색을 사용할 수 없는 대체 분석입니다. 확실하지 않은 축은 50에 가깝게 두고 confidence를 0.35 이하로 낮추세요.":"웹 검색으로 상품을 정확히 식별하고 공식 상품 정보와 공개 리뷰/사용 경험을 우선 확인하세요."}\n확인할 수 없는 사실은 추정하지 마세요.\n\nJSON만 반환하세요. 형식: {"canonical_name":"상품명","brand":"브랜드 또는 null","category":"카테고리 또는 null","confidence":0.0,"evidence_count":0,"axis_scores":{"dry":50,"glow":50,"precise":50,"variable":50}}`;
 }
 
 async function oneOpenAICall(openai:string,prompt:string,useWeb:boolean,timeoutMs:number){
-  const body:Record<string,unknown>={model:MODEL,input:prompt,max_output_tokens:1250};
+  const body:Record<string,unknown>={model:MODEL,input:prompt,max_output_tokens:800};
   if(useWeb) body.tools=[{type:"web_search"}];
   const response=await fetch("https://api.openai.com/v1/responses",{
-    method:"POST",
-    headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},
-    body:JSON.stringify(body),
-    cache:"no-store",
-    signal:AbortSignal.timeout(timeoutMs),
+    method:"POST",headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},
+    body:JSON.stringify(body),cache:"no-store",signal:AbortSignal.timeout(timeoutMs),
   });
   const payload=await response.json().catch(()=>({}));
   if(!response.ok) throw new Error((payload as {error?:{message?:string}}).error?.message??`OpenAI 호출 실패: ${response.status}`);
@@ -62,20 +63,20 @@ async function oneOpenAICall(openai:string,prompt:string,useWeb:boolean,timeoutM
 async function analyzeWithFallback(openai:string,inputValue:string){
   let primaryError:unknown;
   for(let attempt=0;attempt<2;attempt+=1){
-    try{
-      return {...await oneOpenAICall(openai,buildPrompt(inputValue,false),true,attempt===0?16000:12000),mode:"web" as const};
-    }catch(error){
-      primaryError=error;
-      if(attempt===0) await new Promise(resolve=>setTimeout(resolve,250));
-    }
+    try { return {...await oneOpenAICall(openai,buildPrompt(inputValue,false),true,attempt===0?16000:12000),mode:"web" as const}; }
+    catch(error){ primaryError=error; if(attempt===0) await new Promise(resolve=>setTimeout(resolve,250)); }
   }
   console.warn("Primary web analysis failed; using low-confidence fallback",primaryError);
-  try{
-    return {...await oneOpenAICall(openai,buildPrompt(inputValue,true),false,7000),mode:"fallback" as const};
-  }catch(fallbackError){
-    console.error("Fallback product analysis failed",fallbackError);
-    throw primaryError instanceof Error?primaryError:fallbackError;
-  }
+  try { return {...await oneOpenAICall(openai,buildPrompt(inputValue,true),false,7000),mode:"fallback" as const}; }
+  catch(fallbackError){ console.error("Fallback product analysis failed",fallbackError); throw primaryError instanceof Error?primaryError:fallbackError; }
+}
+
+function scoreForCode(code:string,a:AxisScores){
+  const od = code[0]==="D" ? a.dry : 100-a.dry;
+  const gm = code[1]==="G" ? a.glow : 100-a.glow;
+  const pc = code[2]==="P" ? a.precise : 100-a.precise;
+  const ve = code[3]==="V" ? a.variable : 100-a.variable;
+  return Math.round(od*0.30 + gm*0.25 + pc*0.20 + ve*0.25);
 }
 
 export async function POST(request:NextRequest){
@@ -112,7 +113,8 @@ export async function POST(request:NextRequest){
     const openAiMs=Date.now()-aiStarted;
     const confidence=Math.max(0,Math.min(mode==="fallback"?0.35:1,Number(parsed.confidence??0)));
     const evidence=Math.max(0,Math.min(99,Math.round(Number(parsed.evidence_count??0))));
-    const fits=BEAUTY_CODES.map(code=>{ const score=clampScore(parsed.fits?.[code]); return {beauty_code:code,raw_fit_score:score,fit_score:score}; });
+    const a:AxisScores={dry:clamp(parsed.axis_scores?.dry),glow:clamp(parsed.axis_scores?.glow),precise:clamp(parsed.axis_scores?.precise),variable:clamp(parsed.axis_scores?.variable)};
+    const fits=BEAUTY_CODES.map(code=>{ const score=scoreForCode(code,a); return {beauty_code:code,raw_fit_score:score,fit_score:score}; });
     const myFit=fits.find(f=>f.beauty_code===beautyCode)!;
     const usage=aiPayload as {usage?:{input_tokens?:number;output_tokens?:number}};
     const canonical=parsed.canonical_name?.trim()||inputValue;
@@ -131,7 +133,7 @@ export async function POST(request:NextRequest){
     return NextResponse.json({ok:true,status:"completed",cached:false,analysisMode:mode,requestId:row.request_id,sessionId:row.session_id,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
   }catch(error){
     const isTimeout=error instanceof Error && (error.name==="TimeoutError" || /timeout|timed out|시간.*초과/i.test(error.message));
-    const isMalformed=error instanceof SyntaxError || (error instanceof Error && /JSON|완전하지|16유형/i.test(error.message));
+    const isMalformed=error instanceof SyntaxError || (error instanceof Error && /JSON|완전하지|4축/i.test(error.message));
     const message=isTimeout?"상품 분석 서버가 혼잡합니다. 잠시 후 다시 시도해 주세요.":isMalformed?"상품 분석 결과를 완성하지 못했습니다. 다시 한 번 시도해 주세요.":error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
     console.error("Single-call product fit failed",error);
     return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":isMalformed?"PRODUCT_FIT_INCOMPLETE":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
