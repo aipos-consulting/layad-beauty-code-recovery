@@ -14,13 +14,36 @@ function dbHeaders(key:string, extra?:HeadersInit):HeadersInit { const h:Record<
 async function db(path:string, init:RequestInit, key:string){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:dbHeaders(key,init.headers),cache:"no-store"}); }
 function normalize(v:string){ return v.normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase(); }
 function device(ua:string){ if(/ipad|tablet/i.test(ua)) return "tablet"; if(/mobile|iphone|android/i.test(ua)) return "mobile"; return ua?"desktop":"unknown"; }
-async function resolveUrl(value:string){ try{ const p=new URL(value); const r=await fetch(p.toString(),{method:"GET",redirect:"follow",cache:"no-store",headers:{"User-Agent":"Mozilla/5.0 (compatible; LAYADProductResolver/2.0)"},signal:AbortSignal.timeout(2500)}); return new URL(r.url||p.toString()).toString(); }catch{return value;} }
+async function resolveUrl(value:string){ try{ const p=new URL(value); const r=await fetch(p.toString(),{method:"GET",redirect:"follow",cache:"no-store",headers:{"User-Agent":"Mozilla/5.0 (compatible; LAYADProductResolver/2.0)"},signal:AbortSignal.timeout(3500)}); return new URL(r.url||p.toString()).toString(); }catch{return value;} }
 function clamp(v:unknown){ const n=Number(v); return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50; }
 function normSignals(r:Partial<Signals>|undefined):Signals { return {oil_control:clamp(r?.oil_control),hydration:clamp(r?.hydration),glow_finish:clamp(r?.glow_finish),matte_finish:clamp(r?.matte_finish),precision_convenience:clamp(r?.precision_convenience),variability:clamp(r?.variability),consistency:clamp(r?.consistency)}; }
 function rawScore(code:string,s:Signals){ const p=s.precision_convenience; const c=100-p; const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?p:c,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
 function displayScore(raw:number){ return Math.round(40 + raw * 0.6); }
 function outputText(p:unknown){ const d=p as {output?:Array<{content?:Array<{type?:string;text?:string}>}>}; for(const i of d.output??[]) for(const c of i.content??[]) if(c.type==="output_text"&&c.text) return c.text; return ""; }
 function parse(text:string):AiResult { return JSON.parse(text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim()) as AiResult; }
+
+async function callOpenAI(openai:string,prompt:string){
+  let lastError:unknown;
+  for(let attempt=0;attempt<2;attempt+=1){
+    try{
+      const timeoutMs=attempt===0?14000:10000;
+      const response=await fetch("https://api.openai.com/v1/responses",{
+        method:"POST",
+        headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},
+        body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:420}),
+        cache:"no-store",
+        signal:AbortSignal.timeout(timeoutMs),
+      });
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error((payload as {error?:{message?:string}}).error?.message??`OpenAI 호출 실패: ${response.status}`);
+      return payload;
+    }catch(error){
+      lastError=error;
+      if(attempt===0) await new Promise(resolve=>setTimeout(resolve,250));
+    }
+  }
+  throw lastError instanceof Error?lastError:new Error("OpenAI 분석 요청 시간이 초과되었습니다.");
+}
 
 export async function POST(request:NextRequest){
   const startedAll=Date.now();
@@ -57,10 +80,8 @@ export async function POST(request:NextRequest){
 
     const prompt=`Research only public web information for this cosmetics product: ${inputValue}. Identify the product first, then use official product information and public review/usage evidence when available. Return JSON only: {"canonical_name":"","brand":null,"category":null,"confidence":0.0,"evidence_count":0,"signals":{"oil_control":0,"hydration":0,"glow_finish":0,"matte_finish":0,"precision_convenience":50,"variability":0,"consistency":0}}. Signal values are integers 0-100. For precision_convenience, 100 means strongly P (Precise): the product rewards deliberate technique, fine control, layering, tools, careful amount control, or skill-sensitive finishing. 0 means strongly C (Convenient): the product is fast, forgiving, easy to apply or correct, and needs little technique. This is one opposing axis, so do not score P and C independently. 50 is neutral. confidence is 0-1 and is only a reliability label, not a reason to refuse analysis. Do not invent facts. Use neutral 50 values for signals that cannot be supported by public evidence, and lower confidence accordingly.`;
     const aiStarted=Date.now();
-    const aiResponse=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:450}),cache:"no-store",signal:AbortSignal.timeout(7500)});
+    const aiPayload=await callOpenAI(openai,prompt);
     const openAiMs=Date.now()-aiStarted;
-    const aiPayload=await aiResponse.json().catch(()=>({}));
-    if(!aiResponse.ok) throw new Error((aiPayload as {error?:{message?:string}}).error?.message??`OpenAI 호출 실패: ${aiResponse.status}`);
     const parsed=parse(outputText(aiPayload));
     const confidence=Math.max(0,Math.min(1,Number(parsed.confidence??0)));
 
@@ -82,8 +103,9 @@ export async function POST(request:NextRequest){
 
     return NextResponse.json({ok:true,status:"completed",cached:false,requestId:row.request_id,sessionId:row.session_id,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
   }catch(error){
-    const message=error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
+    const isTimeout=error instanceof Error && (error.name==="TimeoutError" || /timeout|timed out|시간.*초과/i.test(error.message));
+    const message=isTimeout?"상품 정보를 확인하는 데 시간이 오래 걸렸습니다. 다시 한 번 시도해 주세요.":error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
     console.error("Single-call product fit failed",error);
-    return NextResponse.json({ok:false,code:"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:500});
+    return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
   }
 }
