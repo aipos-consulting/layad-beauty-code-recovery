@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type CodeRow = { beauty_code: string; is_current: boolean };
 type MyPagePayload = { ok?: boolean; code?: string; codes?: CodeRow[] };
@@ -9,6 +9,8 @@ type FastPayload = {
   ok?: boolean;
   status?: string;
   cached?: boolean;
+  requestId?: string;
+  sessionId?: string;
   productName?: string;
   beautyCode?: string;
   fitScore?: number;
@@ -18,6 +20,31 @@ type FastPayload = {
   timings?: { beginMs?: number; openAiMs?: number; finalizeMs?: number; totalMs?: number };
 };
 
+type FitRow = { beautyCode: string; fitScore: number; reviewCount: number; confidence: number };
+type DetailPayload = {
+  ok?: boolean;
+  status?: string;
+  message?: string;
+  product?: { canonical_name?: string | null; brand?: string | null; category?: string | null; verification_status?: string | null } | null;
+  userBeautyCode?: string | null;
+  fits?: FitRow[];
+};
+
+type ResultState = {
+  productName: string;
+  score: number;
+  requestId: string;
+  sessionId: string;
+  confidence: number;
+  reviewCount: number;
+};
+
+function confidenceLabel(value: number) {
+  if (value >= 0.85) return "높음";
+  if (value >= 0.7) return "보통";
+  return "제한적";
+}
+
 export default function FitPage() {
   const [beautyCode, setBeautyCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +52,10 @@ export default function FitPage() {
   const [productInput, setProductInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [result, setResult] = useState<{ productName: string; score: number } | null>(null);
+  const [result, setResult] = useState<ResultState | null>(null);
+  const [detail, setDetail] = useState<DetailPayload | null>(null);
+  const [detailBusy, setDetailBusy] = useState(false);
+  const [detailError, setDetailError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -47,6 +77,10 @@ export default function FitPage() {
     })();
   }, []);
 
+  const sortedFits = useMemo(() => {
+    return [...(detail?.fits ?? [])].sort((a, b) => b.fitScore - a.fitScore);
+  }, [detail]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!beautyCode || !productInput.trim() || busy) return;
@@ -55,6 +89,8 @@ export default function FitPage() {
     setBusy(true);
     setMessage("상품 정보를 확인하고 적합도를 분석하고 있습니다.");
     setResult(null);
+    setDetail(null);
+    setDetailError("");
 
     try {
       const response = await fetch("/api/product-fit-fast", {
@@ -70,14 +106,50 @@ export default function FitPage() {
         setMessage(payload.message || "공개 근거가 충분하지 않아 자동 분석을 보류했습니다.");
         return;
       }
+      if (!payload.requestId || !payload.sessionId) {
+        throw new Error("상세 분석 결과 연결 정보를 생성하지 못했습니다.");
+      }
 
-      setResult({ productName: payload.productName || inputValue, score: payload.fitScore });
+      setResult({
+        productName: payload.productName || inputValue,
+        score: payload.fitScore,
+        requestId: payload.requestId,
+        sessionId: payload.sessionId,
+        confidence: Number(payload.confidence ?? 0),
+        reviewCount: Number(payload.reviewCount ?? 0),
+      });
       setMessage("");
       setProductInput("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "적합도 분석에 실패했습니다.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadDetail() {
+    if (!result || detailBusy) return;
+    if (detail) {
+      setDetail(null);
+      return;
+    }
+
+    setDetailBusy(true);
+    setDetailError("");
+    try {
+      const response = await fetch(
+        `/api/product-analysis-result?sessionId=${encodeURIComponent(result.sessionId)}&requestId=${encodeURIComponent(result.requestId)}`,
+        { cache: "no-store" },
+      );
+      const payload = await response.json().catch(() => ({})) as DetailPayload;
+      if (!response.ok || !payload.ok || payload.status !== "completed" || !payload.fits?.length) {
+        throw new Error(payload.message || "상세 분석 결과를 불러오지 못했습니다.");
+      }
+      setDetail(payload);
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "상세 분석 결과를 불러오지 못했습니다.");
+    } finally {
+      setDetailBusy(false);
     }
   }
 
@@ -111,7 +183,7 @@ export default function FitPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-10 text-[#382d2d] sm:px-8">
+    <main className="min-h-screen bg-[#fff8f8] px-5 py-10 pb-28 text-[#382d2d] sm:px-8">
       <section className="mx-auto max-w-2xl rounded-[2rem] bg-white p-7 shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:p-10">
         <div className="text-center">
           <p className="text-xs font-semibold tracking-[.22em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p>
@@ -137,11 +209,67 @@ export default function FitPage() {
         {message ? <p className="mt-5 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{message}</p> : null}
 
         {result ? (
-          <section className="mt-6 rounded-3xl bg-[#fff0f2] p-7 text-center">
-            <p className="text-sm font-semibold text-[#9f6572]">{result.productName}</p>
-            <p className="mt-2 text-5xl font-black text-[#c86f82]">{result.score}</p>
-            <p className="mt-1 text-sm font-semibold text-[#806f72]">{beautyCode} 기준 · 100점 만점</p>
-          </section>
+          <>
+            <section className="mt-6 rounded-3xl bg-[#fff0f2] p-7 text-center">
+              <p className="text-sm font-semibold text-[#9f6572]">{result.productName}</p>
+              <p className="mt-2 text-5xl font-black text-[#c86f82]">{result.score}</p>
+              <p className="mt-1 text-sm font-semibold text-[#806f72]">{beautyCode} 기준 · 100점 만점</p>
+              <button
+                type="button"
+                onClick={loadDetail}
+                disabled={detailBusy}
+                className="mt-5 w-full rounded-2xl border border-[#dba6b1] bg-white px-5 py-3 text-sm font-bold text-[#a85f6e] disabled:opacity-60"
+              >
+                {detailBusy ? "상세 결과 불러오는 중..." : detail ? "상세 결과 접기" : "분석 결과 자세히 보기"}
+              </button>
+            </section>
+
+            {detailError ? <p className="mt-4 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{detailError}</p> : null}
+
+            {detail ? (
+              <section className="mt-5 rounded-3xl border border-[#f0dde1] bg-white p-5 sm:p-6">
+                <div className="border-b border-[#f1e4e6] pb-5">
+                  <p className="text-xs font-bold tracking-[.16em] text-[#b97b88]">DETAIL RESULT</p>
+                  <h2 className="mt-2 text-xl font-bold">상세 분석 결과</h2>
+                  {detail.product?.brand ? <p className="mt-2 text-sm text-[#766767]">브랜드 · {detail.product.brand}</p> : null}
+                  {detail.product?.category ? <p className="mt-1 text-sm text-[#766767]">카테고리 · {detail.product.category}</p> : null}
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-[#fff7f8] p-4 text-center">
+                    <p className="text-xs font-semibold text-[#9b8589]">분석 신뢰도</p>
+                    <p className="mt-1 text-2xl font-black text-[#a85f6e]">{Math.round(result.confidence * 100)}%</p>
+                    <p className="mt-1 text-xs text-[#8a777a]">{confidenceLabel(result.confidence)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-[#fff7f8] p-4 text-center">
+                    <p className="text-xs font-semibold text-[#9b8589]">확인 근거</p>
+                    <p className="mt-1 text-2xl font-black text-[#a85f6e]">{result.reviewCount}</p>
+                    <p className="mt-1 text-xs text-[#8a777a]">공개 정보 기준</p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-base font-bold">16개 Beauty Code 적합도</h3>
+                  <p className="mt-1 text-xs leading-5 text-[#8b787c]">높은 점수 순으로 표시합니다. 현재 유형은 강조해서 보여드립니다.</p>
+                  <div className="mt-3 space-y-2">
+                    {sortedFits.map((fit, index) => {
+                      const mine = fit.beautyCode === beautyCode;
+                      return (
+                        <div key={fit.beautyCode} className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${mine ? "bg-[#fff0f2] ring-1 ring-[#e7b8c1]" : "bg-[#faf7f7]"}`}>
+                          <span className="w-6 text-xs font-bold text-[#b19da1]">{index + 1}</span>
+                          <span className={`w-16 text-sm font-black ${mine ? "text-[#b75f73]" : "text-[#5f5557]"}`}>{fit.beautyCode}</span>
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#eadfe1]">
+                            <div className="h-full rounded-full bg-[#d88c9c]" style={{ width: `${Math.max(2, Math.min(100, fit.fitScore))}%` }} />
+                          </div>
+                          <span className={`w-9 text-right text-sm font-black ${mine ? "text-[#b75f73]" : "text-[#65585b]"}`}>{fit.fitScore}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+          </>
         ) : null}
 
         <div className="mt-7 text-center"><Link href="/mypage" className="text-sm font-semibold text-[#a85f6e]">My Page에서 Beauty Code 보기</Link></div>
