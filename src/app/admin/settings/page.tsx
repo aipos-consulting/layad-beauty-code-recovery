@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type TokenDay = { date: string; inputTokens: number; outputTokens: number; totalTokens: number; runs: number };
+type CostDay = { date: string; costUsd: number; pending?: boolean };
 type Usage = {
   ok: boolean;
   code?: string;
@@ -36,6 +37,11 @@ function kstTime(value?: string | null) {
   if (!value) return "아직 호출 없음";
   return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value));
 }
+function kstDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
 
 export default function Page() {
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -59,7 +65,13 @@ export default function Page() {
     return () => { cancelled = true; window.clearInterval(timer); };
   }, []);
 
-  const maxDaily = useMemo(() => Math.max(0.000001, ...(usage?.daily ?? []).map(row => row.costUsd)), [usage?.daily]);
+  const costRows = useMemo<CostDay[]>(() => {
+    const rows = [...(usage?.daily ?? [])].map(row => ({ ...row, pending: false }));
+    const todayKey = kstDateKey();
+    if (!rows.some(row => row.date === todayKey)) rows.push({ date: todayKey, costUsd: 0, pending: true });
+    return rows.sort((a, b) => a.date.localeCompare(b.date));
+  }, [usage?.daily]);
+  const maxDaily = useMemo(() => Math.max(0.000001, ...costRows.filter(row => !row.pending).map(row => row.costUsd)), [costRows]);
   const maxTokens = useMemo(() => Math.max(1, ...(usage?.dailyTokens ?? []).map(row => row.totalTokens)), [usage?.dailyTokens]);
   const safe = Boolean(usage?.ok && usage.hardStopEnabled && !usage.blocked);
   const today = usage?.todayTokens;
@@ -109,8 +121,8 @@ export default function Page() {
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-semibold">이번 달 일별 OpenAI 비용 추세</h2><p className="mt-1 text-[11px] text-[#7b6d70]">공식 Costs API의 일 단위 집계 · 토큰 실시간 집계와 갱신 시점이 다를 수 있습니다.</p></div><div className="text-right text-[11px] text-[#7b6d70]">완료 {usage?.localRuns?.completed ?? 0} · 실패 {usage?.localRuns?.failed ?? 0} · 총 실행 {usage?.localRuns?.total ?? 0}</div></div>
-        {loading ? <p className="mt-4 text-sm text-[#7b6d70]">OpenAI 비용을 확인하고 있습니다.</p> : !usage?.ok ? <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-800"><b>Cost Control 검증 필요</b><br />{usage?.message ?? usage?.code ?? "비용 데이터를 확인할 수 없습니다."}</div> : (usage.daily?.length ?? 0) === 0 ? <p className="mt-4 text-sm text-[#7b6d70]">이번 달 OpenAI 비용 기록이 아직 없습니다.</p> : <div className="mt-4 grid gap-x-6 gap-y-1.5 lg:grid-cols-2">{usage.daily?.map(row => <div key={row.date} className="grid grid-cols-[48px_1fr_72px] items-center gap-2 text-[11px]"><span className="text-[#7b6d70]">{row.date.slice(5)}</span><div className="h-2 overflow-hidden rounded-full bg-[#f3e7e9]"><div className="h-full min-w-[2px] rounded-full bg-[#d88c9c]" style={{ width: `${Math.max(1, row.costUsd / maxDaily * 100)}%` }} /></div><span className="text-right font-semibold">{money(row.costUsd)}</span></div>)}</div>}
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-semibold">이번 달 일별 OpenAI 비용 추세</h2><p className="mt-1 text-[11px] text-[#7b6d70]">공식 Costs API의 일 단위 집계입니다. 오늘 비용은 OpenAI 집계 지연으로 아직 반영되지 않을 수 있으며, 상단 실시간 토큰 사용량이 현재 운영 기준입니다.</p></div><div className="text-right text-[11px] text-[#7b6d70]">완료 {usage?.localRuns?.completed ?? 0} · 실패 {usage?.localRuns?.failed ?? 0} · 총 실행 {usage?.localRuns?.total ?? 0}</div></div>
+        {loading ? <p className="mt-4 text-sm text-[#7b6d70]">OpenAI 비용을 확인하고 있습니다.</p> : !usage?.ok ? <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-800"><b>Cost Control 검증 필요</b><br />{usage?.message ?? usage?.code ?? "비용 데이터를 확인할 수 없습니다."}</div> : <div className="mt-4 grid gap-x-6 gap-y-1.5 lg:grid-cols-2">{costRows.map(row => <div key={row.date} className="grid grid-cols-[48px_1fr_82px] items-center gap-2 text-[11px]"><span className={row.pending ? "font-semibold text-[#a94f65]" : "text-[#7b6d70]"}>{row.date.slice(5)}</span><div className="h-2 overflow-hidden rounded-full bg-[#f3e7e9]">{!row.pending && <div className="h-full min-w-[2px] rounded-full bg-[#d88c9c]" style={{ width: `${Math.max(1, row.costUsd / maxDaily * 100)}%` }} />}</div><span className={`text-right font-semibold ${row.pending ? "text-[#a94f65]" : ""}`}>{row.pending ? "집계 대기" : money(row.costUsd)}</span></div>)}</div>}
       </section>
 
       <section className="mt-5 grid gap-5 md:grid-cols-2">
