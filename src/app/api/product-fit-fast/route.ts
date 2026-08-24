@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const MODEL = "gpt-5.4-nano";
-const ANALYSIS_VERSION = "layad-hybrid-v3-calibrated";
+const ANALYSIS_VERSION = "layad-hybrid-v4-confidence-label";
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
 type Signals = { oil_control:number; hydration:number; glow_finish:number; matte_finish:number; precision_required:number; ease_of_use:number; variability:number; consistency:number };
@@ -55,7 +55,7 @@ export async function POST(request:NextRequest){
     }
     if(row.ai_mode==="off") return NextResponse.json({ok:false,code:"AI_MODE_OFF",message:"실시간 분석이 현재 중지되어 있습니다."},{status:503});
 
-    const prompt=`Research only public web information for this cosmetics product: ${inputValue}. Return JSON only: {"canonical_name":"","brand":null,"category":null,"confidence":0.0,"evidence_count":0,"signals":{"oil_control":0,"hydration":0,"glow_finish":0,"matte_finish":0,"precision_required":0,"ease_of_use":0,"variability":0,"consistency":0}}. Signal values are integers 0-100. confidence is 0-1. Do not invent facts; lower confidence when evidence is weak.`;
+    const prompt=`Research only public web information for this cosmetics product: ${inputValue}. Identify the product first, then use official product information and public review/usage evidence when available. Return JSON only: {"canonical_name":"","brand":null,"category":null,"confidence":0.0,"evidence_count":0,"signals":{"oil_control":0,"hydration":0,"glow_finish":0,"matte_finish":0,"precision_required":0,"ease_of_use":0,"variability":0,"consistency":0}}. Signal values are integers 0-100. confidence is 0-1 and is only a reliability label, not a reason to refuse analysis. Do not invent facts. Use neutral 50 values for signals that cannot be supported by public evidence, and lower confidence accordingly.`;
     const aiStarted=Date.now();
     const aiResponse=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:450}),cache:"no-store",signal:AbortSignal.timeout(7500)});
     const openAiMs=Date.now()-aiStarted;
@@ -63,10 +63,6 @@ export async function POST(request:NextRequest){
     if(!aiResponse.ok) throw new Error((aiPayload as {error?:{message?:string}}).error?.message??`OpenAI 호출 실패: ${aiResponse.status}`);
     const parsed=parse(outputText(aiPayload));
     const confidence=Math.max(0,Math.min(1,Number(parsed.confidence??0)));
-    if(confidence<0.6){
-      await db(`product_analysis_requests?id=eq.${row.request_id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"insufficient_reviews",error_message:"공개 근거가 충분하지 않아 자동 분석을 보류했습니다.",updated_at:new Date().toISOString()})},key);
-      return NextResponse.json({ok:true,status:"insufficient_reviews",requestId:row.request_id,sessionId:row.session_id,confidence,message:"공개 근거가 충분하지 않아 자동 분석을 보류했습니다.",timings:{beginMs,openAiMs,finalizeMs:0,totalMs:Date.now()-startedAll}});
-    }
 
     const s=normSignals(parsed.signals);
     const evidence=Math.max(0,Math.min(99,Math.round(Number(parsed.evidence_count??0))));
