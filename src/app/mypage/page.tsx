@@ -149,7 +149,23 @@ export default function MyPage() {
 
         <div className="mt-7 grid gap-7 md:grid-cols-2">
           <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><h2 className="text-xl font-semibold">Beauty Code 이력</h2><div className="mt-5 space-y-3">{data?.codes.length ? data.codes.map(code => <div key={code.id} className="flex items-center justify-between rounded-2xl bg-[#fffafa] px-4 py-3"><span className="font-semibold text-[#a85f6e]">{code.beauty_code}</span><span className="text-xs text-[#8a7a7d]">{new Date(code.created_at).toLocaleDateString("ko-KR")}</span></div>) : <p className="text-sm text-[#806f72]">저장 이력이 없습니다.</p>}</div></section>
-          <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><h2 className="text-xl font-semibold">저장한 상품</h2><div className="mt-5 space-y-3">{data?.products.length ? data.products.map(product => <div key={product.id} className="rounded-2xl bg-[#fffafa] px-4 py-3"><div className="flex items-start justify-between gap-3"><p className="font-semibold">{product.product_name || product.product_ref}</p>{typeof product.fit_score === "number" ? <span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-sm font-bold text-[#a85f6e]">{product.fit_score}</span> : null}</div><p className="mt-1 text-xs text-[#8a7a7d]">{product.beauty_code ? `${product.beauty_code} 기준` : ""} · {new Date(product.created_at).toLocaleDateString("ko-KR")}</p></div>) : <p className="text-sm text-[#806f72]">아직 저장한 상품이 없습니다.</p>}</div></section>
+          <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]">
+            <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">저장한 상품</h2><span className="text-xs text-[#9b8589]">눌러서 다시 보기</span></div>
+            <div className="mt-5 space-y-3">
+              {data?.products.length ? data.products.map(product => (
+                <Link key={product.id} href={`/mypage/saved/${encodeURIComponent(product.product_ref)}`} className="block rounded-2xl bg-[#fffafa] px-4 py-3 transition hover:bg-[#fff1f3]">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold">{product.product_name || product.product_ref}</p>
+                    {typeof product.fit_score === "number" ? <span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-sm font-bold text-[#a85f6e]">{product.fit_score}</span> : null}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs text-[#8a7a7d]">{product.beauty_code ? `${product.beauty_code} 기준` : ""} · {new Date(product.created_at).toLocaleDateString("ko-KR")}</p>
+                    <span className="text-xs font-bold text-[#a85f6e]">다시 보기 →</span>
+                  </div>
+                </Link>
+              )) : <p className="text-sm text-[#806f72]">아직 저장한 상품이 없습니다.</p>}
+            </div>
+          </section>
         </div>
       </div>
     </main>
