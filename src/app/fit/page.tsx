@@ -3,24 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
-type CodeRow = {
-  beauty_code: string;
-  is_current: boolean;
-};
-
-type MyPagePayload = {
-  ok?: boolean;
-  code?: string;
-  codes?: CodeRow[];
-};
-
-type Fit = {
-  beautyCode: string;
-  fitScore: number;
-  reviewCount: number;
-  confidence: number;
-};
-
+type CodeRow = { beauty_code: string; is_current: boolean };
+type MyPagePayload = { ok?: boolean; code?: string; codes?: CodeRow[] };
+type Fit = { beautyCode: string; fitScore: number; reviewCount: number; confidence: number };
 type ResultPayload = {
   ok?: boolean;
   requestId?: string;
@@ -31,6 +16,8 @@ type ResultPayload = {
   userBeautyCode?: string | null;
   fits?: Fit[];
 };
+
+type LivePayload = { ok?: boolean; status?: string; message?: string; elapsedMs?: number; confidence?: number };
 
 export default function FitPage() {
   const [beautyCode, setBeautyCode] = useState<string | null>(null);
@@ -83,8 +70,20 @@ export default function FitPage() {
       }
 
       if (requestPayload.status !== "completed") {
-        setMessage(requestPayload.message || "아직 분석되지 않은 상품입니다. 분석 요청이 접수되었습니다.");
-        return;
+        setMessage("신규 상품 정보를 확인하고 있습니다. 잠시만 기다려 주세요.");
+        const liveResponse = await fetch("/api/product-analysis-live", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: requestPayload.requestId }),
+        });
+        const livePayload = await liveResponse.json().catch(() => ({})) as LivePayload;
+        if (!liveResponse.ok || !livePayload.ok) {
+          throw new Error(livePayload.message || "신규 상품 분석에 실패했습니다.");
+        }
+        if (livePayload.status !== "completed") {
+          setMessage(livePayload.message || "공개 근거가 충분하지 않아 자동 분석을 보류했습니다.");
+          return;
+        }
       }
 
       const resultResponse = await fetch(
@@ -104,6 +103,7 @@ export default function FitPage() {
         productName: resultPayload.product?.canonical_name || inputValue,
         score: myFit.fitScore,
       });
+      setMessage("");
       setProductInput("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "적합도 분석에 실패했습니다.");
@@ -112,9 +112,7 @@ export default function FitPage() {
     }
   }
 
-  if (loading) {
-    return <main className="min-h-screen bg-[#fff8f8] px-5 py-16 text-center text-[#806f72]">Beauty Code를 확인하는 중입니다.</main>;
-  }
+  if (loading) return <main className="min-h-screen bg-[#fff8f8] px-5 py-16 text-center text-[#806f72]">Beauty Code를 확인하는 중입니다.</main>;
 
   if (authRequired) {
     return (
@@ -162,11 +160,7 @@ export default function FitPage() {
             maxLength={2000}
             className="mt-3 w-full rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none focus:border-[#d88c9c] focus:ring-2 focus:ring-[#f4dce1]"
           />
-          <button
-            type="submit"
-            disabled={!productInput.trim() || busy}
-            className="mt-3 w-full rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]"
-          >
+          <button type="submit" disabled={!productInput.trim() || busy} className="mt-3 w-full rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]">
             {busy ? "분석 중..." : "분석 시작하기"}
           </button>
         </form>
@@ -181,9 +175,7 @@ export default function FitPage() {
           </section>
         ) : null}
 
-        <div className="mt-7 text-center">
-          <Link href="/mypage" className="text-sm font-semibold text-[#a85f6e]">My Page에서 Beauty Code 보기</Link>
-        </div>
+        <div className="mt-7 text-center"><Link href="/mypage" className="text-sm font-semibold text-[#a85f6e]">My Page에서 Beauty Code 보기</Link></div>
       </section>
     </main>
   );
