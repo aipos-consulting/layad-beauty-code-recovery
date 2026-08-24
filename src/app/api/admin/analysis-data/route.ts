@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 
-function cfg(){ return { key: process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY }; }
+function cfg(){ return { key: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY }; }
 function headers(key:string, extra?:HeadersInit):HeadersInit { const base:Record<string,string>={apikey:key,"Content-Type":"application/json"}; if(!key.startsWith("sb_secret_")) base.Authorization=`Bearer ${key}`; return {...base,...(extra??{})}; }
 async function db(path:string, init:RequestInit, key:string){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:headers(key,init.headers),cache:"no-store"}); }
 async function json<T>(res:Response,label:string):Promise<T>{ if(!res.ok) throw new Error(`${label}: ${await res.text()}`); return res.json() as Promise<T>; }
