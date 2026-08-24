@@ -20,29 +20,38 @@ function normSignals(r:Partial<Signals>|undefined):Signals { return {oil_control
 function rawScore(code:string,s:Signals){ const p=s.precision_convenience; const c=100-p; const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?p:c,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
 function displayScore(raw:number){ return Math.round(40 + raw * 0.6); }
 function outputText(p:unknown){ const d=p as {output?:Array<{content?:Array<{type?:string;text?:string}>}>}; for(const i of d.output??[]) for(const c of i.content??[]) if(c.type==="output_text"&&c.text) return c.text; return ""; }
-function parse(text:string):AiResult { return JSON.parse(text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim()) as AiResult; }
+function parse(text:string):AiResult {
+  const cleaned=text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim();
+  if(!cleaned) throw new Error("OpenAI 응답에 분석 JSON이 없습니다.");
+  const start=cleaned.indexOf("{");
+  const end=cleaned.lastIndexOf("}");
+  if(start<0||end<=start) throw new Error("OpenAI 분석 JSON이 완전하지 않습니다.");
+  return JSON.parse(cleaned.slice(start,end+1)) as AiResult;
+}
 
 async function callOpenAI(openai:string,prompt:string){
   let lastError:unknown;
   for(let attempt=0;attempt<2;attempt+=1){
     try{
-      const timeoutMs=attempt===0?14000:10000;
+      const timeoutMs=attempt===0?14000:12000;
       const response=await fetch("https://api.openai.com/v1/responses",{
         method:"POST",
         headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},
-        body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:420}),
+        body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:700}),
         cache:"no-store",
         signal:AbortSignal.timeout(timeoutMs),
       });
       const payload=await response.json().catch(()=>({}));
       if(!response.ok) throw new Error((payload as {error?:{message?:string}}).error?.message??`OpenAI 호출 실패: ${response.status}`);
+      const text=outputText(payload);
+      parse(text);
       return payload;
     }catch(error){
       lastError=error;
-      if(attempt===0) await new Promise(resolve=>setTimeout(resolve,250));
+      if(attempt===0) await new Promise(resolve=>setTimeout(resolve,300));
     }
   }
-  throw lastError instanceof Error?lastError:new Error("OpenAI 분석 요청 시간이 초과되었습니다.");
+  throw lastError instanceof Error?lastError:new Error("OpenAI 분석 결과를 완성하지 못했습니다.");
 }
 
 export async function POST(request:NextRequest){
@@ -104,8 +113,9 @@ export async function POST(request:NextRequest){
     return NextResponse.json({ok:true,status:"completed",cached:false,requestId:row.request_id,sessionId:row.session_id,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
   }catch(error){
     const isTimeout=error instanceof Error && (error.name==="TimeoutError" || /timeout|timed out|시간.*초과/i.test(error.message));
-    const message=isTimeout?"상품 정보를 확인하는 데 시간이 오래 걸렸습니다. 다시 한 번 시도해 주세요.":error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
+    const isMalformed=error instanceof SyntaxError || (error instanceof Error && /JSON|완전하지|분석 결과/i.test(error.message));
+    const message=isTimeout?"상품 정보를 확인하는 데 시간이 오래 걸렸습니다. 다시 한 번 시도해 주세요.":isMalformed?"상품 분석 결과를 완성하지 못했습니다. 다시 한 번 시도해 주세요.":error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
     console.error("Single-call product fit failed",error);
-    return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
+    return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":isMalformed?"PRODUCT_FIT_INCOMPLETE":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
   }
 }
