@@ -5,7 +5,7 @@ export const maxDuration = 30;
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const MODEL = "gpt-5.4-nano";
-const ANALYSIS_VERSION = "layad-v10-owner-prompt-review100";
+const ANALYSIS_VERSION = "layad-v11-owner-prompt-axis-persist";
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
 type TraitScores = { O:number; D:number; G:number; M:number; P:number; C:number; V:number; E:number };
@@ -87,10 +87,16 @@ export async function POST(request:NextRequest){
     const evidence=Math.max(0,Math.min(100,Math.round(Number(parsed.evidence_count??0))));
     const s:TraitScores={O:clamp(parsed.scores?.O),D:clamp(parsed.scores?.D),G:clamp(parsed.scores?.G),M:clamp(parsed.scores?.M),P:clamp(parsed.scores?.P),C:clamp(parsed.scores?.C),V:clamp(parsed.scores?.V),E:clamp(parsed.scores?.E)};
     const fits=BEAUTY_CODES.map(code=>{const score=scoreForCode(code,s);return {beauty_code:code,raw_fit_score:score,fit_score:score};});
+    const axes=[
+      {axis:"OD",first_code:"O",first_score:s.O,second_code:"D",second_score:s.D},
+      {axis:"GM",first_code:"G",first_score:s.G,second_code:"M",second_score:s.M},
+      {axis:"PC",first_code:"P",first_score:s.P,second_code:"C",second_score:s.C},
+      {axis:"VE",first_code:"V",first_score:s.V,second_code:"E",second_score:s.E},
+    ];
     const myFit=fits.find(f=>f.beauty_code===beautyCode)!;
     const usage=aiPayload as {usage?:{input_tokens?:number;output_tokens?:number}}; const canonical=parsed.canonical_name?.trim()||inputValue;
     const finalizeStarted=Date.now();
-    const finalize=await db("rpc/finalize_product_fit_analysis_v2",{method:"POST",body:JSON.stringify({p_request_id:row.request_id,p_product_id:row.product_id,p_input_type:inputType,p_canonical_name:canonical,p_brand:parsed.brand?.trim()||"",p_category:parsed.category?.trim()||"",p_confidence:confidence,p_evidence_count:evidence,p_analysis_version:`${ANALYSIS_VERSION}${mode==="fallback"?"-low-confidence":""}`,p_model_name:MODEL,p_input_tokens:Number(usage.usage?.input_tokens??0),p_output_tokens:Number(usage.usage?.output_tokens??0),p_started_at:new Date(aiStarted).toISOString(),p_fits:fits})},key);
+    const finalize=await db("rpc/finalize_product_fit_analysis_v3",{method:"POST",body:JSON.stringify({p_request_id:row.request_id,p_product_id:row.product_id,p_input_type:inputType,p_canonical_name:canonical,p_brand:parsed.brand?.trim()||"",p_category:parsed.category?.trim()||"",p_confidence:confidence,p_evidence_count:evidence,p_analysis_version:`${ANALYSIS_VERSION}${mode==="fallback"?"-low-confidence":""}`,p_model_name:MODEL,p_input_tokens:Number(usage.usage?.input_tokens??0),p_output_tokens:Number(usage.usage?.output_tokens??0),p_started_at:new Date(aiStarted).toISOString(),p_fits:fits,p_axes:axes})},key);
     const finalizeMs=Date.now()-finalizeStarted;
     if(!finalize.ok) throw new Error(`분석 결과 저장 실패: ${finalize.status} ${(await finalize.text()).slice(0,300)}`);
     return NextResponse.json({ok:true,status:"completed",cached:false,analysisMode:mode,requestId:row.request_id,sessionId:row.session_id,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
