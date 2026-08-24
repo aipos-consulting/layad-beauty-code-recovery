@@ -44,7 +44,7 @@ export async function GET(request:NextRequest){
       const sourceMap=new Map(sources.map(s=>[s.id,s]));
       const featureMap=new Map<string,Feature[]>();
       for(const f of features) featureMap.set(f.review_id,[...(featureMap.get(f.review_id)??[]),f]);
-      return NextResponse.json({ok:true,product:products[0]??null,runs,axes,fits,reviews:reviews.map(r=>({...r,source:r.source_id?sourceMap.get(r.source_id)??null:null,features:featureMap.get(r.id)??[]}))});
+      return NextResponse.json({ok:true,product:products[0]??null,runs,axes,fits,evidenceCount:Number(runs[0]?.input_review_count??0),storedReviewCount:reviews.length,reviews:reviews.map(r=>({...r,source:r.source_id?sourceMap.get(r.source_id)??null:null,features:featureMap.get(r.id)??[]}))});
     }
 
     const [pRes,runRes,revRes,featRes,axisRes,fitRes,candRes,masterRes]=await Promise.all([
@@ -67,24 +67,32 @@ export async function GET(request:NextRequest){
     const masters=await json<Record<string,unknown>[]>(masterRes,"Master 조회 실패");
 
     const reviewProduct=new Map(reviews.map(r=>[r.id,r.product_id]));
-    const reviewCount=new Map<string,number>(); for(const r of reviews) reviewCount.set(r.product_id,(reviewCount.get(r.product_id)??0)+1);
+    const storedReviewCount=new Map<string,number>(); for(const r of reviews) storedReviewCount.set(r.product_id,(storedReviewCount.get(r.product_id)??0)+1);
     const featureCount=new Map<string,number>(); for(const f of features){ const pid=reviewProduct.get(f.review_id); if(pid) featureCount.set(pid,(featureCount.get(pid)??0)+1); }
     const axisCount=new Map<string,number>(); for(const a of axes) axisCount.set(a.product_id,(axisCount.get(a.product_id)??0)+1);
     const fitCount=new Map<string,number>(); for(const f of fits) fitCount.set(f.product_id,(fitCount.get(f.product_id)??0)+1);
     const lastRun=new Map<string,Run>(); for(const r of runs) if(!lastRun.has(r.product_id)) lastRun.set(r.product_id,r);
     const candidateCount=new Map<string,number>(); for(const c of candidates){ const pid=String(c.last_product_id??c.first_product_id??""); if(pid) candidateCount.set(pid,(candidateCount.get(pid)??0)+1); }
 
-    const productRows=products.map(p=>({
-      ...p,
-      review_count:reviewCount.get(p.id)??0,
-      feature_count:featureCount.get(p.id)??0,
-      axis_count:axisCount.get(p.id)??0,
-      fit_count:fitCount.get(p.id)??0,
-      candidate_count:candidateCount.get(p.id)??0,
-      last_analysis_at:lastRun.get(p.id)?.completed_at??null,
-      analysis_version:lastRun.get(p.id)?.analysis_version??null,
-      complete:(axisCount.get(p.id)??0)>=4&&(fitCount.get(p.id)??0)>=16,
-    })).sort((a,b)=>String(b.last_analysis_at??b.updated_at).localeCompare(String(a.last_analysis_at??a.updated_at)));
+    const productRows=products.map(p=>{
+      const run=lastRun.get(p.id);
+      const axisN=axisCount.get(p.id)??0;
+      const fitN=fitCount.get(p.id)??0;
+      const legacy=fitN>=16&&axisN<4;
+      return {
+        ...p,
+        review_count:storedReviewCount.get(p.id)??0,
+        evidence_count:Number(run?.input_review_count??0),
+        feature_count:featureCount.get(p.id)??0,
+        axis_count:axisN,
+        fit_count:fitN,
+        candidate_count:candidateCount.get(p.id)??0,
+        last_analysis_at:run?.completed_at??null,
+        analysis_version:run?.analysis_version??null,
+        legacy,
+        complete:axisN>=4&&fitN>=16,
+      };
+    }).sort((a,b)=>String(b.last_analysis_at??b.updated_at).localeCompare(String(a.last_analysis_at??a.updated_at)));
 
     return NextResponse.json({ok:true,products:productRows,candidates,masters,summary:{products:productRows.length,completed:productRows.filter(p=>p.complete).length,candidates:candidates.length,masters:masters.length}});
   }catch(e){ return NextResponse.json({ok:false,message:e instanceof Error?e.message:"조회 중 오류가 발생했습니다."},{status:500}); }
