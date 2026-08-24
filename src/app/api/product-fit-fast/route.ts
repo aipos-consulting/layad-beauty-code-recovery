@@ -50,7 +50,7 @@ export async function POST(request:NextRequest){
     const row=(await beginResponse.json() as BeginRow[])[0];
     if(!row?.request_id||!row.product_id) throw new Error("상품 준비 결과가 올바르지 않습니다.");
     if(row.request_status==="completed"&&row.cached_fit_score!=null){
-      return NextResponse.json({ok:true,status:"completed",cached:true,productName:row.product_name||inputValue,beautyCode,fitScore:Math.round(Number(row.cached_fit_score)),confidence:Number(row.cached_confidence??0),reviewCount:Number(row.cached_review_count??0),timings:{beginMs,openAiMs:0,finalizeMs:0,totalMs:Date.now()-startedAll}});
+      return NextResponse.json({ok:true,status:"completed",cached:true,requestId:row.request_id,sessionId:row.session_id,productName:row.product_name||inputValue,beautyCode,fitScore:Math.round(Number(row.cached_fit_score)),confidence:Number(row.cached_confidence??0),reviewCount:Number(row.cached_review_count??0),timings:{beginMs,openAiMs:0,finalizeMs:0,totalMs:Date.now()-startedAll}});
     }
     if(row.ai_mode==="off") return NextResponse.json({ok:false,code:"AI_MODE_OFF",message:"실시간 분석이 현재 중지되어 있습니다."},{status:503});
 
@@ -64,7 +64,7 @@ export async function POST(request:NextRequest){
     const confidence=Math.max(0,Math.min(1,Number(parsed.confidence??0)));
     if(confidence<0.6){
       await db(`product_analysis_requests?id=eq.${row.request_id}`,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"insufficient_reviews",error_message:"공개 근거가 충분하지 않아 자동 분석을 보류했습니다.",updated_at:new Date().toISOString()})},key);
-      return NextResponse.json({ok:true,status:"insufficient_reviews",confidence,message:"공개 근거가 충분하지 않아 자동 분석을 보류했습니다.",timings:{beginMs,openAiMs,finalizeMs:0,totalMs:Date.now()-startedAll}});
+      return NextResponse.json({ok:true,status:"insufficient_reviews",requestId:row.request_id,sessionId:row.session_id,confidence,message:"공개 근거가 충분하지 않아 자동 분석을 보류했습니다.",timings:{beginMs,openAiMs,finalizeMs:0,totalMs:Date.now()-startedAll}});
     }
 
     const s=normSignals(parsed.signals);
@@ -83,7 +83,7 @@ export async function POST(request:NextRequest){
     const finalizeMs=Date.now()-finalizeStarted;
     if(!finalize.ok) throw new Error(`분석 결과 저장 실패: ${finalize.status} ${(await finalize.text()).slice(0,300)}`);
 
-    return NextResponse.json({ok:true,status:"completed",cached:false,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
+    return NextResponse.json({ok:true,status:"completed",cached:false,requestId:row.request_id,sessionId:row.session_id,productName:canonical,beautyCode,fitScore:myFit.fit_score,confidence,reviewCount:evidence,timings:{beginMs,openAiMs,finalizeMs,totalMs:Date.now()-startedAll}});
   }catch(error){
     const message=error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
     console.error("Single-call product fit failed",error);
