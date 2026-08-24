@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const MODEL = "gpt-5.4-nano";
-const ANALYSIS_VERSION = "layad-hybrid-v4-confidence-label";
+const ANALYSIS_VERSION = "layad-hybrid-v5-pc-opposing-axis";
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
-type Signals = { oil_control:number; hydration:number; glow_finish:number; matte_finish:number; precision_required:number; ease_of_use:number; variability:number; consistency:number };
+type Signals = { oil_control:number; hydration:number; glow_finish:number; matte_finish:number; precision_convenience:number; variability:number; consistency:number };
 type AiResult = { canonical_name?:string; brand?:string|null; category?:string|null; confidence?:number; evidence_count?:number; signals?:Partial<Signals> };
 type BeginRow = { request_id:string; session_id:string; product_id:string; product_name:string|null; request_status:string; resolved_by_alias:boolean; cached_fit_score:number|null; cached_confidence:number|null; cached_review_count:number|null; ai_mode:string|null };
 
@@ -16,8 +16,8 @@ function normalize(v:string){ return v.normalize("NFKC").trim().replace(/\s+/g,"
 function device(ua:string){ if(/ipad|tablet/i.test(ua)) return "tablet"; if(/mobile|iphone|android/i.test(ua)) return "mobile"; return ua?"desktop":"unknown"; }
 async function resolveUrl(value:string){ try{ const p=new URL(value); const r=await fetch(p.toString(),{method:"GET",redirect:"follow",cache:"no-store",headers:{"User-Agent":"Mozilla/5.0 (compatible; LAYADProductResolver/2.0)"},signal:AbortSignal.timeout(2500)}); return new URL(r.url||p.toString()).toString(); }catch{return value;} }
 function clamp(v:unknown){ const n=Number(v); return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50; }
-function normSignals(r:Partial<Signals>|undefined):Signals { return {oil_control:clamp(r?.oil_control),hydration:clamp(r?.hydration),glow_finish:clamp(r?.glow_finish),matte_finish:clamp(r?.matte_finish),precision_required:clamp(r?.precision_required),ease_of_use:clamp(r?.ease_of_use),variability:clamp(r?.variability),consistency:clamp(r?.consistency)}; }
-function rawScore(code:string,s:Signals){ const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?s.precision_required:s.ease_of_use,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
+function normSignals(r:Partial<Signals>|undefined):Signals { return {oil_control:clamp(r?.oil_control),hydration:clamp(r?.hydration),glow_finish:clamp(r?.glow_finish),matte_finish:clamp(r?.matte_finish),precision_convenience:clamp(r?.precision_convenience),variability:clamp(r?.variability),consistency:clamp(r?.consistency)}; }
+function rawScore(code:string,s:Signals){ const p=s.precision_convenience; const c=100-p; const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?p:c,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
 function displayScore(raw:number){ return Math.round(40 + raw * 0.6); }
 function outputText(p:unknown){ const d=p as {output?:Array<{content?:Array<{type?:string;text?:string}>}>}; for(const i of d.output??[]) for(const c of i.content??[]) if(c.type==="output_text"&&c.text) return c.text; return ""; }
 function parse(text:string):AiResult { return JSON.parse(text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim()) as AiResult; }
@@ -55,7 +55,7 @@ export async function POST(request:NextRequest){
     }
     if(row.ai_mode==="off") return NextResponse.json({ok:false,code:"AI_MODE_OFF",message:"실시간 분석이 현재 중지되어 있습니다."},{status:503});
 
-    const prompt=`Research only public web information for this cosmetics product: ${inputValue}. Identify the product first, then use official product information and public review/usage evidence when available. Return JSON only: {"canonical_name":"","brand":null,"category":null,"confidence":0.0,"evidence_count":0,"signals":{"oil_control":0,"hydration":0,"glow_finish":0,"matte_finish":0,"precision_required":0,"ease_of_use":0,"variability":0,"consistency":0}}. Signal values are integers 0-100. confidence is 0-1 and is only a reliability label, not a reason to refuse analysis. Do not invent facts. Use neutral 50 values for signals that cannot be supported by public evidence, and lower confidence accordingly.`;
+    const prompt=`Research only public web information for this cosmetics product: ${inputValue}. Identify the product first, then use official product information and public review/usage evidence when available. Return JSON only: {"canonical_name":"","brand":null,"category":null,"confidence":0.0,"evidence_count":0,"signals":{"oil_control":0,"hydration":0,"glow_finish":0,"matte_finish":0,"precision_convenience":50,"variability":0,"consistency":0}}. Signal values are integers 0-100. For precision_convenience, 100 means strongly P (Precise): the product rewards deliberate technique, fine control, layering, tools, careful amount control, or skill-sensitive finishing. 0 means strongly C (Convenient): the product is fast, forgiving, easy to apply or correct, and needs little technique. This is one opposing axis, so do not score P and C independently. 50 is neutral. confidence is 0-1 and is only a reliability label, not a reason to refuse analysis. Do not invent facts. Use neutral 50 values for signals that cannot be supported by public evidence, and lower confidence accordingly.`;
     const aiStarted=Date.now();
     const aiResponse=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${openai}`,"Content-Type":"application/json"},body:JSON.stringify({model:MODEL,input:prompt,tools:[{type:"web_search"}],max_output_tokens:450}),cache:"no-store",signal:AbortSignal.timeout(7500)});
     const openAiMs=Date.now()-aiStarted;
