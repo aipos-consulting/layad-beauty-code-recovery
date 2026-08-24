@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+const LAST_FIT_STATE_KEY = "layad-last-product-fit-state-v1";
+
 type CodeRow = { beauty_code: string; is_current: boolean };
 type MyPagePayload = { ok?: boolean; code?: string; codes?: CodeRow[] };
 type FastPayload = {
@@ -39,10 +41,24 @@ type ResultState = {
   reviewCount: number;
 };
 
+type StoredFitState = {
+  beautyCode: string;
+  result: ResultState;
+  detail: DetailPayload | null;
+};
+
 function confidenceLabel(value: number) {
   if (value >= 0.85) return "높음";
   if (value >= 0.7) return "보통";
-  return "제한적";
+  return "참고용";
+}
+
+function persistFitState(beautyCode: string, result: ResultState, detail: DetailPayload | null) {
+  try {
+    localStorage.setItem(LAST_FIT_STATE_KEY, JSON.stringify({ beautyCode, result, detail } satisfies StoredFitState));
+  } catch {
+    // Browser storage can be unavailable in private/restricted modes.
+  }
 }
 
 export default function FitPage() {
@@ -68,7 +84,26 @@ export default function FitPage() {
         }
         if (!response.ok || !payload.ok) throw new Error();
         const current = payload.codes?.find((code) => code.is_current) ?? payload.codes?.[0] ?? null;
-        setBeautyCode(current?.beauty_code ?? null);
+        const currentCode = current?.beauty_code ?? null;
+        setBeautyCode(currentCode);
+
+        if (currentCode) {
+          try {
+            const raw = localStorage.getItem(LAST_FIT_STATE_KEY);
+            if (raw) {
+              const saved = JSON.parse(raw) as StoredFitState;
+              if (saved?.beautyCode === currentCode && saved.result?.requestId && saved.result?.sessionId) {
+                setResult(saved.result);
+                setDetail(saved.detail ?? null);
+                window.setTimeout(() => {
+                  document.getElementById("fit-analysis-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 120);
+              }
+            }
+          } catch {
+            // Ignore stale or malformed browser state.
+          }
+        }
       } catch {
         setMessage("저장된 Beauty Code를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       } finally {
@@ -91,6 +126,7 @@ export default function FitPage() {
     setResult(null);
     setDetail(null);
     setDetailError("");
+    try { localStorage.removeItem(LAST_FIT_STATE_KEY); } catch {}
 
     try {
       const response = await fetch("/api/product-fit-fast", {
@@ -103,23 +139,28 @@ export default function FitPage() {
         throw new Error(payload.message || "적합도 분석에 실패했습니다.");
       }
       if (payload.status !== "completed" || typeof payload.fitScore !== "number") {
-        setMessage(payload.message || "공개 근거가 충분하지 않아 자동 분석을 보류했습니다.");
+        setMessage(payload.message || "상품을 특정할 수 없어 분석을 완료하지 못했습니다.");
         return;
       }
       if (!payload.requestId || !payload.sessionId) {
         throw new Error("상세 분석 결과 연결 정보를 생성하지 못했습니다.");
       }
 
-      setResult({
+      const nextResult: ResultState = {
         productName: payload.productName || inputValue,
         score: payload.fitScore,
         requestId: payload.requestId,
         sessionId: payload.sessionId,
         confidence: Number(payload.confidence ?? 0),
         reviewCount: Number(payload.reviewCount ?? 0),
-      });
+      };
+      setResult(nextResult);
+      persistFitState(beautyCode, nextResult, null);
       setMessage("");
       setProductInput("");
+      window.setTimeout(() => {
+        document.getElementById("fit-analysis-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "적합도 분석에 실패했습니다.");
     } finally {
@@ -128,9 +169,10 @@ export default function FitPage() {
   }
 
   async function loadDetail() {
-    if (!result || detailBusy) return;
+    if (!result || detailBusy || !beautyCode) return;
     if (detail) {
       setDetail(null);
+      persistFitState(beautyCode, result, null);
       return;
     }
 
@@ -146,6 +188,7 @@ export default function FitPage() {
         throw new Error(payload.message || "상세 분석 결과를 불러오지 못했습니다.");
       }
       setDetail(payload);
+      persistFitState(beautyCode, result, payload);
     } catch (error) {
       setDetailError(error instanceof Error ? error.message : "상세 분석 결과를 불러오지 못했습니다.");
     } finally {
@@ -209,7 +252,7 @@ export default function FitPage() {
         {message ? <p className="mt-5 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{message}</p> : null}
 
         {result ? (
-          <>
+          <div id="fit-analysis-result" className="scroll-mt-6">
             <section className="mt-6 rounded-3xl bg-[#fff0f2] p-7 text-center">
               <p className="text-sm font-semibold text-[#9f6572]">{result.productName}</p>
               <p className="mt-2 text-5xl font-black text-[#c86f82]">{result.score}</p>
@@ -242,9 +285,9 @@ export default function FitPage() {
                     <p className="mt-1 text-xs text-[#8a777a]">{confidenceLabel(result.confidence)}</p>
                   </div>
                   <div className="rounded-2xl bg-[#fff7f8] p-4 text-center">
-                    <p className="text-xs font-semibold text-[#9b8589]">확인 근거</p>
+                    <p className="text-xs font-semibold text-[#9b8589]">공개 근거</p>
                     <p className="mt-1 text-2xl font-black text-[#a85f6e]">{result.reviewCount}</p>
-                    <p className="mt-1 text-xs text-[#8a777a]">공개 정보 기준</p>
+                    <p className="mt-1 text-xs text-[#8a777a]">웹 공개 정보 기준</p>
                   </div>
                 </div>
 
@@ -269,7 +312,7 @@ export default function FitPage() {
                 </div>
               </section>
             ) : null}
-          </>
+          </div>
         ) : null}
 
         <div className="mt-7 text-center"><Link href="/mypage" className="text-sm font-semibold text-[#a85f6e]">My Page에서 Beauty Code 보기</Link></div>
