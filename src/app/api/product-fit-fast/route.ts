@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 const BEAUTY_CODE = /^[OD][GM][PC][VE]$/;
 const MODEL = "gpt-5.4-nano";
-const ANALYSIS_VERSION = "layad-hybrid-v2-single";
+const ANALYSIS_VERSION = "layad-hybrid-v3-calibrated";
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
 type Signals = { oil_control:number; hydration:number; glow_finish:number; matte_finish:number; precision_required:number; ease_of_use:number; variability:number; consistency:number };
@@ -17,7 +17,8 @@ function device(ua:string){ if(/ipad|tablet/i.test(ua)) return "tablet"; if(/mob
 async function resolveUrl(value:string){ try{ const p=new URL(value); const r=await fetch(p.toString(),{method:"GET",redirect:"follow",cache:"no-store",headers:{"User-Agent":"Mozilla/5.0 (compatible; LAYADProductResolver/2.0)"},signal:AbortSignal.timeout(2500)}); return new URL(r.url||p.toString()).toString(); }catch{return value;} }
 function clamp(v:unknown){ const n=Number(v); return Number.isFinite(n)?Math.max(0,Math.min(100,n)):50; }
 function normSignals(r:Partial<Signals>|undefined):Signals { return {oil_control:clamp(r?.oil_control),hydration:clamp(r?.hydration),glow_finish:clamp(r?.glow_finish),matte_finish:clamp(r?.matte_finish),precision_required:clamp(r?.precision_required),ease_of_use:clamp(r?.ease_of_use),variability:clamp(r?.variability),consistency:clamp(r?.consistency)}; }
-function score(code:string,s:Signals){ const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?s.precision_required:s.ease_of_use,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
+function rawScore(code:string,s:Signals){ const v=[code[0]==="O"?s.oil_control:s.hydration,code[1]==="G"?s.glow_finish:s.matte_finish,code[2]==="P"?s.precision_required:s.ease_of_use,code[3]==="V"?s.variability:s.consistency]; return Math.round(v.reduce((a,b)=>a+b,0)/4); }
+function displayScore(raw:number){ return Math.round(40 + raw * 0.6); }
 function outputText(p:unknown){ const d=p as {output?:Array<{content?:Array<{type?:string;text?:string}>}>}; for(const i of d.output??[]) for(const c of i.content??[]) if(c.type==="output_text"&&c.text) return c.text; return ""; }
 function parse(text:string):AiResult { return JSON.parse(text.trim().replace(/^```json\s*/i,"").replace(/```$/i,"").trim()) as AiResult; }
 
@@ -69,7 +70,7 @@ export async function POST(request:NextRequest){
 
     const s=normSignals(parsed.signals);
     const evidence=Math.max(0,Math.min(99,Math.round(Number(parsed.evidence_count??0))));
-    const fits=BEAUTY_CODES.map(code=>({beauty_code:code,fit_score:score(code,s)}));
+    const fits=BEAUTY_CODES.map(code=>{ const raw=rawScore(code,s); return {beauty_code:code,raw_fit_score:raw,fit_score:displayScore(raw)}; });
     const myFit=fits.find(f=>f.beauty_code===beautyCode)!;
     const usage=aiPayload as {usage?:{input_tokens?:number;output_tokens?:number}};
     const canonical=parsed.canonical_name?.trim()||inputValue;
