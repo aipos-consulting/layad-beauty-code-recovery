@@ -5,19 +5,18 @@ import { FormEvent, useEffect, useState } from "react";
 
 type CodeRow = { beauty_code: string; is_current: boolean };
 type MyPagePayload = { ok?: boolean; code?: string; codes?: CodeRow[] };
-type Fit = { beautyCode: string; fitScore: number; reviewCount: number; confidence: number };
-type ResultPayload = {
+type FastPayload = {
   ok?: boolean;
-  requestId?: string;
-  sessionId?: string;
   status?: string;
+  cached?: boolean;
+  productName?: string;
+  beautyCode?: string;
+  fitScore?: number;
+  confidence?: number;
+  reviewCount?: number;
   message?: string;
-  product?: { canonical_name?: string | null } | null;
-  userBeautyCode?: string | null;
-  fits?: Fit[];
+  timings?: { beginMs?: number; openAiMs?: number; finalizeMs?: number; totalMs?: number };
 };
-
-type LivePayload = { ok?: boolean; status?: string; message?: string; elapsedMs?: number; confidence?: number };
 
 export default function FitPage() {
   const [beautyCode, setBeautyCode] = useState<string | null>(null);
@@ -53,56 +52,26 @@ export default function FitPage() {
     if (!beautyCode || !productInput.trim() || busy) return;
 
     const inputValue = productInput.trim();
-    const inputType = /^https?:\/\//i.test(inputValue) ? "url" : "name";
     setBusy(true);
-    setMessage("");
+    setMessage("상품 정보를 확인하고 적합도를 분석하고 있습니다.");
     setResult(null);
 
     try {
-      const requestResponse = await fetch("/api/product-analysis-request", {
+      const response = await fetch("/api/product-fit-fast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ beautyCode, inputType, inputValue }),
+        body: JSON.stringify({ beautyCode, inputValue }),
       });
-      const requestPayload = await requestResponse.json().catch(() => ({})) as ResultPayload;
-      if (!requestResponse.ok || !requestPayload.ok || !requestPayload.requestId || !requestPayload.sessionId) {
-        throw new Error(requestPayload.message || "상품 분석 요청을 처리하지 못했습니다.");
+      const payload = await response.json().catch(() => ({})) as FastPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || "적합도 분석에 실패했습니다.");
+      }
+      if (payload.status !== "completed" || typeof payload.fitScore !== "number") {
+        setMessage(payload.message || "공개 근거가 충분하지 않아 자동 분석을 보류했습니다.");
+        return;
       }
 
-      if (requestPayload.status !== "completed") {
-        setMessage("신규 상품 정보를 확인하고 있습니다. 잠시만 기다려 주세요.");
-        const liveResponse = await fetch("/api/product-analysis-live", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: requestPayload.requestId }),
-        });
-        const livePayload = await liveResponse.json().catch(() => ({})) as LivePayload;
-        if (!liveResponse.ok || !livePayload.ok) {
-          throw new Error(livePayload.message || "신규 상품 분석에 실패했습니다.");
-        }
-        if (livePayload.status !== "completed") {
-          setMessage(livePayload.message || "공개 근거가 충분하지 않아 자동 분석을 보류했습니다.");
-          return;
-        }
-      }
-
-      const resultResponse = await fetch(
-        `/api/product-analysis-result?sessionId=${encodeURIComponent(requestPayload.sessionId)}&requestId=${encodeURIComponent(requestPayload.requestId)}`,
-        { cache: "no-store" },
-      );
-      const resultPayload = await resultResponse.json().catch(() => ({})) as ResultPayload;
-      if (!resultResponse.ok || !resultPayload.ok || resultPayload.status !== "completed" || !resultPayload.fits) {
-        throw new Error(resultPayload.message || "저장된 적합도 결과를 불러오지 못했습니다.");
-      }
-
-      const code = resultPayload.userBeautyCode || beautyCode;
-      const myFit = resultPayload.fits.find((fit) => fit.beautyCode === code);
-      if (!myFit) throw new Error("현재 Beauty Code의 적합도 점수를 찾지 못했습니다.");
-
-      setResult({
-        productName: resultPayload.product?.canonical_name || inputValue,
-        score: myFit.fitScore,
-      });
+      setResult({ productName: payload.productName || inputValue, score: payload.fitScore });
       setMessage("");
       setProductInput("");
     } catch (error) {
