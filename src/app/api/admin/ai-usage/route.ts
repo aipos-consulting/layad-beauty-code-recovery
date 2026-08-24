@@ -62,21 +62,47 @@ export async function GET(request: NextRequest) {
     const setting = settings[0] ?? { monthly_budget_usd: 20, warning_low_percent: 50, warning_high_percent: 80, hard_stop_enabled: true, mode: "pilot" };
     const budget = Number(setting.monthly_budget_usd ?? 20);
 
+    const now = new Date();
+    const monthStart = startOfUtcMonth(now);
+    const monthIso = new Date(monthStart * 1000).toISOString();
+    const runs = await readSupabase<Array<{ status: string; input_tokens: number | null; output_tokens: number | null; created_at: string }>>(
+      `review_analysis_runs?created_at=gte.${encodeURIComponent(monthIso)}&select=status,input_tokens,output_tokens,created_at&order=created_at.desc&limit=5000`,
+      serviceKey,
+    );
+    const completedRuns = runs.filter((row) => row.status === "completed").length;
+    const failedRuns = runs.filter((row) => row.status === "failed").length;
+    const inputTokens = runs.reduce((sum, row) => sum + Number(row.input_tokens ?? 0), 0);
+    const outputTokens = runs.reduce((sum, row) => sum + Number(row.output_tokens ?? 0), 0);
+    const localRuns = { total: runs.length, completed: completedRuns, failed: failedRuns, inputTokens, outputTokens };
+
     if (!adminKey || !projectId) {
       return NextResponse.json({
-        ok: false,
-        code: "COST_GUARD_NOT_CONFIGURED",
-        message: "OpenAI 비용 검증용 Admin Key 또는 Project ID가 연결되지 않았습니다.",
-        budget,
+        ok: true,
+        costAvailable: false,
+        costStatus: "not_configured",
+        costMessage: "OpenAI 비용 API 연결이 필요합니다.",
+        source: "Supabase local usage",
+        projectId: projectId ?? null,
+        model,
+        mode: setting.mode,
+        budgetUsd: budget,
+        spentUsd: null,
+        remainingUsd: null,
+        utilizationPercent: null,
+        warning: "unknown",
+        warningLowPercent: Number(setting.warning_low_percent),
+        warningHighPercent: Number(setting.warning_high_percent),
         hardStopEnabled: Boolean(setting.hard_stop_enabled),
-      }, { status: 503 });
+        blocked: null,
+        month: now.toISOString().slice(0, 7),
+        daily: [],
+        localRuns,
+      });
     }
 
     const url = new URL(request.url);
     const requestedDays = Number(url.searchParams.get("days") ?? 31);
     const days = Number.isFinite(requestedDays) ? Math.min(31, Math.max(7, Math.round(requestedDays))) : 31;
-    const now = new Date();
-    const monthStart = startOfUtcMonth(now);
     const rangeStart = Math.max(monthStart, Math.floor((Date.now() - (days - 1) * 86400000) / 1000));
     const end = Math.floor(Date.now() / 1000) + 1;
 
@@ -95,7 +121,29 @@ export async function GET(request: NextRequest) {
     });
     if (!costResponse.ok) {
       const detail = (await costResponse.text()).slice(0, 400);
-      return NextResponse.json({ ok: false, code: "OPENAI_COSTS_READ_FAILED", message: `OpenAI 비용 조회 실패 (${costResponse.status})`, detail }, { status: 502 });
+      return NextResponse.json({
+        ok: true,
+        costAvailable: false,
+        costStatus: "read_failed",
+        costMessage: `OpenAI 비용 조회 실패 (${costResponse.status})`,
+        costDetail: detail,
+        source: "Supabase local usage",
+        projectId,
+        model,
+        mode: setting.mode,
+        budgetUsd: budget,
+        spentUsd: null,
+        remainingUsd: null,
+        utilizationPercent: null,
+        warning: "unknown",
+        warningLowPercent: Number(setting.warning_low_percent),
+        warningHighPercent: Number(setting.warning_high_percent),
+        hardStopEnabled: Boolean(setting.hard_stop_enabled),
+        blocked: null,
+        month: now.toISOString().slice(0, 7),
+        daily: [],
+        localRuns,
+      });
     }
 
     const payload = await costResponse.json() as CostPayload;
@@ -113,18 +161,10 @@ export async function GET(request: NextRequest) {
         ? "low"
         : "normal";
 
-    const monthIso = new Date(monthStart * 1000).toISOString();
-    const runs = await readSupabase<Array<{ status: string; input_tokens: number | null; output_tokens: number | null; created_at: string }>>(
-      `review_analysis_runs?created_at=gte.${encodeURIComponent(monthIso)}&select=status,input_tokens,output_tokens,created_at&order=created_at.desc&limit=5000`,
-      serviceKey,
-    );
-    const completedRuns = runs.filter((row) => row.status === "completed").length;
-    const failedRuns = runs.filter((row) => row.status === "failed").length;
-    const inputTokens = runs.reduce((sum, row) => sum + Number(row.input_tokens ?? 0), 0);
-    const outputTokens = runs.reduce((sum, row) => sum + Number(row.output_tokens ?? 0), 0);
-
     return NextResponse.json({
       ok: true,
+      costAvailable: true,
+      costStatus: "ok",
       source: "OpenAI organization Costs API",
       projectId,
       model,
@@ -138,9 +178,9 @@ export async function GET(request: NextRequest) {
       warningHighPercent: Number(setting.warning_high_percent),
       hardStopEnabled: Boolean(setting.hard_stop_enabled),
       blocked,
-      month: new Date().toISOString().slice(0, 7),
+      month: now.toISOString().slice(0, 7),
       daily,
-      localRuns: { total: runs.length, completed: completedRuns, failed: failedRuns, inputTokens, outputTokens },
+      localRuns,
     });
   } catch (error) {
     return NextResponse.json({
