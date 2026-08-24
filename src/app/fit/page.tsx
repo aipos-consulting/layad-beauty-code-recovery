@@ -152,7 +152,7 @@ export default function FitPage() {
           <p className="mt-3 text-sm leading-7 text-[#766767]">현재 Beauty Code <strong className="text-[#a85f6e]">{beautyCode}</strong> 기준으로 분석합니다.</p>
         </div>
 
-        <form onSubmit={submit} className="mt-8 rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
+        <form onSubmit={submit} data-direct-product-fit="true" className="mt-8 rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
           <label htmlFor="fit-product-input" className="text-sm font-semibold">상품명 또는 상품 링크</label>
           <input
             id="fit-product-input"
@@ -167,7 +167,7 @@ export default function FitPage() {
             disabled={!productInput.trim() || busy}
             className="mt-3 w-full rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white enabled:hover:bg-[#c8798a] disabled:cursor-not-allowed disabled:bg-[#d8cccc]"
           >
-            {busy ? "분석 중..." : "적합도 분석하기"}
+            {busy ? "분석 중..." : "분석 시작하기"}
           </button>
         </form>
 
