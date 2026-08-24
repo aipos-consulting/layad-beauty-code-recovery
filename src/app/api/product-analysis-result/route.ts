@@ -38,27 +38,20 @@ export async function GET(request: NextRequest) {
   const { url, key } = getConfig();
   if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
 
-  let sessionId = request.nextUrl.searchParams.get("sessionId") ?? "";
+  const sessionId = request.nextUrl.searchParams.get("sessionId") ?? "";
   const requestId = request.nextUrl.searchParams.get("requestId") ?? "";
+  if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return NextResponse.json({ ok: false, message: "세션 ID가 올바르지 않습니다." }, { status: 400 });
   if (requestId && !/^[0-9a-f-]{36}$/i.test(requestId)) return NextResponse.json({ ok: false, message: "분석 요청 ID가 올바르지 않습니다." }, { status: 400 });
-  if (sessionId && !/^[0-9a-f-]{36}$/i.test(sessionId)) return NextResponse.json({ ok: false, message: "세션 ID가 올바르지 않습니다." }, { status: 400 });
-  if (!requestId && !sessionId) return NextResponse.json({ ok: false, message: "분석 결과 연결 정보가 없습니다." }, { status: 400 });
 
-  let requestQuery: string;
-  if (requestId && sessionId) {
-    requestQuery = `product_analysis_requests?id=eq.${requestId}&session_id=eq.${sessionId}&select=id,session_id,status,error_message,product_id,created_at&limit=1`;
-  } else if (requestId) {
-    requestQuery = `product_analysis_requests?id=eq.${requestId}&select=id,session_id,status,error_message,product_id,created_at&limit=1`;
-  } else {
-    requestQuery = `product_analysis_requests?session_id=eq.${sessionId}&select=id,session_id,status,error_message,product_id,created_at&order=created_at.desc&limit=1`;
-  }
+  const requestQuery = requestId
+    ? `product_analysis_requests?id=eq.${requestId}&session_id=eq.${sessionId}&select=id,status,error_message,product_id,created_at&limit=1`
+    : `product_analysis_requests?session_id=eq.${sessionId}&select=id,status,error_message,product_id,created_at&order=created_at.desc&limit=1`;
 
   const requestResponse = await db(requestQuery, url, key);
   if (!requestResponse.ok) return NextResponse.json({ ok: false, code: "DATABASE_READ_FAILED" }, { status: 500 });
-  const rows = (await requestResponse.json()) as Array<{ id: string; session_id: string; status: string; error_message: string | null; product_id: string | null; created_at: string }>;
+  const rows = (await requestResponse.json()) as Array<{ id: string; status: string; error_message: string | null; product_id: string | null; created_at: string }>;
   const latest = rows[0];
   if (!latest) return NextResponse.json({ ok: true, status: "not_found" });
-  sessionId = latest.session_id;
 
   let resolvedStatus = latest.status;
   if (latest.product_id && latest.status !== "completed") {
@@ -66,12 +59,12 @@ export async function GET(request: NextRequest) {
       resolvedStatus = "completed";
     } else if (["submitted", "collecting_reviews", "analyzing"].includes(latest.status)) {
       const failure = await inheritedFailure(latest.product_id, latest.id, url, key);
-      if (failure) return NextResponse.json({ ok: true, requestId: latest.id, sessionId, status: failure.status, errorMessage: failure.error_message });
+      if (failure) return NextResponse.json({ ok: true, requestId: latest.id, status: failure.status, errorMessage: failure.error_message });
     }
   }
 
   if (resolvedStatus !== "completed" || !latest.product_id) {
-    return NextResponse.json({ ok: true, requestId: latest.id, sessionId, status: latest.status, errorMessage: latest.error_message });
+    return NextResponse.json({ ok: true, requestId: latest.id, status: latest.status, errorMessage: latest.error_message });
   }
 
   const [productResponse, fitsResponse, sessionResponse] = await Promise.all([
@@ -89,7 +82,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     requestId: latest.id,
-    sessionId,
     status: "completed",
     product: products[0] ?? null,
     userBeautyCode: sessions[0]?.beauty_code ?? null,
