@@ -73,7 +73,7 @@ export default function BeautyCodeCharactersPage() {
           <p className="text-xs font-semibold tracking-[.16em] text-[#a94f65]">BEAUTY CODE CHARACTERS</p>
           <h1 className="mt-2 text-2xl font-semibold">유형별 캐릭터 관리</h1>
           <p className="mt-2 text-sm text-[#766767]">Beauty Code는 고정값입니다. 별명, 이미지, 유형 설명을 등록·교체할 수 있습니다.</p>
-          <p className="mt-1 text-xs text-[#9b8b8e]">※ 유형 설명은 현재 Admin에서만 관리되며 분석 결과 화면에는 아직 연결되지 않습니다.</p>
+          <p className="mt-1 text-xs text-[#9b8b8e]">※ 유형 설명은 Admin에 저장한 뒤 운영 파일 동기화 시 결과 화면에 반영됩니다.</p>
         </div>
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
         {loading ? <p className="text-sm text-[#766767]">불러오는 중...</p> : (
