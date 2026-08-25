@@ -14,6 +14,12 @@ type Character = { beauty_code: string; nickname: string; image_url: string | nu
 
 const axisPairs = [["O","D"],["G","M"],["P","C"],["V","E"]] as const;
 
+function renderDescriptionWithBoldHashtags(text: string) {
+  return text.split(/(#[^\s#]+)/g).map((part, index) =>
+    part.startsWith("#") ? <strong key={`${part}-${index}`} className="font-bold text-[#4f4144]">{part}</strong> : part
+  );
+}
+
 export default function MyPage() {
   const [data, setData] = useState<PageData | null>(null);
   const [character, setCharacter] = useState<Character | null>(null);
@@ -151,7 +157,7 @@ export default function MyPage() {
               <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
               <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
               {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
-              {currentDescription ? <div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6"><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">TYPE PROFILE</p><p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{currentDescription}</p></div> : null}
+              {currentDescription ? <div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6"><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">TYPE PROFILE</p><p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{renderDescriptionWithBoldHashtags(currentDescription)}</p></div> : null}
             </div>
           ) : <div className="mt-6 rounded-3xl border border-dashed border-[#e6cfd4] p-7 text-center"><p className="text-sm text-[#806f72]">아직 저장된 Beauty Code가 없습니다.</p><Link href="/test" className="mt-4 inline-block rounded-full bg-[#d88c9c] px-5 py-2.5 text-sm font-semibold text-white">테스트 시작</Link></div>}
         </section>
