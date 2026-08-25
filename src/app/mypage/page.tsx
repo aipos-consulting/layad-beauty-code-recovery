@@ -152,7 +152,7 @@ export default function MyPage() {
           <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">현재 Beauty Code</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">다시 테스트</Link></div>
           {current ? (
             <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
-              {character?.image_url ? <div className="mx-auto mb-5 h-[6.2cm] w-[6.2cm] overflow-hidden rounded-[32px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)]"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
+              {character?.image_url ? <div className="relative left-1/2 mb-5 h-[6.2cm] w-[6.2cm] -translate-x-1/2 overflow-hidden rounded-[32px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:left-auto sm:mx-auto sm:translate-x-0"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
               {character?.nickname ? <p className="mb-2 text-[1.75rem] font-semibold leading-none text-[#5f5053]">{character.nickname}</p> : null}
               <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
               <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
