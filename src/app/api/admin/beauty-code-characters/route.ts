@@ -21,20 +21,30 @@ async function db(path: string, init: RequestInit, serverKey: string) {
   });
 }
 
+type CharacterRow = {
+  beauty_code: string;
+  nickname: string;
+  image_url: string | null;
+  type_description: string;
+};
+
 export async function GET() {
   const serverKey = key();
   if (!serverKey) return NextResponse.json({ ok: false, message: "Supabase 설정이 없습니다." }, { status: 503 });
 
   const response = await db(
-    "beauty_code_characters?select=beauty_code,nickname,image_url&order=beauty_code.asc",
+    "beauty_code_characters?select=beauty_code,nickname,image_url,type_description&order=beauty_code.asc",
     { method: "GET" },
     serverKey,
   );
   if (!response.ok) return NextResponse.json({ ok: false, message: await response.text() }, { status: 500 });
 
-  const data = await response.json() as Array<{ beauty_code: string; nickname: string; image_url: string | null }>;
+  const data = await response.json() as CharacterRow[];
   const map = new Map(data.map((row) => [row.beauty_code, row]));
-  return NextResponse.json({ ok: true, characters: CODES.map((code) => map.get(code) ?? { beauty_code: code, nickname: "", image_url: null }) });
+  return NextResponse.json({
+    ok: true,
+    characters: CODES.map((code) => map.get(code) ?? { beauty_code: code, nickname: "", image_url: null, type_description: "" }),
+  });
 }
 
 export async function POST(request: Request) {
@@ -44,6 +54,7 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const beautyCode = String(form.get("beautyCode") ?? "").trim().toUpperCase();
   const nickname = String(form.get("nickname") ?? "").trim();
+  const typeDescription = String(form.get("typeDescription") ?? "");
   const file = form.get("image");
 
   if (!CODES.includes(beautyCode)) return NextResponse.json({ ok: false, message: "올바른 Beauty Code가 아닙니다." }, { status: 400 });
@@ -73,12 +84,13 @@ export async function POST(request: Request) {
 
   const payload: Record<string, string> = {
     nickname,
+    type_description: typeDescription,
     updated_at: new Date().toISOString(),
   };
   if (imageUrl) payload.image_url = imageUrl;
 
   const updateResponse = await db(
-    `beauty_code_characters?beauty_code=eq.${encodeURIComponent(beautyCode)}&select=beauty_code,nickname,image_url`,
+    `beauty_code_characters?beauty_code=eq.${encodeURIComponent(beautyCode)}&select=beauty_code,nickname,image_url,type_description`,
     {
       method: "PATCH",
       headers: {
@@ -91,6 +103,9 @@ export async function POST(request: Request) {
   );
   if (!updateResponse.ok) return NextResponse.json({ ok: false, message: await updateResponse.text() }, { status: 500 });
 
-  const rows = await updateResponse.json() as Array<{ beauty_code: string; nickname: string; image_url: string | null }>;
-  return NextResponse.json({ ok: true, character: rows[0] ?? { beauty_code: beautyCode, nickname, image_url: imageUrl ?? null } });
+  const rows = await updateResponse.json() as CharacterRow[];
+  return NextResponse.json({
+    ok: true,
+    character: rows[0] ?? { beauty_code: beautyCode, nickname, image_url: imageUrl ?? null, type_description: typeDescription },
+  });
 }
