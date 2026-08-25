@@ -10,11 +10,13 @@ const PENDING_PRODUCT_KEY = "layad-pending-saved-product-v1";
 type CodeRow = { id: string; beauty_code: string; source: string; axis_scores: Record<string, number>; is_current: boolean; created_at: string };
 type ProductRow = { id: string; product_ref: string; product_name: string | null; beauty_code: string | null; fit_score: number | null; created_at: string };
 type PageData = { user: { email: string; nickname: string | null }; codes: CodeRow[]; products: ProductRow[] };
+type Character = { beauty_code: string; nickname: string; image_url: string | null };
 
 const axisPairs = [["O","D"],["G","M"],["P","C"],["V","E"]] as const;
 
 export default function MyPage() {
   const [data, setData] = useState<PageData | null>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [message, setMessage] = useState("");
@@ -27,9 +29,22 @@ export default function MyPage() {
     try {
       const response = await fetch("/api/mypage", { cache: "no-store" });
       const payload = await response.json().catch(() => ({})) as { ok?: boolean; code?: string } & Partial<PageData>;
-      if (response.status === 401 || payload.code === "AUTH_REQUIRED") { setAuthRequired(true); setData(null); return; }
+      if (response.status === 401 || payload.code === "AUTH_REQUIRED") { setAuthRequired(true); setData(null); setCharacter(null); return; }
       if (!response.ok || !payload.ok) throw new Error();
-      setData({ user: payload.user!, codes: payload.codes ?? [], products: payload.products ?? [] });
+      const nextData: PageData = { user: payload.user!, codes: payload.codes ?? [], products: payload.products ?? [] };
+      setData(nextData);
+      const currentCode = nextData.codes.find(code => code.is_current)?.beauty_code ?? nextData.codes[0]?.beauty_code ?? "";
+      if (currentCode) {
+        try {
+          const characterResponse = await fetch(`/api/beauty-code-character?code=${encodeURIComponent(currentCode)}`, { cache: "no-store" });
+          const characterPayload = await characterResponse.json().catch(() => ({})) as { ok?: boolean; character?: Character };
+          setCharacter(characterResponse.ok && characterPayload.ok ? characterPayload.character ?? null : null);
+        } catch {
+          setCharacter(null);
+        }
+      } else {
+        setCharacter(null);
+      }
       setAuthRequired(false);
     } catch {
       setMessage("My Page를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -133,13 +148,14 @@ export default function MyPage() {
           <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">현재 Beauty Code</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">다시 테스트</Link></div>
           {current ? (
             <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
+              {character?.image_url ? <div className="mx-auto mb-4 aspect-square w-[148px] overflow-hidden rounded-[28px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:w-[176px]"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
+              {character?.nickname ? <p className="mb-2 text-base font-semibold text-[#5f5053] sm:text-lg">{character.nickname}</p> : null}
               <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
               <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
               {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
               {currentDescription ? (
                 <div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6">
                   <p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">TYPE PROFILE</p>
-                  <h3 className="mt-2 text-lg font-semibold text-[#4f4144]">{current.beauty_code} 유형 설명</h3>
                   <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{currentDescription}</p>
                 </div>
               ) : null}
