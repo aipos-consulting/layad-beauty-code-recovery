@@ -1,0 +1,80 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null };
+
+export default function BeautyCodeCharactersPage() {
+  const [rows, setRows] = useState<CharacterRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    const response = await fetch("/api/admin/beauty-code-characters", { cache: "no-store" });
+    const result = await response.json();
+    setRows(result.characters ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function save(row: CharacterRow, file?: File) {
+    setSaving(row.beauty_code);
+    setMessage("");
+    const form = new FormData();
+    form.set("beautyCode", row.beauty_code);
+    form.set("nickname", row.nickname);
+    if (file) form.set("image", file);
+    const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
+    const result = await response.json();
+    if (!response.ok || !result.ok) setMessage(result.message ?? "저장에 실패했습니다.");
+    else {
+      setRows(current => current.map(item => item.beauty_code === row.beauty_code ? result.character : item));
+      setMessage(`${row.beauty_code} 저장 완료`);
+    }
+    setSaving(null);
+  }
+
+  return (
+    <main className="px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <p className="text-xs font-semibold tracking-[.16em] text-[#a94f65]">BEAUTY CODE CHARACTERS</p>
+          <h1 className="mt-2 text-2xl font-semibold">유형별 캐릭터 관리</h1>
+          <p className="mt-2 text-sm text-[#766767]">Beauty Code는 고정값입니다. 별명과 이미지만 등록·교체할 수 있습니다.</p>
+        </div>
+        {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
+        {loading ? <p className="text-sm text-[#766767]">불러오는 중...</p> : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {rows.map(row => <CharacterCard key={row.beauty_code} row={row} saving={saving === row.beauty_code} onChange={next => setRows(current => current.map(item => item.beauty_code === row.beauty_code ? next : item))} onSave={save} />)}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function CharacterCard({ row, saving, onChange, onSave }: { row: CharacterRow; saving: boolean; onChange: (row: CharacterRow) => void; onSave: (row: CharacterRow, file?: File) => Promise<void> }) {
+  const [file, setFile] = useState<File | undefined>();
+  const preview = file ? URL.createObjectURL(file) : row.image_url;
+  return (
+    <section className="rounded-2xl border border-[#eadfe1] bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-[88px_1fr] gap-4 sm:grid-cols-[120px_1fr]">
+        <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-[#fff7f8]">
+          {preview ? <img src={preview} alt={`${row.beauty_code} 캐릭터`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-2 text-center text-xs text-[#9c8d90]">이미지 미등록</div>}
+        </div>
+        <div className="min-w-0">
+          <label className="text-xs font-semibold text-[#8b7b7e]">Beauty Code</label>
+          <div className="mt-1 text-xl font-semibold tracking-[.12em] text-[#d88c9c]">{row.beauty_code}</div>
+          <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">별명</label>
+          <input value={row.nickname} onChange={e => onChange({ ...row, nickname: e.target.value })} maxLength={40} className="mt-1 w-full rounded-xl border border-[#e8dadd] px-3 py-2 text-sm outline-none focus:border-[#d88c9c]" placeholder="예: 글로우 퍼펙터" />
+          <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">이미지</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFile(e.target.files?.[0])} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
+          <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, file)} className="mt-4 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
+        </div>
+      </div>
+    </section>
+  );
+}
