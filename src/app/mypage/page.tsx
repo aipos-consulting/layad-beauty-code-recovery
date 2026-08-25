@@ -149,7 +149,7 @@ export default function MyPage() {
           {current ? (
             <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
               {character?.image_url ? <div className="mx-auto mb-5 h-[6.2cm] w-[6.2cm] overflow-hidden rounded-[32px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)]"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
-              {character?.nickname ? <p className="mb-2 text-[2.6rem] font-semibold leading-none text-[#5f5053]">{character.nickname}</p> : null}
+              {character?.nickname ? <p className="mb-2 text-[2.25rem] font-semibold leading-none text-[#5f5053]">{character.nickname}</p> : null}
               <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
               <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
               {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
