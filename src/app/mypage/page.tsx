@@ -148,8 +148,8 @@ export default function MyPage() {
           <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">현재 Beauty Code</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">다시 테스트</Link></div>
           {current ? (
             <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
-              {character?.image_url ? <div className="mx-auto mb-4 aspect-square w-[148px] overflow-hidden rounded-[28px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:w-[176px]"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
-              {character?.nickname ? <p className="mb-2 text-base font-semibold text-[#5f5053] sm:text-lg">{character.nickname}</p> : null}
+              {character?.image_url ? <div className="mx-auto mb-5 h-[5cm] w-[5cm] overflow-hidden rounded-[28px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)]"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
+              {character?.nickname ? <p className="mb-2 text-[2.85rem] font-semibold leading-none text-[#5f5053]">{character.nickname}</p> : null}
               <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
               <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
               {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
