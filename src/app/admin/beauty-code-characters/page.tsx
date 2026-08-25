@@ -106,15 +106,14 @@ function CharacterCard({ row, saving, saved, onChange, onSave }: { row: Characte
           <textarea
             value={row.type_description ?? ""}
             onChange={e => onChange({ ...row, type_description: e.target.value })}
-            rows={8}
-            className="mt-1 w-full resize-y rounded-xl border border-[#e8dadd] px-3 py-3 text-sm leading-6 outline-none focus:border-[#d88c9c]"
+            className="mt-1 h-40 w-full resize-none overflow-y-auto rounded-xl border border-[#e8dadd] px-3 py-3 text-sm leading-6 outline-none focus:border-[#d88c9c]"
             placeholder="현재 분석 결과 화면에 표시되는 유형 설명을 문단과 줄바꿈을 유지해 입력하세요."
           />
 
           <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">이미지</label>
           <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { setFile(e.target.files?.[0]); onChange(row); }} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
           <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, file)} className="mt-4 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
-          {saved ? <div className="mt-2 text-center text-sm font-semibold text-[#a94f65]">저장 완료</div> : null}
+          {saved ? <div className="mt-2 rounded-lg bg-[#fff4f6] px-3 py-2 text-center text-sm font-semibold text-[#a94f65]">✓ {row.beauty_code} 저장 완료</div> : null}
         </div>
       </div>
     </section>
