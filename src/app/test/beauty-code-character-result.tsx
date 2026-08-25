@@ -10,7 +10,7 @@ type Character = {
 };
 
 export default function BeautyCodeCharacterResult() {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
+  const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState<string>("");
   const [character, setCharacter] = useState<Character | null>(null);
 
@@ -19,13 +19,22 @@ export default function BeautyCodeCharacterResult() {
       const headings = Array.from(document.querySelectorAll("h1"));
       const resultHeading = headings.find((node) => /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? "")) as HTMLElement | undefined;
       if (!resultHeading) {
-        setTarget(null);
+        const oldMount = document.getElementById("layad-character-result-mount");
+        oldMount?.remove();
+        setMount(null);
         setCode("");
         setCharacter(null);
         return;
       }
+
       const nextCode = resultHeading.textContent?.trim() ?? "";
-      setTarget(resultHeading);
+      let portalMount = document.getElementById("layad-character-result-mount");
+      if (!portalMount) {
+        portalMount = document.createElement("div");
+        portalMount.id = "layad-character-result-mount";
+        resultHeading.parentElement?.insertBefore(portalMount, resultHeading);
+      }
+      setMount(portalMount);
       setCode((current) => current === nextCode ? current : nextCode);
     };
 
@@ -48,10 +57,7 @@ export default function BeautyCodeCharacterResult() {
     return () => { active = false; };
   }, [code]);
 
-  if (!target || !character || (!character.nickname && !character.image_url)) return null;
-
-  const mount = target.parentElement;
-  if (!mount) return null;
+  if (!mount || !character || (!character.nickname && !character.image_url)) return null;
 
   return createPortal(
     <div className="mx-auto mt-5 flex max-w-[280px] flex-col items-center text-center sm:max-w-[320px]">
@@ -61,7 +67,7 @@ export default function BeautyCodeCharacterResult() {
         </div>
       ) : null}
       {character.nickname ? (
-        <p className="text-base font-semibold text-[#5f5053] sm:text-lg">{character.nickname}</p>
+        <p className="mb-1 text-base font-semibold text-[#5f5053] sm:text-lg">{character.nickname}</p>
       ) : null}
     </div>,
     mount
