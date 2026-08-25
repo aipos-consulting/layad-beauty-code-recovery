@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     role = roles[0]?.role;
   }
 
-  const allowed = target === "admin" ? role === "admin" : role === "ceo" || role === "admin";
+  const allowed = target === "admin" ? role === "ceo" || role === "admin" : role === "ceo" || role === "admin";
   if (!allowed) return NextResponse.json({ ok: false, message: "이 계정에는 해당 화면 접근 권한이 없습니다." }, { status: 403 });
 
   const response = NextResponse.json({ ok: true, role, redirectTo: target === "admin" ? "/admin" : "/ceo" });
