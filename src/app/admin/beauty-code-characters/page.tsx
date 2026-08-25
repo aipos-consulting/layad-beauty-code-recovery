@@ -12,6 +12,7 @@ export default function BeautyCodeCharactersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [savedCodes, setSavedCodes] = useState<Record<string, boolean>>({});
 
   async function load() {
     setLoading(true);
@@ -38,6 +39,7 @@ export default function BeautyCodeCharactersPage() {
   async function save(row: CharacterRow, file?: File) {
     setSaving(row.beauty_code);
     setMessage("");
+    setSavedCodes(current => ({ ...current, [row.beauty_code]: false }));
     const form = new FormData();
     form.set("beautyCode", row.beauty_code);
     form.set("nickname", row.nickname);
@@ -46,16 +48,22 @@ export default function BeautyCodeCharactersPage() {
     try {
       const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
       const result = await response.json();
-      if (!response.ok || !result.ok) setMessage(result.message ?? "저장에 실패했습니다.");
-      else {
+      if (!response.ok || !result.ok) {
+        setMessage(`${row.beauty_code} 저장 실패: ${result.message ?? "저장에 실패했습니다."}`);
+      } else {
         setRows(current => current.map(item => item.beauty_code === row.beauty_code ? result.character : item));
-        setMessage(`${row.beauty_code} 저장 완료`);
+        setSavedCodes(current => ({ ...current, [row.beauty_code]: true }));
       }
     } catch {
-      setMessage("저장 중 네트워크 오류가 발생했습니다.");
+      setMessage(`${row.beauty_code} 저장 중 네트워크 오류가 발생했습니다.`);
     } finally {
       setSaving(null);
     }
+  }
+
+  function changeRow(next: CharacterRow) {
+    setRows(current => current.map(item => item.beauty_code === next.beauty_code ? next : item));
+    setSavedCodes(current => ({ ...current, [next.beauty_code]: false }));
   }
 
   return (
@@ -70,7 +78,7 @@ export default function BeautyCodeCharactersPage() {
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
         {loading ? <p className="text-sm text-[#766767]">불러오는 중...</p> : (
           <div className="grid gap-4 md:grid-cols-2">
-            {rows.map(row => <CharacterCard key={row.beauty_code} row={row} saving={saving === row.beauty_code} onChange={next => setRows(current => current.map(item => item.beauty_code === row.beauty_code ? next : item))} onSave={save} />)}
+            {rows.map(row => <CharacterCard key={row.beauty_code} row={row} saving={saving === row.beauty_code} saved={!!savedCodes[row.beauty_code]} onChange={changeRow} onSave={save} />)}
           </div>
         )}
       </div>
@@ -78,7 +86,7 @@ export default function BeautyCodeCharactersPage() {
   );
 }
 
-function CharacterCard({ row, saving, onChange, onSave }: { row: CharacterRow; saving: boolean; onChange: (row: CharacterRow) => void; onSave: (row: CharacterRow, file?: File) => Promise<void> }) {
+function CharacterCard({ row, saving, saved, onChange, onSave }: { row: CharacterRow; saving: boolean; saved: boolean; onChange: (row: CharacterRow) => void; onSave: (row: CharacterRow, file?: File) => Promise<void> }) {
   const [file, setFile] = useState<File | undefined>();
   const preview = file ? URL.createObjectURL(file) : row.image_url;
   return (
@@ -104,8 +112,9 @@ function CharacterCard({ row, saving, onChange, onSave }: { row: CharacterRow; s
           />
 
           <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">이미지</label>
-          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFile(e.target.files?.[0])} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { setFile(e.target.files?.[0]); onChange(row); }} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
           <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, file)} className="mt-4 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
+          {saved ? <div className="mt-2 text-center text-sm font-semibold text-[#a94f65]">저장 완료</div> : null}
         </div>
       </div>
     </section>
