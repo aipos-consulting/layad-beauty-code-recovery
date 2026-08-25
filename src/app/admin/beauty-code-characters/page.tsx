@@ -4,18 +4,33 @@ import { useEffect, useState } from "react";
 
 type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null };
 
+const CODES = ["DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE","OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE"];
+const EMPTY_ROWS: CharacterRow[] = CODES.map(beauty_code => ({ beauty_code, nickname: "", image_url: null }));
+
 export default function BeautyCodeCharactersPage() {
-  const [rows, setRows] = useState<CharacterRow[]>([]);
+  const [rows, setRows] = useState<CharacterRow[]>(EMPTY_ROWS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   async function load() {
     setLoading(true);
-    const response = await fetch("/api/admin/beauty-code-characters", { cache: "no-store" });
-    const result = await response.json();
-    setRows(result.characters ?? []);
-    setLoading(false);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/beauty-code-characters", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setRows(EMPTY_ROWS);
+        setMessage(result.message ?? "캐릭터 정보를 불러오지 못했습니다.");
+      } else {
+        setRows(result.characters ?? EMPTY_ROWS);
+      }
+    } catch {
+      setRows(EMPTY_ROWS);
+      setMessage("캐릭터 정보를 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { void load(); }, []);
@@ -27,14 +42,19 @@ export default function BeautyCodeCharactersPage() {
     form.set("beautyCode", row.beauty_code);
     form.set("nickname", row.nickname);
     if (file) form.set("image", file);
-    const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
-    const result = await response.json();
-    if (!response.ok || !result.ok) setMessage(result.message ?? "저장에 실패했습니다.");
-    else {
-      setRows(current => current.map(item => item.beauty_code === row.beauty_code ? result.character : item));
-      setMessage(`${row.beauty_code} 저장 완료`);
+    try {
+      const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
+      const result = await response.json();
+      if (!response.ok || !result.ok) setMessage(result.message ?? "저장에 실패했습니다.");
+      else {
+        setRows(current => current.map(item => item.beauty_code === row.beauty_code ? result.character : item));
+        setMessage(`${row.beauty_code} 저장 완료`);
+      }
+    } catch {
+      setMessage("저장 중 네트워크 오류가 발생했습니다.");
+    } finally {
+      setSaving(null);
     }
-    setSaving(null);
   }
 
   return (
