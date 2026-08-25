@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
   if (!protectsCeo && !protectsAdmin) return NextResponse.next();
 
   const role = await resolveRole(request);
-  if (protectsAdmin && role !== "admin") {
+  if (protectsAdmin && role !== "admin" && role !== "ceo") {
     if (path.startsWith("/api/")) return NextResponse.json({ ok: false, code: "ADMIN_AUTH_REQUIRED" }, { status: 401 });
     const login = request.nextUrl.clone(); login.pathname = "/admin/login"; login.search = ""; return NextResponse.redirect(login);
   }
