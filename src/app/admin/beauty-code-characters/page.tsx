@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null };
+type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null; type_description: string };
 
 const CODES = ["DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE","OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE"];
-const EMPTY_ROWS: CharacterRow[] = CODES.map(beauty_code => ({ beauty_code, nickname: "", image_url: null }));
+const EMPTY_ROWS: CharacterRow[] = CODES.map(beauty_code => ({ beauty_code, nickname: "", image_url: null, type_description: "" }));
 
 export default function BeautyCodeCharactersPage() {
   const [rows, setRows] = useState<CharacterRow[]>(EMPTY_ROWS);
@@ -41,6 +41,7 @@ export default function BeautyCodeCharactersPage() {
     const form = new FormData();
     form.set("beautyCode", row.beauty_code);
     form.set("nickname", row.nickname);
+    form.set("typeDescription", row.type_description ?? "");
     if (file) form.set("image", file);
     try {
       const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
@@ -63,7 +64,8 @@ export default function BeautyCodeCharactersPage() {
         <div className="mb-6">
           <p className="text-xs font-semibold tracking-[.16em] text-[#a94f65]">BEAUTY CODE CHARACTERS</p>
           <h1 className="mt-2 text-2xl font-semibold">유형별 캐릭터 관리</h1>
-          <p className="mt-2 text-sm text-[#766767]">Beauty Code는 고정값입니다. 별명과 이미지만 등록·교체할 수 있습니다.</p>
+          <p className="mt-2 text-sm text-[#766767]">Beauty Code는 고정값입니다. 별명, 이미지, 유형 설명을 등록·교체할 수 있습니다.</p>
+          <p className="mt-1 text-xs text-[#9b8b8e]">※ 유형 설명은 현재 Admin에서만 관리되며 분석 결과 화면에는 아직 연결되지 않습니다.</p>
         </div>
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
         {loading ? <p className="text-sm text-[#766767]">불러오는 중...</p> : (
@@ -88,8 +90,19 @@ function CharacterCard({ row, saving, onChange, onSave }: { row: CharacterRow; s
         <div className="min-w-0">
           <label className="text-xs font-semibold text-[#8b7b7e]">Beauty Code</label>
           <div className="mt-1 text-xl font-semibold tracking-[.12em] text-[#d88c9c]">{row.beauty_code}</div>
+
           <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">별명</label>
-          <input value={row.nickname} onChange={e => onChange({ ...row, nickname: e.target.value })} maxLength={40} className="mt-1 w-full rounded-xl border border-[#e8dadd] px-3 py-2 text-sm outline-none focus:border-[#d88c9c]" placeholder="예: 글로우 퍼펙터" />
+          <input value={row.nickname} onChange={e => onChange({ ...row, nickname: e.target.value })} maxLength={40} className="mt-1 w-full rounded-xl border border-[#e8dadd] px-3 py-2 text-sm outline-none focus:border-[#d88c9c]" placeholder="예: 윤광 에이스" />
+
+          <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">유형 설명</label>
+          <textarea
+            value={row.type_description ?? ""}
+            onChange={e => onChange({ ...row, type_description: e.target.value })}
+            rows={8}
+            className="mt-1 w-full resize-y rounded-xl border border-[#e8dadd] px-3 py-3 text-sm leading-6 outline-none focus:border-[#d88c9c]"
+            placeholder="현재 분석 결과 화면에 표시되는 유형 설명을 문단과 줄바꿈을 유지해 입력하세요."
+          />
+
           <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">이미지</label>
           <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFile(e.target.files?.[0])} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
           <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, file)} className="mt-4 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
