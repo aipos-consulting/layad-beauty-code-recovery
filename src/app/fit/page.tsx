@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import ProductFitEvidencePanel from "./product-fit-evidence-panel";
 
 const LAST_FIT_STATE_KEY = "layad-last-product-fit-state-v1";
 
@@ -310,6 +311,8 @@ export default function FitPage() {
                     })}
                   </div>
                 </div>
+
+                <ProductFitEvidencePanel productName={result.productName} beautyCode={beautyCode} requestId={result.requestId} />
               </section>
             ) : null}
           </div>
