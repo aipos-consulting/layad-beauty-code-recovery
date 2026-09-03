@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useLanguage } from "@/app/i18n";
 
 const PENDING_KEY = "layad-pending-beauty-code-v1";
 
@@ -40,6 +41,7 @@ async function savePendingCode() {
 }
 
 export default function AccountPage() {
+  const { locale } = useLanguage();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +64,7 @@ export default function AccountPage() {
       const response = await fetch(`/api/user-auth/${mode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ...(mode === "signup" ? { locale } : {}) }),
       });
       const payload = await response.json().catch(() => ({})) as { ok?: boolean; message?: string; requiresEmailConfirmation?: boolean };
       if (!response.ok || !payload.ok) throw new Error(payload.message || (mode === "login" ? "로그인에 실패했습니다." : "회원가입에 실패했습니다."));
