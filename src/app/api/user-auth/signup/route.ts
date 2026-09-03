@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { USER_COOKIE, userAuthConfig } from "@/lib/user-auth-server";
 
-const PRODUCTION_CONFIRM_REDIRECT = "https://layad16.com/account?confirmed=1";
-
 type Locale = "ko" | "en" | "ja";
 
 function normalizeLocale(value: unknown): Locale {
@@ -20,11 +18,7 @@ export async function POST(request: NextRequest) {
   if (!email || !email.includes("@")) return NextResponse.json({ ok: false, message: "이메일을 확인해 주세요." }, { status: 400 });
   if (password.length < 8) return NextResponse.json({ ok: false, message: "비밀번호는 8자 이상으로 설정해 주세요." }, { status: 400 });
 
-  const redirectTo = process.env.NODE_ENV === "production"
-    ? PRODUCTION_CONFIRM_REDIRECT
-    : `${request.nextUrl.origin}/account?confirmed=1`;
-
-  const signupResponse = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`, {
+  const signupResponse = await fetch(`${url}/auth/v1/signup`, {
     method: "POST",
     headers: { apikey: publishableKey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, data: { locale, app: "LAYAD BEAUTY CODE" } }),
