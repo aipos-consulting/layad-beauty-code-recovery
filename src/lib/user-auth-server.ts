@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 
 export const USER_COOKIE = "layad_user_access_v1";
 export const USER_PERSIST_COOKIE = "layad_user_persist_v1";
+export const USER_SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 export const USER_PERSIST_MAX_AGE = 60 * 60 * 24 * 30;
 
 type PersistedUser = {
@@ -23,20 +24,20 @@ function signingKey() {
   return userAuthConfig().serviceRoleKey ?? "";
 }
 
-export function createPersistentUserCookie(user: { id: string; email?: string | null }) {
+function signUserCookie(user: { id: string; email?: string | null }, maxAge: number) {
   const key = signingKey();
   if (!key || !user.id) return null;
   const payload: PersistedUser = {
     id: user.id,
     email: user.email ?? "",
-    exp: Math.floor(Date.now() / 1000) + USER_PERSIST_MAX_AGE,
+    exp: Math.floor(Date.now() / 1000) + maxAge,
   };
   const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const signature = createHmac("sha256", key).update(encoded).digest("base64url");
   return `${encoded}.${signature}`;
 }
 
-function readPersistentUserCookie(value: string | undefined): PersistedUser | null {
+function readSignedUserCookie(value: string | undefined): PersistedUser | null {
   const key = signingKey();
   if (!key || !value) return null;
   const [encoded, signature] = value.split(".");
@@ -54,23 +55,53 @@ function readPersistentUserCookie(value: string | undefined): PersistedUser | nu
   }
 }
 
+export function createUserSessionCookie(user: { id: string; email?: string | null }) {
+  return signUserCookie(user, USER_SESSION_MAX_AGE);
+}
+
+export function createPersistentUserCookie(user: { id: string; email?: string | null }) {
+  return signUserCookie(user, USER_PERSIST_MAX_AGE);
+}
+
+async function independentUserById(id: string) {
+  const admin = adminUserClient();
+  if (!admin) return null;
+  const { data, error } = await admin
+    .from("layad_users")
+    .select("id,email,email_verified")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data?.id || !data.email_verified) return null;
+  return { id: data.id as string, email: String(data.email ?? "") };
+}
+
 export async function resolveUser(request: NextRequest) {
+  const session = readSignedUserCookie(request.cookies.get(USER_COOKIE)?.value);
+  if (session) {
+    const user = await independentUserById(session.id);
+    if (user) return user;
+  }
+
+  // Transitional compatibility for sessions issued by the previous Supabase Auth flow.
   const { url, publishableKey, serviceRoleKey } = userAuthConfig();
-  const token = request.cookies.get(USER_COOKIE)?.value;
-  if (url && publishableKey && token) {
+  const legacyToken = request.cookies.get(USER_COOKIE)?.value;
+  if (url && publishableKey && legacyToken && !session) {
     const response = await fetch(`${url}/auth/v1/user`, {
-      headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
+      headers: { apikey: publishableKey, Authorization: `Bearer ${legacyToken}` },
       cache: "no-store",
     });
     if (response.ok) {
-      const user = await response.json() as { id?: string; email?: string };
-      if (user.id) return { id: user.id, email: user.email ?? "" };
+      const legacyUser = await response.json() as { id?: string; email?: string };
+      if (legacyUser.id) return { id: legacyUser.id, email: legacyUser.email ?? "" };
     }
   }
 
-  const persisted = readPersistentUserCookie(request.cookies.get(USER_PERSIST_COOKIE)?.value);
-  if (!persisted || !url || !serviceRoleKey) return null;
+  const persisted = readSignedUserCookie(request.cookies.get(USER_PERSIST_COOKIE)?.value);
+  if (!persisted) return null;
+  const independent = await independentUserById(persisted.id);
+  if (independent) return independent;
 
+  if (!url || !serviceRoleKey) return null;
   const admin = adminUserClient();
   if (!admin) return null;
   const { data, error } = await admin.auth.admin.getUserById(persisted.id);
