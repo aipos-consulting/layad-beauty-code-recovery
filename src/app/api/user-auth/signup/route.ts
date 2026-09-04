@@ -13,6 +13,8 @@ type SignupPayload = {
   message?: string;
 };
 
+const CONFIRM_REDIRECT = "https://layad16.com/auth/confirm";
+
 function normalizeLocale(value: unknown): Locale {
   if (value === "en" || value === "ja" || value === "ko") return value;
   return "ko";
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
   if (!email || !email.includes("@")) return NextResponse.json({ ok: false, message: "이메일을 확인해 주세요." }, { status: 400 });
   if (password.length < 8) return NextResponse.json({ ok: false, message: "비밀번호는 8자 이상으로 설정해 주세요." }, { status: 400 });
 
-  const signupResponse = await fetch(`${url}/auth/v1/signup`, {
+  const signupResponse = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(CONFIRM_REDIRECT)}`, {
     method: "POST",
     headers: { apikey: publishableKey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, data: { locale, app: "LAYAD BEAUTY CODE" } }),
