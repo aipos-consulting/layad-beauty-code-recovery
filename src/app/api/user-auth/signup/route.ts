@@ -53,6 +53,10 @@ async function sendVerificationEmail(email: string, token: string, locale: Local
     }),
     cache: "no-store",
   });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    console.error("LAYAD_RESEND_SEND_FAILED", { status: response.status, body: errorText.slice(0, 800) });
+  }
   return { ok: response.ok as boolean, reason: response.ok ? "" : `resend_${response.status}` };
 }
 
