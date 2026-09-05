@@ -8,21 +8,14 @@ import AdminAiWorkflow from "./admin-ai-workflow";
 import AdminDataManagementNav from "./admin-data-management-nav";
 import AdminVisualTheme from "./admin-visual-theme";
 import ProductFitInputBridge from "./product-fit-input-bridge";
-import ProductFitResultFeedback from "./product-fit-result-feedback";
 import ToneSurface from "./tone-surface";
 import UserBottomTabs from "./user-bottom-tabs";
 import UserSaveBridge from "./user-save-bridge";
+import UserLocalePolisher from "./user-locale-polisher";
 import { LanguageProvider } from "./i18n";
 
-const leagueSpartan = League_Spartan({
-  variable: "--font-league-spartan",
-  subsets: ["latin"],
-});
-
-const sourceCode = Source_Code_Pro({
-  variable: "--font-source-code",
-  subsets: ["latin"],
-});
+const leagueSpartan = League_Spartan({ variable: "--font-league-spartan", subsets: ["latin"] });
+const sourceCode = Source_Code_Pro({ variable: "--font-source-code", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "LAYAD BEAUTY CODE",
@@ -38,13 +31,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {children}
             <UserBottomTabs />
             <UserSaveBridge />
+            <UserLocalePolisher />
             <UiAdjustments />
             <AnonymousDataCapture />
             <AdminAiWorkflow />
             <AdminDataManagementNav />
             <AdminVisualTheme />
             <ProductFitInputBridge />
-            <ProductFitResultFeedback />
           </ToneSurface>
         </LanguageProvider>
       </body>
