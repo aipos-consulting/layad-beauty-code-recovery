@@ -2,171 +2,45 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BEAUTY_TYPE_DESCRIPTIONS_KO } from "@/lib/beauty-type-descriptions";
+import { LanguageSwitcher, useLanguage } from "@/app/i18n";
+import { BEAUTY_TYPE_DESCRIPTIONS } from "@/lib/beauty-type-descriptions-localized";
+import { beautyCodeNickname, localeDate } from "@/lib/beauty-code-labels";
 
 const PENDING_KEY = "layad-pending-beauty-code-v1";
 const PENDING_PRODUCT_KEY = "layad-pending-saved-product-v1";
+type CodeRow={id:string;beauty_code:string;source:string;axis_scores:Record<string,number>;is_current:boolean;created_at:string};
+type ProductRow={id:string;product_ref:string;product_name:string|null;beauty_code:string|null;fit_score:number|null;created_at:string};
+type PageData={user:{email:string;nickname:string|null};codes:CodeRow[];products:ProductRow[]};
+type Character={beauty_code:string;nickname:string;image_url:string|null};
+const axisPairs=[["O","D"],["G","M"],["P","C"],["V","E"]] as const;
+const copy={
+ ko:{loading:"My Page를 불러오는 중입니다.",loadFail:"My Page를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",authTitle:"내 Beauty Code를 저장하세요",authDesc:"로그인하면 Beauty Code와 상품 적합도 결과를 저장하고 여러 기기에서 이어서 볼 수 있습니다.",login:"로그인 · 회원가입",test:"Beauty Code 테스트하기",mine:"나의 LAYAD",logout:"로그아웃",backFit:"← 상품 적합도 분석으로 돌아가기",pendingCode:"저장 대기 중인 Beauty Code가 있습니다.",pendingCodeDesc:"이전 저장 중 오류가 있었더라도 결과는 브라우저에 남아 있습니다.",retrySave:"다시 저장하기",saving:"저장 중...",pendingProduct:"저장 대기 중인 상품이 있습니다.",pendingProductDesc:"로그인 전 또는 네트워크 오류 시 보관한 상품 적합도 결과입니다.",saveProduct:"상품 저장하기",current:"현재 Beauty Code",retest:"다시 테스트",saved:"저장",profile:"TYPE PROFILE",none:"아직 저장된 Beauty Code가 없습니다.",start:"테스트 시작",history:"Beauty Code 이력",noHistory:"저장 이력이 없습니다.",products:"저장한 상품",tap:"눌러서 다시 보기",noProducts:"저장한 상품이 없습니다.",score:"적합도",saveCodeOk:"Beauty Code가 저장되었습니다.",saveProductOk:"상품이 My Page에 저장되었습니다.",saveFail:"저장에 실패했습니다.",network:"네트워크 연결이 불안정합니다.",signInBenefit:"로그인하면 내 Beauty Code와 분석 기록이 안전하게 저장됩니다."},
+ en:{loading:"Loading My Page...",loadFail:"Could not load My Page. Please try again shortly.",authTitle:"Save your Beauty Code",authDesc:"Sign in to save your Beauty Code and product-fit results and continue across devices.",login:"Sign in · Sign up",test:"Take the Beauty Code test",mine:"My LAYAD",logout:"Sign out",backFit:"← Back to Fit Analysis",pendingCode:"You have a Beauty Code waiting to be saved.",pendingCodeDesc:"Your result is still stored in this browser even if a previous save failed.",retrySave:"Save again",saving:"Saving...",pendingProduct:"You have a product result waiting to be saved.",pendingProductDesc:"This fit result was kept in the browser before sign-in or after a network error.",saveProduct:"Save product",current:"Current Beauty Code",retest:"Retake test",saved:"Saved",profile:"TYPE PROFILE",none:"No Beauty Code has been saved yet.",start:"Start test",history:"Beauty Code History",noHistory:"No saved history yet.",products:"Saved Products",tap:"Tap to view again",noProducts:"No saved products yet.",score:"Fit score",saveCodeOk:"Beauty Code saved.",saveProductOk:"Product saved to My Page.",saveFail:"Could not save.",network:"The network is unstable.",signInBenefit:"Sign in to keep your Beauty Code and analysis history safe."},
+ ja:{loading:"My Pageを読み込んでいます。",loadFail:"My Pageを読み込めませんでした。しばらくしてからもう一度お試しください。",authTitle:"Beauty Codeを保存しましょう",authDesc:"ログインするとBeauty Codeと商品適合度の結果を保存し、複数の端末で続けて利用できます。",login:"ログイン · 会員登録",test:"Beauty Codeテストをする",mine:"My LAYAD",logout:"ログアウト",backFit:"← 適合度分析に戻る",pendingCode:"保存待ちのBeauty Codeがあります。",pendingCodeDesc:"以前の保存でエラーがあっても結果はブラウザに残っています。",retrySave:"もう一度保存",saving:"保存中...",pendingProduct:"保存待ちの商品があります。",pendingProductDesc:"ログイン前またはネットワークエラー時に保存された商品適合度の結果です。",saveProduct:"商品を保存",current:"現在のBeauty Code",retest:"再テスト",saved:"保存",profile:"TYPE PROFILE",none:"保存されたBeauty Codeはまだありません。",start:"テスト開始",history:"Beauty Code履歴",noHistory:"保存履歴はありません。",products:"保存した商品",tap:"タップして再表示",noProducts:"保存した商品はありません。",score:"適合度",saveCodeOk:"Beauty Codeを保存しました。",saveProductOk:"商品をMy Pageに保存しました。",saveFail:"保存できませんでした。",network:"ネットワークが不安定です。",signInBenefit:"ログインするとBeauty Codeと分析履歴を安全に保存できます。"},
+} as const;
+function renderDescription(text:string){return text.split(/(#[^\s#]+)/g).map((part,index)=>part.startsWith("#")?<strong key={`${part}-${index}`} className="font-bold text-[#4f4144]">{part}</strong>:part);}
 
-type CodeRow = { id: string; beauty_code: string; source: string; axis_scores: Record<string, number>; is_current: boolean; created_at: string };
-type ProductRow = { id: string; product_ref: string; product_name: string | null; beauty_code: string | null; fit_score: number | null; created_at: string };
-type PageData = { user: { email: string; nickname: string | null }; codes: CodeRow[]; products: ProductRow[] };
-type Character = { beauty_code: string; nickname: string; image_url: string | null };
-
-const axisPairs = [["O","D"],["G","M"],["P","C"],["V","E"]] as const;
-
-function renderDescriptionWithBoldHashtags(text: string) {
-  return text.split(/(#[^\s#]+)/g).map((part, index) =>
-    part.startsWith("#") ? <strong key={`${part}-${index}`} className="font-bold text-[#4f4144]">{part}</strong> : part
-  );
-}
-
-export default function MyPage() {
-  const [data, setData] = useState<PageData | null>(null);
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [authRequired, setAuthRequired] = useState(false);
-  const [message, setMessage] = useState("");
-  const [pending, setPending] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/mypage", { cache: "no-store" });
-      const payload = await response.json().catch(() => ({})) as { ok?: boolean; code?: string } & Partial<PageData>;
-      if (response.status === 401 || payload.code === "AUTH_REQUIRED") { setAuthRequired(true); setData(null); setCharacter(null); return; }
-      if (!response.ok || !payload.ok) throw new Error();
-      const nextData: PageData = { user: payload.user!, codes: payload.codes ?? [], products: payload.products ?? [] };
-      setData(nextData);
-      const currentCode = nextData.codes.find(code => code.is_current)?.beauty_code ?? nextData.codes[0]?.beauty_code ?? "";
-      if (currentCode) {
-        try {
-          const characterResponse = await fetch(`/api/beauty-code-character?code=${encodeURIComponent(currentCode)}`, { cache: "no-store" });
-          const characterPayload = await characterResponse.json().catch(() => ({})) as { ok?: boolean; character?: Character };
-          setCharacter(characterResponse.ok && characterPayload.ok ? characterPayload.character ?? null : null);
-        } catch {
-          setCharacter(null);
-        }
-      } else {
-        setCharacter(null);
-      }
-      setAuthRequired(false);
-    } catch {
-      setMessage("My Page를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => {
-    setPending(Boolean(localStorage.getItem(PENDING_KEY)));
-    setPendingProduct(Boolean(localStorage.getItem(PENDING_PRODUCT_KEY)));
-    void load();
-  }, []);
-
-  async function savePending() {
-    const raw = localStorage.getItem(PENDING_KEY);
-    if (!raw) { setPending(false); return; }
-    setBusy(true); setMessage("");
-    try {
-      const body = JSON.parse(raw) as Record<string, unknown>;
-      let lastMessage = "Beauty Code 저장에 실패했습니다.";
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        try {
-          const response = await fetch("/api/mypage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save-code", ...body }) });
-          const payload = await response.json().catch(() => ({})) as { ok?: boolean; message?: string };
-          if (response.ok && payload.ok) {
-            localStorage.removeItem(PENDING_KEY); setPending(false); setMessage("Beauty Code가 저장되었습니다."); await load(); return;
-          }
-          lastMessage = payload.message || lastMessage;
-          if (response.status < 500) break;
-        } catch { lastMessage = "네트워크 연결이 불안정합니다."; }
-        await new Promise(resolve => setTimeout(resolve, 600));
-      }
-      setMessage(`${lastMessage} 결과는 이 브라우저에 계속 보관되어 있습니다.`);
-    } catch { setMessage("저장 대기 데이터를 확인하지 못했습니다."); }
-    finally { setBusy(false); }
-  }
-
-  async function savePendingProduct() {
-    const raw = localStorage.getItem(PENDING_PRODUCT_KEY);
-    if (!raw) { setPendingProduct(false); return; }
-    setBusy(true); setMessage("");
-    try {
-      const body = JSON.parse(raw) as Record<string, unknown>;
-      let lastMessage = "상품 저장에 실패했습니다.";
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        try {
-          const response = await fetch("/api/mypage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save-product", ...body }) });
-          const payload = await response.json().catch(() => ({})) as { ok?: boolean; message?: string };
-          if (response.ok && payload.ok) {
-            localStorage.removeItem(PENDING_PRODUCT_KEY); setPendingProduct(false); setMessage("상품이 My Page에 저장되었습니다."); await load(); return;
-          }
-          lastMessage = payload.message || lastMessage;
-          if (response.status < 500) break;
-        } catch { lastMessage = "네트워크 연결이 불안정합니다."; }
-        await new Promise(resolve => setTimeout(resolve, 600));
-      }
-      setMessage(`${lastMessage} 상품 정보는 이 브라우저에 계속 보관되어 있습니다.`);
-    } catch { setMessage("저장 대기 상품 정보를 확인하지 못했습니다."); }
-    finally { setBusy(false); }
-  }
-
-  async function logout() {
-    await fetch("/api/user-auth/logout", { method: "POST" }).catch(() => null);
-    window.location.href = "/";
-  }
-
-  if (loading) return <main className="min-h-screen bg-[#fff8f8] px-5 py-16 text-center text-[#806f72]">My Page를 불러오는 중입니다.</main>;
-  if (authRequired) return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-14 text-[#382d2d]">
-      <section className="mx-auto max-w-md rounded-[2rem] bg-white p-8 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)]">
-        <p className="text-xs font-semibold tracking-[.22em] text-[#b97b88]">MY PAGE</p>
-        <h1 className="mt-4 text-3xl font-semibold">내 Beauty Code를 저장하세요</h1>
-        <p className="mt-4 text-sm leading-7 text-[#766767]">비회원으로도 테스트와 상품 조회는 계속 이용할 수 있습니다. 저장과 이력 관리를 원할 때만 로그인하면 됩니다.</p>
-        <Link href="/account" className="mt-7 block rounded-2xl bg-[#d88c9c] px-5 py-3.5 font-semibold text-white">로그인 · 회원가입</Link>
-        <Link href="/test" className="mt-3 block rounded-2xl border border-[#ead7db] px-5 py-3.5 font-semibold text-[#806f72]">Beauty Code 테스트하기</Link>
-      </section>
-    </main>
-  );
-
-  const current = data?.codes.find(code => code.is_current) ?? data?.codes[0] ?? null;
-  const currentDescription = current ? BEAUTY_TYPE_DESCRIPTIONS_KO[current.beauty_code] : null;
-
-  return (
-    <main className="min-h-screen bg-[#fff8f8] px-5 py-10 text-[#382d2d] sm:px-8">
-      <div className="mx-auto max-w-4xl">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div><p className="text-xs font-semibold tracking-[.22em] text-[#b97b88]">MY PAGE</p><h1 className="mt-2 text-3xl font-semibold">나의 LAYAD</h1><p className="mt-2 text-sm text-[#806f72]">{data?.user.nickname || data?.user.email}</p></div>
-          <button onClick={logout} className="rounded-full border border-[#ead7db] px-5 py-2.5 text-sm font-semibold text-[#806f72]">로그아웃</button>
-        </header>
-
-        <div className="mt-5">
-          <Link href="/fit" className="inline-flex items-center rounded-full border border-[#e5bcc4] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e] shadow-sm">← 상품 적합도 분석으로 돌아가기</Link>
-        </div>
-
-        {message ? <p className="mt-6 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#9a5a18]">{message}</p> : null}
-        {pending ? <section className="mt-6 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">저장 대기 중인 Beauty Code가 있습니다.</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">이전 저장 중 오류가 있었더라도 결과는 브라우저에 남아 있습니다.</p><button onClick={savePending} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "저장 중..." : "다시 저장하기"}</button></section> : null}
-        {pendingProduct ? <section className="mt-4 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">저장 대기 중인 상품이 있습니다.</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">로그인 전 또는 네트워크 오류 시 보관한 상품 적합도 결과입니다.</p><button onClick={savePendingProduct} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "저장 중..." : "상품 저장하기"}</button></section> : null}
-
-        <section className="mt-7 rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]">
-          <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">현재 Beauty Code</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">다시 테스트</Link></div>
-          {current ? (
-            <div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">
-              {character?.image_url ? <div className="relative left-1/2 mb-5 h-[6.2cm] w-[6.2cm] -translate-x-1/2 overflow-hidden rounded-[32px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:left-auto sm:mx-auto sm:translate-x-0"><img src={character.image_url} alt={`${current.beauty_code} 캐릭터`} className="h-full w-full object-cover" /></div> : null}
-              {character?.nickname ? <p className="mb-2 text-[1.75rem] font-semibold leading-none text-[#5f5053]">{character.nickname}</p> : null}
-              <p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p>
-              <p className="mt-3 text-sm text-[#806f72]">{new Date(current.created_at).toLocaleDateString("ko-KR")} 저장</p>
-              {current.axis_scores && Object.keys(current.axis_scores).length ? <div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([first,second]) => <div key={`${first}${second}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{first} / {second}</p><p className="mt-1 text-xs text-[#806f72]">{first} {current.axis_scores[first] ?? 0} · {second} {current.axis_scores[second] ?? 0}</p></div>)}</div> : null}
-              {currentDescription ? <div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6"><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">TYPE PROFILE</p><p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{renderDescriptionWithBoldHashtags(currentDescription)}</p></div> : null}
-            </div>
-          ) : <div className="mt-6 rounded-3xl border border-dashed border-[#e6cfd4] p-7 text-center"><p className="text-sm text-[#806f72]">아직 저장된 Beauty Code가 없습니다.</p><Link href="/test" className="mt-4 inline-block rounded-full bg-[#d88c9c] px-5 py-2.5 text-sm font-semibold text-white">테스트 시작</Link></div>}
-        </section>
-
-        <div className="mt-7 grid gap-7 md:grid-cols-2">
-          <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><h2 className="text-xl font-semibold">Beauty Code 이력</h2><div className="mt-5 space-y-3">{data?.codes.length ? data.codes.map(code => <div key={code.id} className="flex items-center justify-between rounded-2xl bg-[#fffafa] px-4 py-3"><span className="font-semibold text-[#a85f6e]">{code.beauty_code}</span><span className="text-xs text-[#8a7a7d]">{new Date(code.created_at).toLocaleDateString("ko-KR")}</span></div>) : <p className="text-sm text-[#806f72]">저장 이력이 없습니다.</p>}</div></section>
-          <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">저장한 상품</h2><span className="text-xs text-[#9b8589]">눌러서 다시 보기</span></div><div className="mt-5 space-y-3">{data?.products.length ? data.products.map(product => <Link key={product.id} href={`/mypage/saved/${encodeURIComponent(product.product_ref)}`} className="block rounded-2xl bg-[#fffafa] px-4 py-3 transition hover:bg-[#fff1f3]"><div className="flex items-start justify-between gap-3"><p className="font-semibold">{product.product_name || product.product_ref}</p>{typeof product.fit_score === "number" ? <span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-sm font-bold text-[#a85f6e]">{product.fit_score}</span> : null}</div><div className="mt-2 flex items-center justify-between gap-3"><p className="text-xs text-[#8a7a7d]">{product.beauty_code ? `${product.beauty_code} 기준` : ""} · {new Date(product.created_at).toLocaleDateString("ko-KR")}</p><span className="text-xs font-bold text-[#a85f6e]">다시 보기 →</span></div></Link>) : <p className="text-sm text-[#806f72]">아직 저장한 상품이 없습니다.</p>}</div></section>
-        </div>
-      </div>
-    </main>
-  );
+export default function MyPage(){
+ const {locale}=useLanguage(); const t=copy[locale];
+ const [data,setData]=useState<PageData|null>(null); const [character,setCharacter]=useState<Character|null>(null); const [loading,setLoading]=useState(true); const [authRequired,setAuthRequired]=useState(false); const [message,setMessage]=useState(""); const [pending,setPending]=useState(false); const [pendingProduct,setPendingProduct]=useState(false); const [busy,setBusy]=useState(false);
+ async function load(){setLoading(true);try{const response=await fetch('/api/mypage',{cache:'no-store'});const payload=await response.json().catch(()=>({})) as {ok?:boolean;code?:string}&Partial<PageData>;if(response.status===401||payload.code==='AUTH_REQUIRED'){setAuthRequired(true);setData(null);setCharacter(null);return;}if(!response.ok||!payload.ok)throw new Error();const nextData:PageData={user:payload.user!,codes:payload.codes??[],products:payload.products??[]};setData(nextData);const currentCode=nextData.codes.find(c=>c.is_current)?.beauty_code??nextData.codes[0]?.beauty_code??'';if(currentCode){try{const r=await fetch(`/api/beauty-code-character?code=${encodeURIComponent(currentCode)}`,{cache:'no-store'});const j=await r.json().catch(()=>({})) as {ok?:boolean;character?:Character};setCharacter(r.ok&&j.ok?j.character??null:null);}catch{setCharacter(null);}}else setCharacter(null);setAuthRequired(false);}catch{setMessage(t.loadFail);}finally{setLoading(false);}}
+ useEffect(()=>{setPending(Boolean(localStorage.getItem(PENDING_KEY)));setPendingProduct(Boolean(localStorage.getItem(PENDING_PRODUCT_KEY)));void load();},[locale]);
+ async function savePending(){const raw=localStorage.getItem(PENDING_KEY);if(!raw){setPending(false);return;}setBusy(true);setMessage('');try{const body=JSON.parse(raw) as Record<string,unknown>;const r=await fetch('/api/mypage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-code',...body})});const j=await r.json().catch(()=>({})) as {ok?:boolean};if(r.ok&&j.ok){localStorage.removeItem(PENDING_KEY);setPending(false);setMessage(t.saveCodeOk);await load();}else setMessage(t.saveFail);}catch{setMessage(t.network);}finally{setBusy(false);}}
+ async function savePendingProduct(){const raw=localStorage.getItem(PENDING_PRODUCT_KEY);if(!raw){setPendingProduct(false);return;}setBusy(true);setMessage('');try{const body=JSON.parse(raw) as Record<string,unknown>;const r=await fetch('/api/mypage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-product',...body})});const j=await r.json().catch(()=>({})) as {ok?:boolean};if(r.ok&&j.ok){localStorage.removeItem(PENDING_PRODUCT_KEY);setPendingProduct(false);setMessage(t.saveProductOk);await load();}else setMessage(t.saveFail);}catch{setMessage(t.network);}finally{setBusy(false);}}
+ async function logout(){await fetch('/api/user-auth/logout',{method:'POST'}).catch(()=>null);window.location.href='/';}
+ if(loading)return <main className="min-h-screen bg-[#fff8f8] px-5 py-16 text-center text-[#806f72]">{t.loading}</main>;
+ if(authRequired)return <main className="min-h-screen bg-[#fff8f8] px-5 py-14 text-[#382d2d]"><section className="mx-auto max-w-md rounded-[2rem] bg-white p-8 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)]"><div className="flex justify-end"><LanguageSwitcher compact/></div><p className="mt-2 text-xs font-semibold tracking-[.22em] text-[#b97b88]">MY PAGE</p><h1 className="mt-4 text-3xl font-semibold">{t.authTitle}</h1><p className="mt-4 text-sm leading-7 text-[#766767]">{t.authDesc}</p><p className="mt-4 rounded-2xl bg-[#fff3f5] p-3 text-sm font-semibold text-[#a85f6e]">{t.signInBenefit}</p><Link href="/account" className="mt-7 block rounded-2xl bg-[#d88c9c] px-5 py-3.5 font-semibold text-white">{t.login}</Link><Link href="/test" className="mt-3 block rounded-2xl border border-[#ead7db] px-5 py-3.5 font-semibold text-[#806f72]">{t.test}</Link></section></main>;
+ const current=data?.codes.find(c=>c.is_current)??data?.codes[0]??null; const currentDescription=current?BEAUTY_TYPE_DESCRIPTIONS[locale][current.beauty_code as keyof typeof BEAUTY_TYPE_DESCRIPTIONS.ko]:null;
+ return <main className="min-h-screen bg-[#fff8f8] px-5 py-10 pb-28 text-[#382d2d] sm:px-8"><div className="mx-auto max-w-4xl">
+  <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.22em] text-[#b97b88]">MY PAGE</p><h1 className="mt-2 text-3xl font-semibold">{t.mine}</h1><p className="mt-2 text-sm text-[#806f72]">{data?.user.nickname||data?.user.email}</p></div><div className="flex items-center gap-3"><LanguageSwitcher compact/><button onClick={logout} className="rounded-full border border-[#ead7db] px-5 py-2.5 text-sm font-semibold text-[#806f72]">{t.logout}</button></div></header>
+  <div className="mt-5"><Link href="/fit" className="inline-flex items-center rounded-full border border-[#e5bcc4] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e] shadow-sm">{t.backFit}</Link></div>
+  {message?<p className="mt-6 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#9a5a18]">{message}</p>:null}
+  {pending?<section className="mt-6 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">{t.pendingCode}</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">{t.pendingCodeDesc}</p><button onClick={savePending} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy?t.saving:t.retrySave}</button></section>:null}
+  {pendingProduct?<section className="mt-4 rounded-3xl border border-[#f0cdd4] bg-white p-6"><h2 className="text-lg font-semibold">{t.pendingProduct}</h2><p className="mt-2 text-sm leading-6 text-[#806f72]">{t.pendingProductDesc}</p><button onClick={savePendingProduct} disabled={busy} className="mt-4 rounded-2xl bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy?t.saving:t.saveProduct}</button></section>:null}
+  <section className="mt-7 rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">MY BEAUTY CODE</p><h2 className="mt-2 text-2xl font-semibold">{t.current}</h2></div><Link href="/test" className="text-sm font-semibold text-[#a85f6e]">{t.retest}</Link></div>
+   {current?<div className="mt-6 rounded-3xl bg-[#fff3f5] p-7 text-center">{character?.image_url?<div className="relative left-1/2 mb-5 h-[6.2cm] w-[6.2cm] -translate-x-1/2 overflow-hidden rounded-[32px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:left-auto sm:mx-auto sm:translate-x-0"><img src={character.image_url} alt={`${current.beauty_code} character`} className="h-full w-full object-cover"/></div>:null}<p className="mb-2 text-[1.75rem] font-semibold leading-none text-[#5f5053]">{beautyCodeNickname(current.beauty_code,locale,character?.nickname)}</p><p className="text-5xl font-semibold tracking-[.18em] text-[#d88c9c]">{current.beauty_code}</p><p className="mt-3 text-sm text-[#806f72]">{localeDate(current.created_at,locale)} {t.saved}</p>{current.axis_scores&&Object.keys(current.axis_scores).length?<div className="mt-6 grid gap-2 sm:grid-cols-4">{axisPairs.map(([a,b])=><div key={`${a}${b}`} className="rounded-2xl bg-white/80 px-3 py-3 text-sm"><p className="font-semibold text-[#a85f6e]">{a} / {b}</p><p className="mt-1 text-xs text-[#806f72]">{a} {current.axis_scores[a]??0} · {b} {current.axis_scores[b]??0}</p></div>)}</div>:null}{currentDescription?<div className="mt-6 rounded-3xl bg-white/80 p-5 text-left sm:p-6"><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">{t.profile}</p><p className="mt-4 whitespace-pre-line text-sm leading-7 text-[#6f6063]">{renderDescription(currentDescription)}</p></div>:null}</div>:<div className="mt-6 rounded-3xl border border-dashed border-[#e6cfd4] p-7 text-center"><p className="text-sm text-[#806f72]">{t.none}</p><Link href="/test" className="mt-4 inline-block rounded-full bg-[#d88c9c] px-5 py-2.5 text-sm font-semibold text-white">{t.start}</Link></div>}
+  </section>
+  <div className="mt-7 grid gap-7 md:grid-cols-2"><section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><h2 className="text-xl font-semibold">{t.history}</h2><div className="mt-5 space-y-3">{data?.codes.length?data.codes.map(c=><div key={c.id} className="flex items-center justify-between rounded-2xl bg-[#fffafa] px-4 py-3"><span className="font-semibold text-[#a85f6e]">{c.beauty_code}</span><span className="text-xs text-[#8a7a7d]">{localeDate(c.created_at,locale)}</span></div>):<p className="text-sm text-[#806f72]">{t.noHistory}</p>}</div></section>
+  <section className="rounded-[2rem] bg-white p-7 shadow-[0_18px_50px_rgba(120,70,80,0.09)]"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">{t.products}</h2><span className="text-xs text-[#9b8589]">{t.tap}</span></div><div className="mt-5 space-y-3">{data?.products.length?data.products.map(p=><Link key={p.id} href={`/mypage/saved/${encodeURIComponent(p.product_ref)}`} className="block rounded-2xl bg-[#fffafa] px-4 py-3 transition hover:bg-[#fff1f3]"><div className="flex items-start justify-between gap-3"><p className="font-semibold">{p.product_name||p.product_ref}</p>{typeof p.fit_score==='number'?<span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-xs font-bold text-[#a85f6e]">{t.score} {p.fit_score}</span>:null}</div><p className="mt-1 text-xs text-[#8a7a7d]">{p.beauty_code||'Beauty Code'} · {localeDate(p.created_at,locale)}</p></Link>):<p className="text-sm text-[#806f72]">{t.noProducts}</p>}</div></section></div>
+ </div></main>;
 }
