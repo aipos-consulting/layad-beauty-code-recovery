@@ -7,9 +7,9 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다.", inApp: "현재 브라우저에서는 카카오톡 직접 공유가 제한됩니다. 우측 상단 ⋮ 메뉴에서 ‘브라우저에서 열기’로 연 뒤 카카오톡 아이콘을 눌러주세요." },
-  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied.", inApp: "Direct KakaoTalk sharing is limited in this in-app browser. Open this page in your browser from the top-right menu, then tap KakaoTalk again." },
-  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。", inApp: "このアプリ内ブラウザではKakaoTalkの直接共有が制限されています。右上メニューからブラウザで開き、もう一度KakaoTalkをタップしてください。" },
+  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다.", inApp: "현재 브라우저에서는 카카오톡 직접 공유를 지원하지 않습니다. 링크 아이콘으로 결과 링크를 복사해 공유해 주세요." },
+  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied.", inApp: "Direct KakaoTalk sharing is not supported in this in-app browser. Please use the Link icon to copy and share the result link." },
+  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。", inApp: "このアプリ内ブラウザではKakaoTalkの直接共有に対応していません。リンクアイコンから結果リンクをコピーして共有してください。" },
 } as const;
 
 function resultUrl(code: string) {
