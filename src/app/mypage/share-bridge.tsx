@@ -18,32 +18,38 @@ declare global {
 }
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", kakaoOpening: "카카오톡을 여는 중입니다.", externalOpening: "인앱 브라우저에서 카카오톡 실행이 차단되어 외부 브라우저로 전환합니다.", externalGuide: "이 인앱 브라우저에서는 카카오톡 실행이 차단됩니다. 메뉴의 ‘Open in Browser’로 열어 주세요." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", kakaoOpening: "Opening KakaoTalk.", externalOpening: "KakaoTalk launch was blocked in the in-app browser. Switching to an external browser.", externalGuide: "This in-app browser blocks KakaoTalk launch. Use ‘Open in Browser’ from the menu." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", kakaoOpening: "KakaoTalkを開いています。", externalOpening: "アプリ内ブラウザでKakaoTalkの起動がブロックされたため、外部ブラウザに切り替えます。", externalGuide: "このアプリ内ブラウザではKakaoTalkの起動がブロックされます。メニューから「Open in Browser」で開いてください。" },
+  ko: {
+    title: "내 Beauty Code 공유하기",
+    copy: "URL 복사",
+    kakao: "카카오톡 공유",
+    line: "LINE 공유",
+    copied: "결과 링크가 복사되었습니다.",
+    kakaoMissing: "카카오 공유 설정을 확인해 주세요.",
+  },
+  en: {
+    title: "Share my Beauty Code",
+    copy: "Copy URL",
+    kakao: "KakaoTalk",
+    line: "LINE",
+    copied: "Result link copied.",
+    kakaoMissing: "Please check the Kakao sharing configuration.",
+  },
+  ja: {
+    title: "Beauty Codeをシェア",
+    copy: "URLをコピー",
+    kakao: "KakaoTalk",
+    line: "LINEでシェア",
+    copied: "結果リンクをコピーしました。",
+    kakaoMissing: "Kakao共有設定をご確認ください。",
+  },
 } as const;
 
 function resultUrl(code: string) {
   return `https://layad16.com/result/${code}`;
 }
 
-function errorText(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try { return JSON.stringify(error); } catch { return "Unknown error"; }
-}
-
-function isAndroid() {
-  return /Android/i.test(navigator.userAgent || "");
-}
-
-function openExternalBrowser(code: string) {
-  const path = `layad16.com/result/${code}`;
-  if (isAndroid()) {
-    window.location.href = `intent://${path}#Intent;scheme=https;package=com.android.chrome;end`;
-    return true;
-  }
-  return false;
+function shareImageUrl(code: string) {
+  return `https://layad16.com/api/share-card/${code}`;
 }
 
 export default function MyPageShareBridge() {
@@ -56,14 +62,17 @@ export default function MyPageShareBridge() {
 
   useEffect(() => {
     const locate = () => {
-      const codeNode = Array.from(document.querySelectorAll("p"))
-        .find((node) => /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? "")) as HTMLElement | undefined;
+      const codeNode = Array.from(document.querySelectorAll("p")).find((node) =>
+        /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? ""),
+      ) as HTMLElement | undefined;
+
       if (!codeNode) {
         document.getElementById("layad-mypage-share-mount")?.remove();
         setMount(null);
         setCode("");
         return;
       }
+
       const nextCode = codeNode.textContent?.trim() ?? "";
       let portalMount = document.getElementById("layad-mypage-share-mount");
       if (!portalMount) {
@@ -71,6 +80,7 @@ export default function MyPageShareBridge() {
         portalMount.id = "layad-mypage-share-mount";
         codeNode.insertAdjacentElement("afterend", portalMount);
       }
+
       setMount(portalMount);
       setCode(nextCode);
     };
@@ -89,13 +99,17 @@ export default function MyPageShareBridge() {
     }
 
     const initialize = () => {
+      if (!window.Kakao) {
+        setStatus(text.kakaoMissing);
+        return;
+      }
+
       try {
-        if (!window.Kakao) throw new Error("Kakao SDK unavailable");
         if (!window.Kakao.isInitialized()) window.Kakao.init(key);
         setKakaoReady(true);
       } catch (error) {
         console.error("[Kakao Init]", error);
-        setStatus(`${text.kakaoError}: ${errorText(error)}`);
+        setStatus(text.kakaoMissing);
       }
     };
 
@@ -107,7 +121,6 @@ export default function MyPageShareBridge() {
     const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
     if (existing) {
       existing.addEventListener("load", initialize, { once: true });
-      existing.addEventListener("error", () => setStatus(text.kakaoLoad), { once: true });
       return;
     }
 
@@ -116,55 +129,59 @@ export default function MyPageShareBridge() {
     script.crossOrigin = "anonymous";
     script.dataset.layadKakaoSdk = "true";
     script.onload = initialize;
-    script.onerror = () => setStatus(text.kakaoLoad);
+    script.onerror = () => setStatus(text.kakaoMissing);
     document.head.appendChild(script);
-  }, [text.kakaoError, text.kakaoLoad, text.kakaoMissing]);
+  }, [text.kakaoMissing]);
+
+  useEffect(() => {
+    if (!mount || !code || !kakaoReady || !window.Kakao) return;
+
+    const button = document.getElementById("kakaotalk-sharing-btn");
+    if (!button) return;
+
+    try {
+      window.Kakao.Share.createDefaultButton({
+        container: "#kakaotalk-sharing-btn",
+        objectType: "feed",
+        content: {
+          title: `LAYAD BEAUTY CODE ${code}`,
+          description: "나의 Beauty Code 결과를 확인해 보세요.",
+          imageUrl: shareImageUrl(code),
+          link: {
+            mobileWebUrl: resultUrl(code),
+            webUrl: resultUrl(code),
+          },
+        },
+        buttons: [
+          {
+            title: "결과 보기",
+            link: {
+              mobileWebUrl: resultUrl(code),
+              webUrl: resultUrl(code),
+            },
+          },
+        ],
+      });
+      setStatus("");
+    } catch (error) {
+      console.error("[Kakao Button Bind]", error);
+      setStatus(text.kakaoMissing);
+    }
+  }, [code, kakaoReady, mount, text.kakaoMissing]);
 
   async function copyLink() {
     await navigator.clipboard.writeText(resultUrl(code));
     setStatus(text.copied);
   }
 
-  function kakaoShare() {
-    const url = resultUrl(code);
-
-    try {
-      if (!kakaoReady || !window.Kakao?.isInitialized()) {
-        throw new Error("Kakao SDK is not initialized");
-      }
-
-      setStatus(text.kakaoOpening);
-      window.Kakao.Share.sendDefault({
-        objectType: "text",
-        text: `LAYAD BEAUTY CODE ${code}`,
-        link: {
-          mobileWebUrl: url,
-          webUrl: url,
-        },
-      });
-
-      window.setTimeout(() => {
-        if (document.visibilityState !== "visible") return;
-        if (openExternalBrowser(code)) {
-          setStatus(text.externalOpening);
-        } else {
-          setStatus(text.externalGuide);
-        }
-      }, 1400);
-    } catch (error) {
-      console.error("[Kakao Share]", error);
-      if (openExternalBrowser(code)) {
-        setStatus(text.externalOpening);
-        return;
-      }
-      setStatus(`${text.kakaoError}: ${errorText(error)} / ${text.externalGuide}`);
-    }
-  }
-
   function lineShare() {
     const url = encodeURIComponent(resultUrl(code));
     const message = encodeURIComponent(`LAYAD BEAUTY CODE ${code}`);
-    window.open(`https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   if (!mount || !code) return null;
@@ -173,9 +190,28 @@ export default function MyPageShareBridge() {
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <button type="button" onClick={copyLink} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
-        <button type="button" onClick={kakaoShare} className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white">{text.kakao}</button>
-        <button type="button" onClick={lineShare} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.line}</button>
+        <button
+          type="button"
+          onClick={copyLink}
+          className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]"
+        >
+          {text.copy}
+        </button>
+        <a
+          id="kakaotalk-sharing-btn"
+          href="#"
+          onClick={(event) => event.preventDefault()}
+          className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white"
+        >
+          {text.kakao}
+        </a>
+        <button
+          type="button"
+          onClick={lineShare}
+          className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]"
+        >
+          {text.line}
+        </button>
       </div>
       {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
