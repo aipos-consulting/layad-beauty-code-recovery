@@ -15,9 +15,9 @@ declare global {
 }
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", kakaoPreparing: "카카오 공유 기능을 준비 중입니다. 잠시 후 다시 눌러 주세요." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", kakaoPreparing: "Kakao sharing is still loading. Please try again in a moment." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", kakaoPreparing: "Kakao共有機能を準備中です。少し待ってからもう一度お試しください。" },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", kakaoPreparing: "카카오 공유 기능을 준비 중입니다. 잠시 후 다시 눌러 주세요.", kakaoCalling: "카카오 공유창을 호출했습니다." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", kakaoPreparing: "Kakao sharing is still loading. Please try again in a moment.", kakaoCalling: "Kakao share was requested." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", kakaoPreparing: "Kakao共有機能を準備中です。少し待ってからもう一度お試しください。", kakaoCalling: "Kakao共有画面を呼び出しました。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -113,7 +113,6 @@ export default function MyPageShareBridge() {
   }
 
   function kakaoShare() {
-    setStatus("");
     const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
     if (!key) {
       setStatus(text.kakaoMissing);
@@ -124,16 +123,15 @@ export default function MyPageShareBridge() {
       return;
     }
 
+    setStatus(text.kakaoCalling);
     try {
       window.Kakao.Share.sendDefault({
-        objectType: "feed",
-        content: {
-          title: `LAYAD BEAUTY CODE ${code}`,
-          description: locale === "ja" ? "私のBeauty Codeをチェックしてみてください。" : locale === "en" ? "Check out my Beauty Code result." : "나의 Beauty Code 결과를 확인해 보세요.",
-          imageUrl: `${window.location.origin}/api/share-card/${code}`,
-          link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
+        objectType: "text",
+        text: `LAYAD BEAUTY CODE ${code}`,
+        link: {
+          mobileWebUrl: resultUrl(code),
+          webUrl: resultUrl(code),
         },
-        buttons: [{ title: locale === "ja" ? "結果を見る" : locale === "en" ? "View result" : "결과 보기", link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) } }],
       });
     } catch (error) {
       console.error("[Kakao Share]", error);
