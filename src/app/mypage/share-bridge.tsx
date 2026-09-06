@@ -18,30 +18,9 @@ declare global {
 }
 
 const labels = {
-  ko: {
-    title: "내 Beauty Code 공유하기",
-    copy: "URL 복사",
-    kakao: "카카오톡 공유",
-    line: "LINE 공유",
-    copied: "결과 링크가 복사되었습니다.",
-    kakaoMissing: "카카오 공유 설정을 확인해 주세요.",
-  },
-  en: {
-    title: "Share my Beauty Code",
-    copy: "Copy URL",
-    kakao: "KakaoTalk",
-    line: "LINE",
-    copied: "Result link copied.",
-    kakaoMissing: "Please check the Kakao sharing configuration.",
-  },
-  ja: {
-    title: "Beauty Codeをシェア",
-    copy: "URLをコピー",
-    kakao: "KakaoTalk",
-    line: "LINEでシェア",
-    copied: "結果リンクをコピーしました。",
-    kakaoMissing: "Kakao共有設定をご確認ください。",
-  },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 공유 설정을 확인해 주세요." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "Please check the Kakao sharing configuration." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao共有設定をご確認ください。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -103,7 +82,6 @@ export default function MyPageShareBridge() {
         setStatus(text.kakaoMissing);
         return;
       }
-
       try {
         if (!window.Kakao.isInitialized()) window.Kakao.init(key);
         setKakaoReady(true);
@@ -135,7 +113,6 @@ export default function MyPageShareBridge() {
 
   useEffect(() => {
     if (!mount || !code || !kakaoReady || !window.Kakao) return;
-
     const button = document.getElementById("kakaotalk-sharing-btn");
     if (!button) return;
 
@@ -147,18 +124,12 @@ export default function MyPageShareBridge() {
           title: `LAYAD BEAUTY CODE ${code}`,
           description: "나의 Beauty Code 결과를 확인해 보세요.",
           imageUrl: shareImageUrl(code),
-          link: {
-            mobileWebUrl: resultUrl(code),
-            webUrl: resultUrl(code),
-          },
+          link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
         },
         buttons: [
           {
             title: "결과 보기",
-            link: {
-              mobileWebUrl: resultUrl(code),
-              webUrl: resultUrl(code),
-            },
+            link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
           },
         ],
       });
@@ -177,11 +148,7 @@ export default function MyPageShareBridge() {
   function lineShare() {
     const url = encodeURIComponent(resultUrl(code));
     const message = encodeURIComponent(`LAYAD BEAUTY CODE ${code}`);
-    window.open(
-      `https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    window.open(`https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`, "_blank", "noopener,noreferrer");
   }
 
   if (!mount || !code) return null;
@@ -190,28 +157,9 @@ export default function MyPageShareBridge() {
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <button
-          type="button"
-          onClick={copyLink}
-          className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]"
-        >
-          {text.copy}
-        </button>
-        <a
-          id="kakaotalk-sharing-btn"
-          href="#"
-          onClick={(event) => event.preventDefault()}
-          className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white"
-        >
-          {text.kakao}
-        </a>
-        <button
-          type="button"
-          onClick={lineShare}
-          className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]"
-        >
-          {text.line}
-        </button>
+        <button type="button" onClick={copyLink} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
+        <a id="kakaotalk-sharing-btn" href="javascript:;" className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white">{text.kakao}</a>
+        <button type="button" onClick={lineShare} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.line}</button>
       </div>
       {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
