@@ -69,7 +69,7 @@ export default function MyPageShareBridge() {
         {!isAndroid ? <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 bg-transparent text-xs font-medium text-[#6f6164] no-underline" aria-label={text.kakao}><KakaoIcon /><span>{text.kakao}</span></a> : null}
         <button type="button" onClick={copyLink} className="m-0 flex appearance-none flex-col items-center gap-1.5 border-0 bg-transparent p-0 text-xs font-medium text-[#6f6164] shadow-none" aria-label={text.copy}><LinkIcon /><span className="whitespace-nowrap">{text.copy}</span></button>
       </div>
-      <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="mx-auto mt-5 flex w-full max-w-[280px] items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#d88c9c] bg-transparent px-4 py-2.5 text-sm font-semibold text-[#a85f6e] no-underline"><InstagramIcon /><span>{text.instagram}</span></a>
+      <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={`mx-auto mt-5 flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#d88c9c] bg-transparent py-2.5 font-semibold text-[#a85f6e] no-underline ${isAndroid ? "max-w-[250px] px-3 text-xs" : "max-w-[280px] px-4 text-sm"}`}><InstagramIcon /><span>{text.instagram}</span></a>
       {status ? <p className="mx-auto mt-3 max-w-sm break-words px-3 text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
