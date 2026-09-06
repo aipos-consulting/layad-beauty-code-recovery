@@ -18,9 +18,9 @@ declare global {
 }
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", nativeShare: "공유창을 열었습니다. 카카오톡을 선택해 주세요.", nativeShareFallback: "기기 공유를 사용할 수 없어 카카오 공유를 실행합니다." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", nativeShare: "Opened the device share sheet. Choose KakaoTalk.", nativeShareFallback: "Device sharing is unavailable, so Kakao Share will be used." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", nativeShare: "共有画面を開きました。KakaoTalkを選択してください。", nativeShareFallback: "端末共有を利用できないため、Kakao共有を実行します。" },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", kakaoOpening: "카카오톡을 여는 중입니다.", externalOpening: "인앱 브라우저에서 카카오톡 실행이 차단되어 외부 브라우저로 전환합니다.", externalGuide: "이 인앱 브라우저에서는 카카오톡 실행이 차단됩니다. 메뉴의 ‘Open in Browser’로 열어 주세요." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", kakaoOpening: "Opening KakaoTalk.", externalOpening: "KakaoTalk launch was blocked in the in-app browser. Switching to an external browser.", externalGuide: "This in-app browser blocks KakaoTalk launch. Use ‘Open in Browser’ from the menu." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", kakaoOpening: "KakaoTalkを開いています。", externalOpening: "アプリ内ブラウザでKakaoTalkの起動がブロックされたため、外部ブラウザに切り替えます。", externalGuide: "このアプリ内ブラウザではKakaoTalkの起動がブロックされます。メニューから「Open in Browser」で開いてください。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -31,6 +31,19 @@ function errorText(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   try { return JSON.stringify(error); } catch { return "Unknown error"; }
+}
+
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent || "");
+}
+
+function openExternalBrowser(code: string) {
+  const path = `layad16.com/result/${code}`;
+  if (isAndroid()) {
+    window.location.href = `intent://${path}#Intent;scheme=https;package=com.android.chrome;end`;
+    return true;
+  }
+  return false;
 }
 
 export default function MyPageShareBridge() {
@@ -112,30 +125,15 @@ export default function MyPageShareBridge() {
     setStatus(text.copied);
   }
 
-  async function kakaoShare() {
+  function kakaoShare() {
     const url = resultUrl(code);
-    const shareData = {
-      title: `LAYAD BEAUTY CODE ${code}`,
-      text: `LAYAD BEAUTY CODE ${code}`,
-      url,
-    };
-
-    if (typeof navigator.share === "function") {
-      try {
-        setStatus(text.nativeShare);
-        await navigator.share(shareData);
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        console.error("[Native Share]", error);
-        setStatus(text.nativeShareFallback);
-      }
-    }
 
     try {
       if (!kakaoReady || !window.Kakao?.isInitialized()) {
         throw new Error("Kakao SDK is not initialized");
       }
+
+      setStatus(text.kakaoOpening);
       window.Kakao.Share.sendDefault({
         objectType: "text",
         text: `LAYAD BEAUTY CODE ${code}`,
@@ -144,9 +142,22 @@ export default function MyPageShareBridge() {
           webUrl: url,
         },
       });
+
+      window.setTimeout(() => {
+        if (document.visibilityState !== "visible") return;
+        if (openExternalBrowser(code)) {
+          setStatus(text.externalOpening);
+        } else {
+          setStatus(text.externalGuide);
+        }
+      }, 1400);
     } catch (error) {
       console.error("[Kakao Share]", error);
-      setStatus(`${text.kakaoError}: ${errorText(error)}`);
+      if (openExternalBrowser(code)) {
+        setStatus(text.externalOpening);
+        return;
+      }
+      setStatus(`${text.kakaoError}: ${errorText(error)} / ${text.externalGuide}`);
     }
   }
 
