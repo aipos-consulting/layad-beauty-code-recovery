@@ -18,9 +18,9 @@ declare global {
 }
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", nativeShare: "인앱 브라우저: 기기 공유창을 열었습니다. 카카오톡을 선택해 주세요.", nativeShareUnsupported: "이 인앱 브라우저는 기기 공유를 지원하지 않습니다. 외부 브라우저에서 열어 주세요." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", nativeShare: "In-app browser: opened the device share sheet. Choose KakaoTalk.", nativeShareUnsupported: "This in-app browser does not support device sharing. Open in an external browser." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", nativeShare: "アプリ内ブラウザ: 端末の共有画面を開きました。KakaoTalkを選択してください。", nativeShareUnsupported: "このアプリ内ブラウザは端末共有に対応していません。外部ブラウザで開いてください。" },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", nativeShare: "공유창을 열었습니다. 카카오톡을 선택해 주세요.", nativeShareFallback: "기기 공유를 사용할 수 없어 카카오 공유를 실행합니다." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", nativeShare: "Opened the device share sheet. Choose KakaoTalk.", nativeShareFallback: "Device sharing is unavailable, so Kakao Share will be used." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", nativeShare: "共有画面を開きました。KakaoTalkを選択してください。", nativeShareFallback: "端末共有を利用できないため、Kakao共有を実行します。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -31,11 +31,6 @@ function errorText(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   try { return JSON.stringify(error); } catch { return "Unknown error"; }
-}
-
-function isInAppBrowser() {
-  const ua = navigator.userAgent || "";
-  return /; wv\)|\bwv\b|WebView|Instagram|FBAN|FBAV|KAKAOTALK|NAVER|DaumApps|Line\//i.test(ua);
 }
 
 export default function MyPageShareBridge() {
@@ -125,19 +120,16 @@ export default function MyPageShareBridge() {
       url,
     };
 
-    if (isInAppBrowser()) {
-      if (typeof navigator.share === "function") {
-        try {
-          setStatus(text.nativeShare);
-          await navigator.share(shareData);
-          return;
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") return;
-          console.error("[Native Share]", error);
-        }
+    if (typeof navigator.share === "function") {
+      try {
+        setStatus(text.nativeShare);
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("[Native Share]", error);
+        setStatus(text.nativeShareFallback);
       }
-      setStatus(text.nativeShareUnsupported);
-      return;
     }
 
     try {
