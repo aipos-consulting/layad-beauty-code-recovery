@@ -4,31 +4,40 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/i18n";
 
-declare global {
-  interface Window {
-    Kakao?: {
-      isInitialized: () => boolean;
-      init: (key: string) => void;
-      Share: {
-        sendDefault: (args: unknown) => void;
-        createDefaultButton: (args: unknown) => void;
-      };
-    };
-  }
-}
+const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 공유 설정을 확인해 주세요." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "Please check the Kakao sharing configuration." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao共有設定をご確認ください。" },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡", line: "LINE", instagram: "Instagram", copied: "결과 링크가 복사되었습니다." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", instagram: "Instagram", copied: "Result link copied." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINE", instagram: "Instagram", copied: "結果リンクをコピーしました。" },
 } as const;
 
 function resultUrl(code: string) {
   return `https://layad16.com/result/${code}`;
 }
 
-function shareImageUrl(code: string) {
-  return `https://layad16.com/api/share-card/${code}`;
+function shareUrl(code: string) {
+  return `https://layad16.com/s/${code}`;
+}
+
+function KakaoIcon() {
+  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] text-[22px] font-black text-[#191919]" aria-hidden>♣</span>;
+}
+
+function InstagramIcon() {
+  return (
+    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d9c4c9] bg-white" aria-hidden>
+      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-[#a85f6e]" strokeWidth="1.8">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.5" cy="6.8" r="1" fill="#a85f6e" stroke="none" />
+      </svg>
+    </span>
+  );
+}
+
+function LineIcon() {
+  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#06C755] text-sm font-black text-white" aria-hidden>LINE</span>;
 }
 
 export default function MyPageShareBridge() {
@@ -37,7 +46,6 @@ export default function MyPageShareBridge() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState("");
   const [status, setStatus] = useState("");
-  const [kakaoReady, setKakaoReady] = useState(false);
 
   useEffect(() => {
     const locate = () => {
@@ -70,76 +78,6 @@ export default function MyPageShareBridge() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-    if (!key) {
-      setStatus(text.kakaoMissing);
-      return;
-    }
-
-    const initialize = () => {
-      if (!window.Kakao) {
-        setStatus(text.kakaoMissing);
-        return;
-      }
-      try {
-        if (!window.Kakao.isInitialized()) window.Kakao.init(key);
-        setKakaoReady(true);
-      } catch (error) {
-        console.error("[Kakao Init]", error);
-        setStatus(text.kakaoMissing);
-      }
-    };
-
-    if (window.Kakao) {
-      initialize();
-      return;
-    }
-
-    const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
-    if (existing) {
-      existing.addEventListener("load", initialize, { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.8.3/kakao.min.js";
-    script.crossOrigin = "anonymous";
-    script.dataset.layadKakaoSdk = "true";
-    script.onload = initialize;
-    script.onerror = () => setStatus(text.kakaoMissing);
-    document.head.appendChild(script);
-  }, [text.kakaoMissing]);
-
-  useEffect(() => {
-    if (!mount || !code || !kakaoReady || !window.Kakao) return;
-    const button = document.getElementById("kakaotalk-sharing-btn");
-    if (!button) return;
-
-    try {
-      window.Kakao.Share.createDefaultButton({
-        container: "#kakaotalk-sharing-btn",
-        objectType: "feed",
-        content: {
-          title: `LAYAD BEAUTY CODE ${code}`,
-          description: "나의 Beauty Code 결과를 확인해 보세요.",
-          imageUrl: shareImageUrl(code),
-          link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
-        },
-        buttons: [
-          {
-            title: "결과 보기",
-            link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
-          },
-        ],
-      });
-      setStatus("");
-    } catch (error) {
-      console.error("[Kakao Button Bind]", error);
-      setStatus(text.kakaoMissing);
-    }
-  }, [code, kakaoReady, mount, text.kakaoMissing]);
-
   async function copyLink() {
     await navigator.clipboard.writeText(resultUrl(code));
     setStatus(text.copied);
@@ -156,11 +94,21 @@ export default function MyPageShareBridge() {
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <button type="button" onClick={copyLink} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
-        <a id="kakaotalk-sharing-btn" href="javascript:;" className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white">{text.kakao}</a>
-        <button type="button" onClick={lineShare} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.line}</button>
+      <div className="mt-4 flex items-start justify-center gap-5">
+        <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
+          <KakaoIcon />
+          <span>{text.kakao}</span>
+        </a>
+        <button type="button" onClick={lineShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.line}>
+          <LineIcon />
+          <span>{text.line}</span>
+        </button>
+        <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.instagram}>
+          <InstagramIcon />
+          <span>{text.instagram}</span>
+        </a>
       </div>
+      <button type="button" onClick={copyLink} className="mt-4 rounded-full border border-[#d88c9c] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
       {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
