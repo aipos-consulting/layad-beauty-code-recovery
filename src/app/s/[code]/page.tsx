@@ -24,10 +24,6 @@ function resultUrl(code: string) {
   return `https://layad16.com/result/${code}`;
 }
 
-function sharePageUrl(code: string) {
-  return `https://layad16.com/s/${code}`;
-}
-
 function shareImageUrl(code: string) {
   return `https://layad16.com/api/share-card/${code}`;
 }
@@ -55,7 +51,7 @@ export default function SharePage() {
     const blocked = isAndroidInAppBrowser();
     setBlockedInApp(blocked);
     if (blocked) {
-      setStatus("Android 인앱 브라우저에서는 카카오톡 앱 실행이 제한될 수 있습니다. 우측 상단 메뉴에서 ‘브라우저에서 열기’로 연 뒤 공유해 주세요.");
+      setStatus("현재 인앱 브라우저에서는 카카오톡 직접 공유가 제한됩니다. 우측 상단 ⋮ 메뉴에서 ‘브라우저에서 열기’로 연 뒤 카카오톡 공유를 이용해 주세요.");
       return;
     }
 
@@ -133,15 +129,6 @@ export default function SharePage() {
     }
   }, [blockedInApp, code, ready, valid]);
 
-  async function copySharePage() {
-    try {
-      await navigator.clipboard.writeText(sharePageUrl(code));
-      setStatus("공유 페이지 주소를 복사했습니다. Chrome 주소창에 붙여넣으면 카카오톡 공유를 사용할 수 있습니다.");
-    } catch {
-      setStatus(`Chrome에서 ${sharePageUrl(code)} 주소를 직접 열어 주세요.`);
-    }
-  }
-
   if (!valid) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md items-center justify-center px-6 text-center">
@@ -163,15 +150,7 @@ export default function SharePage() {
         <p className="mt-4 text-sm leading-6 text-[#806f72]">친구에게 나의 Beauty Code 결과를 공유해 보세요.</p>
 
         <div className="mt-8 flex flex-col gap-3">
-          {blockedInApp ? (
-            <button
-              type="button"
-              onClick={copySharePage}
-              className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
-            >
-              Chrome에서 카카오톡 공유하기
-            </button>
-          ) : (
+          {!blockedInApp ? (
             <a
               id="layad-kakao-share-btn"
               href="javascript:;"
@@ -179,7 +158,7 @@ export default function SharePage() {
             >
               카카오톡으로 공유하기
             </a>
-          )}
+          ) : null}
           <a
             href={resultUrl(code)}
             className="rounded-full border border-[#d88c9c] bg-white px-5 py-4 text-sm font-semibold text-[#a85f6e]"
@@ -188,7 +167,7 @@ export default function SharePage() {
           </a>
         </div>
 
-        {status ? <p className="mt-4 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
+        {status ? <p className="mx-auto mt-4 max-w-sm break-words px-2 text-xs leading-5 text-[#806f72]">{status}</p> : null}
       </section>
     </main>
   );
