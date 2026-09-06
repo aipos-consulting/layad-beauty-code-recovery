@@ -80,6 +80,7 @@ export default function MyPageShareBridge() {
         if (!window.Kakao) throw new Error("Kakao SDK unavailable");
         if (!window.Kakao.isInitialized()) window.Kakao.init(key);
         setKakaoReady(true);
+        setStatus("Kakao 진단: SDK=OK / Init=OK");
       } catch (error) {
         console.error("[Kakao Init]", error);
         setStatus(`${text.kakaoError}: ${errorText(error)}`);
@@ -110,7 +111,10 @@ export default function MyPageShareBridge() {
   useEffect(() => {
     if (!kakaoReady || !window.Kakao || !code || !mount) return;
     const button = document.getElementById("kakaotalk-sharing-btn");
-    if (!button) return;
+    if (!button) {
+      setStatus("Kakao 진단: SDK=OK / Init=OK / Button=NOT_FOUND");
+      return;
+    }
 
     try {
       window.Kakao.Share.createDefaultButton({
@@ -122,6 +126,7 @@ export default function MyPageShareBridge() {
           webUrl: resultUrl(code),
         },
       });
+      setStatus("Kakao 진단: SDK=OK / Init=OK / ButtonBind=OK");
     } catch (error) {
       console.error("[Kakao Button]", error);
       setStatus(`${text.kakaoError}: ${errorText(error)}`);
@@ -139,6 +144,14 @@ export default function MyPageShareBridge() {
     window.open(`https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`, "_blank", "noopener,noreferrer");
   }
 
+  function diagnoseKakaoClick() {
+    const sdk = Boolean(window.Kakao);
+    const init = Boolean(window.Kakao?.isInitialized?.());
+    const bind = typeof window.Kakao?.Share?.createDefaultButton === "function";
+    const send = typeof window.Kakao?.Share?.sendDefault === "function";
+    setStatus(`Kakao 클릭 감지 / SDK=${sdk ? "OK" : "NO"} / Init=${init ? "OK" : "NO"} / Bind=${bind ? "OK" : "NO"} / Send=${send ? "OK" : "NO"} / Origin=${window.location.origin}`);
+  }
+
   if (!mount || !code) return null;
 
   return createPortal(
@@ -146,7 +159,7 @@ export default function MyPageShareBridge() {
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <button type="button" onClick={copyLink} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
-        <a id="kakaotalk-sharing-btn" href="javascript:;" className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white">{text.kakao}</a>
+        <a id="kakaotalk-sharing-btn" href="javascript:;" onClickCapture={diagnoseKakaoClick} className="rounded-full bg-[#d88c9c] px-5 py-3 text-sm font-semibold text-white">{text.kakao}</a>
         <button type="button" onClick={lineShare} className="rounded-full border border-[#d88c9c] bg-white px-5 py-3 text-sm font-semibold text-[#a85f6e]">{text.line}</button>
       </div>
       {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
