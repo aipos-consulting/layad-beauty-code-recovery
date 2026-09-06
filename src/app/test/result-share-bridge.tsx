@@ -19,7 +19,7 @@ function KakaoIcon() {
   return <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden><svg viewBox="0 0 24 24" className="h-6 w-6 fill-[#191919]"><path d="M12 4C7.58 4 4 6.84 4 10.35c0 2.22 1.43 4.18 3.6 5.32l-.92 3.38a.42.42 0 0 0 .64.46l3.92-2.62c.25.02.5.03.76.03 4.42 0 8-2.84 8-6.35S16.42 4 12 4Z" /></svg></span>;
 }
 function LinkIcon() {
-  return <span className="flex h-11 w-11 items-center justify-center bg-transparent" aria-hidden><svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-[#6f6164]" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l2.14-2.14a4 4 0 0 0-5.66-5.66l-1.22 1.22" /><path d="M13.4 10.6a4 4 0 0 0-5.66 0L5.6 12.74a4 4 0 0 0 5.66 5.66l1.22-1.22" /></svg></span>;
+  return <span className="flex h-11 w-11 items-center justify-center bg-[#fff3f5]" aria-hidden><svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-[#6f6164]" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.6 13.4a4 4 0 0 0 5.66 0l2.14-2.14a4 4 0 0 0-5.66-5.66l-1.22 1.22" /><path d="M13.4 10.6a4 4 0 0 0-5.66 0L5.6 12.74a4 4 0 0 0 5.66 5.66l1.22-1.22" /></svg></span>;
 }
 function InstagramIcon() {
   return <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden><svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.8" r="1" fill="currentColor" stroke="none" /></svg></span>;
@@ -65,11 +65,11 @@ export default function ResultShareBridge() {
 
   if (!mount || !code) return null;
   return createPortal(
-    <section className="mx-auto mt-9 w-full max-w-xl border-t border-[#f1dfe2] px-4 pt-8 text-center">
+    <section className="mx-auto mt-9 w-full max-w-xl border-t border-[#f1dfe2] bg-[#fff3f5] px-4 pt-8 text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-8">
-        {!isAndroid ? <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 bg-transparent text-xs font-medium text-[#6f6164] no-underline" aria-label={text.kakao}><KakaoIcon /><span>{text.kakao}</span></a> : null}
-        <button type="button" onClick={copyLink} className="m-0 flex appearance-none flex-col items-center gap-1.5 border-0 bg-transparent p-0 text-xs font-medium text-[#6f6164] shadow-none" aria-label={text.copy}><LinkIcon /><span className="whitespace-nowrap">{text.copy}</span></button>
+        {!isAndroid ? <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 bg-[#fff3f5] text-xs font-medium text-[#6f6164] no-underline" aria-label={text.kakao}><KakaoIcon /><span>{text.kakao}</span></a> : null}
+        <button type="button" onClick={copyLink} style={{ backgroundColor: "#fff3f5" }} className="m-0 flex appearance-none flex-col items-center gap-1.5 border-0 bg-[#fff3f5] p-0 text-xs font-medium text-[#6f6164] shadow-none" aria-label={text.copy}><LinkIcon /><span className="whitespace-nowrap">{text.copy}</span></button>
       </div>
       <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={`mx-auto mt-5 flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#d88c9c] bg-transparent py-2.5 font-semibold text-[#a85f6e] no-underline ${isAndroid ? "max-w-[250px] px-3 text-xs" : "max-w-[280px] px-4 text-sm"}`}><InstagramIcon /><span>{text.instagram}</span></a>
       {status ? <p className="mx-auto mt-3 max-w-sm break-words px-3 text-xs leading-5 text-[#806f72]">{status}</p> : null}
