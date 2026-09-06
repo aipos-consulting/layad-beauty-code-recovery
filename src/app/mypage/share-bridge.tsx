@@ -15,9 +15,9 @@ declare global {
 }
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류" },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error" },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー" },
+  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡 공유", line: "LINE 공유", copied: "결과 링크가 복사되었습니다.", kakaoMissing: "카카오 JavaScript Key가 Production에 반영되지 않았습니다.", kakaoLoad: "카카오 SDK를 불러오지 못했습니다.", kakaoError: "카카오 공유 오류", kakaoPreparing: "카카오 공유 기능을 준비 중입니다. 잠시 후 다시 눌러 주세요." },
+  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", copied: "Result link copied.", kakaoMissing: "The Kakao JavaScript Key is not available in Production.", kakaoLoad: "Could not load the Kakao SDK.", kakaoError: "Kakao share error", kakaoPreparing: "Kakao sharing is still loading. Please try again in a moment." },
+  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINEでシェア", copied: "結果リンクをコピーしました。", kakaoMissing: "Kakao JavaScript KeyがProductionに反映されていません。", kakaoLoad: "Kakao SDKを読み込めませんでした。", kakaoError: "Kakao共有エラー", kakaoPreparing: "Kakao共有機能を準備中です。少し待ってからもう一度お試しください。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -36,6 +36,7 @@ export default function MyPageShareBridge() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState("");
   const [status, setStatus] = useState("");
+  const [kakaoReady, setKakaoReady] = useState(false);
 
   useEffect(() => {
     const locate = () => {
@@ -64,6 +65,42 @@ export default function MyPageShareBridge() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+    if (!key) return;
+
+    const initialize = () => {
+      try {
+        if (!window.Kakao) throw new Error("Kakao SDK unavailable");
+        if (!window.Kakao.isInitialized()) window.Kakao.init(key);
+        setKakaoReady(true);
+      } catch (error) {
+        console.error("[Kakao Init]", error);
+        setStatus(`${text.kakaoError}: ${errorText(error)}`);
+      }
+    };
+
+    if (window.Kakao) {
+      initialize();
+      return;
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
+    if (existing) {
+      existing.addEventListener("load", initialize, { once: true });
+      existing.addEventListener("error", () => setStatus(text.kakaoLoad), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.8.3/kakao.min.js";
+    script.crossOrigin = "anonymous";
+    script.dataset.layadKakaoSdk = "true";
+    script.onload = initialize;
+    script.onerror = () => setStatus(text.kakaoLoad);
+    document.head.appendChild(script);
+  }, [text.kakaoError, text.kakaoLoad]);
+
   async function copyLink() {
     await navigator.clipboard.writeText(resultUrl(code));
     setStatus(text.copied);
@@ -82,46 +119,26 @@ export default function MyPageShareBridge() {
       setStatus(text.kakaoMissing);
       return;
     }
-
-    const send = () => {
-      try {
-        if (!window.Kakao) throw new Error("Kakao SDK unavailable");
-        if (!window.Kakao.isInitialized()) window.Kakao.init(key);
-        window.Kakao.Share.sendDefault({
-          objectType: "feed",
-          content: {
-            title: `LAYAD BEAUTY CODE ${code}`,
-            description: locale === "ja" ? "私のBeauty Codeをチェックしてみてください。" : locale === "en" ? "Check out my Beauty Code result." : "나의 Beauty Code 결과를 확인해 보세요.",
-            imageUrl: `${window.location.origin}/api/share-card/${code}`,
-            link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
-          },
-          buttons: [{ title: locale === "ja" ? "結果を見る" : locale === "en" ? "View result" : "결과 보기", link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) } }],
-        });
-      } catch (error) {
-        console.error("[Kakao Share]", error);
-        setStatus(`${text.kakaoError}: ${errorText(error)}`);
-      }
-    };
-
-    if (window.Kakao) {
-      send();
+    if (!kakaoReady || !window.Kakao) {
+      setStatus(text.kakaoPreparing);
       return;
     }
 
-    const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
-    if (existing) {
-      existing.addEventListener("load", send, { once: true });
-      existing.addEventListener("error", () => setStatus(text.kakaoLoad), { once: true });
-      return;
+    try {
+      window.Kakao.Share.sendDefault({
+        objectType: "feed",
+        content: {
+          title: `LAYAD BEAUTY CODE ${code}`,
+          description: locale === "ja" ? "私のBeauty Codeをチェックしてみてください。" : locale === "en" ? "Check out my Beauty Code result." : "나의 Beauty Code 결과를 확인해 보세요.",
+          imageUrl: `${window.location.origin}/api/share-card/${code}`,
+          link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) },
+        },
+        buttons: [{ title: locale === "ja" ? "結果を見る" : locale === "en" ? "View result" : "결과 보기", link: { mobileWebUrl: resultUrl(code), webUrl: resultUrl(code) } }],
+      });
+    } catch (error) {
+      console.error("[Kakao Share]", error);
+      setStatus(`${text.kakaoError}: ${errorText(error)}`);
     }
-
-    const script = document.createElement("script");
-    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.8.3/kakao.min.js";
-    script.crossOrigin = "anonymous";
-    script.dataset.layadKakaoSdk = "true";
-    script.onload = send;
-    script.onerror = () => setStatus(text.kakaoLoad);
-    document.head.appendChild(script);
   }
 
   if (!mount || !code) return null;
