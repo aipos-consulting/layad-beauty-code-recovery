@@ -52,6 +52,7 @@ export default function SharePage() {
       try {
         if (!window.Kakao.isInitialized()) window.Kakao.init(key);
         setReady(true);
+        setStatus("");
       } catch (error) {
         console.error("[Kakao Init]", error);
         setStatus("카카오 공유 설정을 확인해 주세요.");
@@ -65,7 +66,8 @@ export default function SharePage() {
 
     const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
     if (existing) {
-      existing.addEventListener("load", initialize, { once: true });
+      if (window.Kakao) initialize();
+      else existing.addEventListener("load", initialize, { once: true });
       return;
     }
 
@@ -78,12 +80,16 @@ export default function SharePage() {
     document.head.appendChild(script);
   }, [valid]);
 
-  useEffect(() => {
-    if (!valid || !ready || !window.Kakao) return;
+  function shareToKakao() {
+    const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
+    if (!key || !window.Kakao) {
+      setStatus("카카오 공유를 준비 중입니다. 잠시 후 다시 눌러 주세요.");
+      return;
+    }
 
     try {
-      window.Kakao.Share.createDefaultButton({
-        container: "#layad-kakao-share-btn",
+      if (!window.Kakao.isInitialized()) window.Kakao.init(key);
+      window.Kakao.Share.sendDefault({
         objectType: "feed",
         content: {
           title: `LAYAD BEAUTY CODE ${code}`,
@@ -106,10 +112,10 @@ export default function SharePage() {
       });
       setStatus("");
     } catch (error) {
-      console.error("[Kakao Button Bind]", error);
-      setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
+      console.error("[Kakao Share]", error);
+      setStatus("카카오톡 공유를 실행하지 못했습니다. 다시 시도해 주세요.");
     }
-  }, [code, ready, valid]);
+  }
 
   if (!valid) {
     return (
@@ -132,13 +138,14 @@ export default function SharePage() {
         <p className="mt-4 text-sm leading-6 text-[#806f72]">친구에게 나의 Beauty Code 결과를 공유해 보세요.</p>
 
         <div className="mt-8 flex flex-col gap-3">
-          <a
-            id="layad-kakao-share-btn"
-            href="javascript:;"
-            className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
+          <button
+            type="button"
+            onClick={shareToKakao}
+            disabled={!ready}
+            className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919] disabled:cursor-wait disabled:opacity-60"
           >
-            카카오톡으로 공유하기
-          </a>
+            {ready ? "카카오톡으로 공유하기" : "카카오톡 준비 중..."}
+          </button>
           <a
             href={resultUrl(code)}
             className="rounded-full border border-[#d88c9c] bg-white px-5 py-4 text-sm font-semibold text-[#a85f6e]"
