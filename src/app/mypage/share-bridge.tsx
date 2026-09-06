@@ -21,7 +21,13 @@ function shareUrl(code: string) {
 }
 
 function KakaoIcon() {
-  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500] text-[22px] font-black text-[#191919]" aria-hidden>♣</span>;
+  return (
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden>
+      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-[#191919]">
+        <path d="M12 4C7.58 4 4 6.84 4 10.35c0 2.22 1.43 4.18 3.6 5.32l-.92 3.38a.42.42 0 0 0 .64.46l3.92-2.62c.25.02.5.03.76.03 4.42 0 8-2.84 8-6.35S16.42 4 12 4Z" />
+      </svg>
+    </span>
+  );
 }
 
 function InstagramIcon() {
@@ -37,7 +43,7 @@ function InstagramIcon() {
 }
 
 function LineIcon() {
-  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#06C755] text-sm font-black text-white" aria-hidden>LINE</span>;
+  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#06C755] text-[10px] font-black text-white" aria-hidden>LINE</span>;
 }
 
 export default function MyPageShareBridge() {
