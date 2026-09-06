@@ -66,8 +66,7 @@ export default function SharePage() {
 
     const existing = document.querySelector<HTMLScriptElement>('script[data-layad-kakao-sdk="true"]');
     if (existing) {
-      if (window.Kakao) initialize();
-      else existing.addEventListener("load", initialize, { once: true });
+      existing.addEventListener("load", initialize, { once: true });
       return;
     }
 
@@ -80,16 +79,12 @@ export default function SharePage() {
     document.head.appendChild(script);
   }, [valid]);
 
-  function shareToKakao() {
-    const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-    if (!key || !window.Kakao) {
-      setStatus("카카오 공유를 준비 중입니다. 잠시 후 다시 눌러 주세요.");
-      return;
-    }
+  useEffect(() => {
+    if (!valid || !ready || !window.Kakao) return;
 
     try {
-      if (!window.Kakao.isInitialized()) window.Kakao.init(key);
-      window.Kakao.Share.sendDefault({
+      window.Kakao.Share.createDefaultButton({
+        container: "#layad-kakao-share-btn",
         objectType: "feed",
         content: {
           title: `LAYAD BEAUTY CODE ${code}`,
@@ -112,10 +107,10 @@ export default function SharePage() {
       });
       setStatus("");
     } catch (error) {
-      console.error("[Kakao Share]", error);
-      setStatus("카카오톡 공유를 실행하지 못했습니다. 다시 시도해 주세요.");
+      console.error("[Kakao Button Bind]", error);
+      setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
     }
-  }
+  }, [code, ready, valid]);
 
   if (!valid) {
     return (
@@ -138,14 +133,13 @@ export default function SharePage() {
         <p className="mt-4 text-sm leading-6 text-[#806f72]">친구에게 나의 Beauty Code 결과를 공유해 보세요.</p>
 
         <div className="mt-8 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={shareToKakao}
-            disabled={!ready}
-            className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919] disabled:cursor-wait disabled:opacity-60"
+          <a
+            id="layad-kakao-share-btn"
+            href="javascript:;"
+            className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
           >
-            {ready ? "카카오톡으로 공유하기" : "카카오톡 준비 중..."}
-          </button>
+            카카오톡으로 공유하기
+          </a>
           <a
             href={resultUrl(code)}
             className="rounded-full border border-[#d88c9c] bg-white px-5 py-4 text-sm font-semibold text-[#a85f6e]"
