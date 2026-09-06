@@ -7,9 +7,9 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다." },
-  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied." },
-  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。" },
+  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다.", androidOpening: "외부 브라우저에서 카카오 공유 화면을 엽니다." },
+  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied.", androidOpening: "Opening Kakao sharing in an external browser." },
+  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。", androidOpening: "外部ブラウザでKakao共有画面を開きます。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -18,6 +18,15 @@ function resultUrl(code: string) {
 
 function shareUrl(code: string) {
   return `https://layad16.com/s/${code}`;
+}
+
+function chromeSchemeUrl(code: string) {
+  return `googlechrome://navigate?url=${encodeURIComponent(shareUrl(code))}`;
+}
+
+function chromeIntentUrl(code: string) {
+  const fallback = encodeURIComponent(shareUrl(code));
+  return `intent://layad16.com/s/${code}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
 }
 
 function KakaoIcon() {
@@ -98,22 +107,38 @@ export default function MyPageShareBridge() {
     setStatus(text.copied);
   }
 
+  function openKakaoShare() {
+    if (!isAndroid) {
+      window.location.href = shareUrl(code);
+      return;
+    }
+
+    setStatus(text.androidOpening);
+
+    try {
+      window.location.href = chromeSchemeUrl(code);
+    } catch {
+      window.location.href = chromeIntentUrl(code);
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (document.visibilityState === "visible") {
+        window.location.href = chromeIntentUrl(code);
+      }
+    }, 700);
+  }
+
   if (!mount || !code) return null;
 
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-7">
-        <a
-          href={shareUrl(code)}
-          target={isAndroid ? "_blank" : undefined}
-          rel={isAndroid ? "noopener noreferrer" : undefined}
-          className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]"
-          aria-label={text.kakao}
-        >
+        <button type="button" onClick={openKakaoShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
           <KakaoIcon />
           <span>{text.kakao}</span>
-        </a>
+        </button>
         <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.copy}>
           <LinkIcon />
           <span>{text.copy}</span>
