@@ -24,7 +24,7 @@ const labels = {
 } as const;
 
 function resultUrl(code: string) {
-  return `${window.location.origin}/result/${code}`;
+  return `https://layad16.com/result/${code}`;
 }
 
 function errorText(error: unknown) {
