@@ -24,8 +24,21 @@ function resultUrl(code: string) {
   return `https://layad16.com/result/${code}`;
 }
 
+function sharePageUrl(code: string) {
+  return `https://layad16.com/s/${code}`;
+}
+
 function shareImageUrl(code: string) {
   return `https://layad16.com/api/share-card/${code}`;
+}
+
+function isAndroidInAppBrowser() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const android = /Android/i.test(ua);
+  const webView = /;\s*wv\)/i.test(ua) || /\bwv\b/i.test(ua) || /Version\/\d+(?:\.\d+)?[^\n]*Chrome\/[^\n]*Mobile Safari/i.test(ua);
+  const knownInApp = /KAKAOTALK|NAVER|DaumApps|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|Twitter|X\//i.test(ua);
+  return android && (webView || knownInApp);
 }
 
 export default function SharePage() {
@@ -34,9 +47,17 @@ export default function SharePage() {
   const valid = isBeautyCode(code);
   const [status, setStatus] = useState("");
   const [ready, setReady] = useState(false);
+  const [blockedInApp, setBlockedInApp] = useState(false);
 
   useEffect(() => {
     if (!valid) return;
+
+    const blocked = isAndroidInAppBrowser();
+    setBlockedInApp(blocked);
+    if (blocked) {
+      setStatus("Android 인앱 브라우저에서는 카카오톡 앱 실행이 제한될 수 있습니다. 우측 상단 메뉴에서 ‘브라우저에서 열기’로 연 뒤 공유해 주세요.");
+      return;
+    }
 
     const key = process.env.NEXT_PUBLIC_KAKAO_JAVASCRIPT_KEY;
     if (!key) {
@@ -80,7 +101,7 @@ export default function SharePage() {
   }, [valid]);
 
   useEffect(() => {
-    if (!valid || !ready || !window.Kakao) return;
+    if (!valid || blockedInApp || !ready || !window.Kakao) return;
 
     try {
       window.Kakao.Share.createDefaultButton({
@@ -110,7 +131,16 @@ export default function SharePage() {
       console.error("[Kakao Button Bind]", error);
       setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
     }
-  }, [code, ready, valid]);
+  }, [blockedInApp, code, ready, valid]);
+
+  async function copySharePage() {
+    try {
+      await navigator.clipboard.writeText(sharePageUrl(code));
+      setStatus("공유 페이지 주소를 복사했습니다. Chrome 주소창에 붙여넣으면 카카오톡 공유를 사용할 수 있습니다.");
+    } catch {
+      setStatus(`Chrome에서 ${sharePageUrl(code)} 주소를 직접 열어 주세요.`);
+    }
+  }
 
   if (!valid) {
     return (
@@ -133,13 +163,23 @@ export default function SharePage() {
         <p className="mt-4 text-sm leading-6 text-[#806f72]">친구에게 나의 Beauty Code 결과를 공유해 보세요.</p>
 
         <div className="mt-8 flex flex-col gap-3">
-          <a
-            id="layad-kakao-share-btn"
-            href="javascript:;"
-            className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
-          >
-            카카오톡으로 공유하기
-          </a>
+          {blockedInApp ? (
+            <button
+              type="button"
+              onClick={copySharePage}
+              className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
+            >
+              Chrome에서 카카오톡 공유하기
+            </button>
+          ) : (
+            <a
+              id="layad-kakao-share-btn"
+              href="javascript:;"
+              className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
+            >
+              카카오톡으로 공유하기
+            </a>
+          )}
           <a
             href={resultUrl(code)}
             className="rounded-full border border-[#d88c9c] bg-white px-5 py-4 text-sm font-semibold text-[#a85f6e]"
@@ -148,7 +188,7 @@ export default function SharePage() {
           </a>
         </div>
 
-        {status ? <p className="mt-4 text-xs leading-5 text-[#806f72]">{status}</p> : null}
+        {status ? <p className="mt-4 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
       </section>
     </main>
   );
