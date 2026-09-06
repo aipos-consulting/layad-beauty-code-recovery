@@ -7,9 +7,9 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "내 Beauty Code 공유하기", copy: "URL 복사", kakao: "카카오톡", line: "LINE", instagram: "Instagram", copied: "결과 링크가 복사되었습니다." },
-  en: { title: "Share my Beauty Code", copy: "Copy URL", kakao: "KakaoTalk", line: "LINE", instagram: "Instagram", copied: "Result link copied." },
-  ja: { title: "Beauty Codeをシェア", copy: "URLをコピー", kakao: "KakaoTalk", line: "LINE", instagram: "Instagram", copied: "結果リンクをコピーしました。" },
+  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다." },
+  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied." },
+  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -22,7 +22,7 @@ function shareUrl(code: string) {
 
 function KakaoIcon() {
   return (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden>
+    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden>
       <svg viewBox="0 0 24 24" className="h-6 w-6 fill-[#191919]">
         <path d="M12 4C7.58 4 4 6.84 4 10.35c0 2.22 1.43 4.18 3.6 5.32l-.92 3.38a.42.42 0 0 0 .64.46l3.92-2.62c.25.02.5.03.76.03 4.42 0 8-2.84 8-6.35S16.42 4 12 4Z" />
       </svg>
@@ -30,20 +30,27 @@ function KakaoIcon() {
   );
 }
 
-function InstagramIcon() {
+function LinkIcon() {
   return (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d9c4c9] bg-white" aria-hidden>
-      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-[#a85f6e]" strokeWidth="1.8">
-        <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
-        <circle cx="12" cy="12" r="4" />
-        <circle cx="17.5" cy="6.8" r="1" fill="#a85f6e" stroke="none" />
+    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d9c4c9] bg-white" aria-hidden>
+      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-[#6f6164]" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.6 13.4a4 4 0 0 0 5.66 0l2.14-2.14a4 4 0 0 0-5.66-5.66l-1.22 1.22" />
+        <path d="M13.4 10.6a4 4 0 0 0-5.66 0L5.6 12.74a4 4 0 0 0 5.66 5.66l1.22-1.22" />
       </svg>
     </span>
   );
 }
 
-function LineIcon() {
-  return <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#06C755] text-[10px] font-black text-white" aria-hidden>LINE</span>;
+function InstagramIcon() {
+  return (
+    <span className="flex h-5 w-5 items-center justify-center" aria-hidden>
+      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="1.8">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.5" cy="6.8" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
 }
 
 export default function MyPageShareBridge() {
@@ -89,32 +96,25 @@ export default function MyPageShareBridge() {
     setStatus(text.copied);
   }
 
-  function lineShare() {
-    const url = encodeURIComponent(resultUrl(code));
-    const message = encodeURIComponent(`LAYAD BEAUTY CODE ${code}`);
-    window.open(`https://social-plugins.line.me/lineit/share?url=${url}&text=${message}`, "_blank", "noopener,noreferrer");
-  }
-
   if (!mount || !code) return null;
 
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
-      <div className="mt-4 flex items-start justify-center gap-5">
+      <div className="mt-4 flex items-start justify-center gap-7">
         <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
           <KakaoIcon />
           <span>{text.kakao}</span>
         </a>
-        <button type="button" onClick={lineShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.line}>
-          <LineIcon />
-          <span>{text.line}</span>
+        <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.copy}>
+          <LinkIcon />
+          <span>{text.copy}</span>
         </button>
-        <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.instagram}>
-          <InstagramIcon />
-          <span>{text.instagram}</span>
-        </a>
       </div>
-      <button type="button" onClick={copyLink} className="mt-4 rounded-full border border-[#d88c9c] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e]">{text.copy}</button>
+      <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="mx-auto mt-5 inline-flex items-center justify-center gap-2 rounded-full border border-[#d88c9c] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e]">
+        <InstagramIcon />
+        <span>{text.instagram}</span>
+      </a>
       {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
