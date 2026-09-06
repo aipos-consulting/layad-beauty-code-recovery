@@ -7,30 +7,9 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: {
-    title: "친구에게 테스트 공유하기",
-    copy: "링크",
-    kakao: "카카오톡",
-    instagram: "공식 인스타 보러가기",
-    copied: "결과 링크가 복사되었습니다.",
-    androidFallback: "이 브라우저에서는 카카오톡을 직접 열 수 없습니다. 공유 링크를 복사했습니다. Chrome 주소창에 붙여넣으면 카카오톡 공유가 정상 동작합니다.",
-  },
-  en: {
-    title: "Share the test with friends",
-    copy: "Link",
-    kakao: "KakaoTalk",
-    instagram: "Visit official Instagram",
-    copied: "Result link copied.",
-    androidFallback: "This in-app browser cannot open KakaoTalk directly. The share link was copied. Paste it into Chrome to share with KakaoTalk.",
-  },
-  ja: {
-    title: "友だちにテストをシェア",
-    copy: "リンク",
-    kakao: "KakaoTalk",
-    instagram: "公式Instagramを見る",
-    copied: "結果リンクをコピーしました。",
-    androidFallback: "このアプリ内ブラウザからKakaoTalkを直接開けません。共有リンクをコピーしました。Chromeのアドレスバーに貼り付けるとKakaoTalk共有が正常に動作します。",
-  },
+  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다." },
+  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied." },
+  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -80,10 +59,8 @@ export default function MyPageShareBridge() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState("");
   const [status, setStatus] = useState("");
-  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
-    setIsAndroid(/Android/i.test(navigator.userAgent));
     const locate = () => {
       const codeNode = Array.from(document.querySelectorAll("p")).find((node) =>
         /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? ""),
@@ -114,42 +91,9 @@ export default function MyPageShareBridge() {
     return () => observer.disconnect();
   }, []);
 
-  async function safeCopy(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function copyLink() {
-    await safeCopy(resultUrl(code));
+    await navigator.clipboard.writeText(resultUrl(code));
     setStatus(text.copied);
-  }
-
-  async function openKakaoShare() {
-    if (!isAndroid) {
-      window.location.href = shareUrl(code);
-      return;
-    }
-
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({
-          title: `LAYAD BEAUTY CODE ${code}`,
-          text: "나의 Beauty Code 결과를 확인해 보세요.",
-          url: resultUrl(code),
-        });
-        setStatus("");
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      }
-    }
-
-    await safeCopy(shareUrl(code));
-    setStatus(text.androidFallback);
   }
 
   if (!mount || !code) return null;
@@ -158,10 +102,10 @@ export default function MyPageShareBridge() {
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-7">
-        <button type="button" onClick={openKakaoShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
+        <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
           <KakaoIcon />
           <span>{text.kakao}</span>
-        </button>
+        </a>
         <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.copy}>
           <LinkIcon />
           <span>{text.copy}</span>
@@ -171,7 +115,7 @@ export default function MyPageShareBridge() {
         <InstagramIcon />
         <span>{text.instagram}</span>
       </a>
-      {status ? <p className="mx-auto mt-3 max-w-md break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
+      {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
   );
