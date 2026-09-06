@@ -7,9 +7,30 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다.", androidOpening: "외부 브라우저에서 카카오 공유 화면을 엽니다." },
-  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied.", androidOpening: "Opening Kakao sharing in an external browser." },
-  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。", androidOpening: "外部ブラウザでKakao共有画面を開きます。" },
+  ko: {
+    title: "친구에게 테스트 공유하기",
+    copy: "링크",
+    kakao: "카카오톡",
+    instagram: "공식 인스타 보러가기",
+    copied: "결과 링크가 복사되었습니다.",
+    androidFallback: "이 브라우저에서는 카카오톡을 직접 열 수 없습니다. 공유 링크를 복사했습니다. Chrome 주소창에 붙여넣으면 카카오톡 공유가 정상 동작합니다.",
+  },
+  en: {
+    title: "Share the test with friends",
+    copy: "Link",
+    kakao: "KakaoTalk",
+    instagram: "Visit official Instagram",
+    copied: "Result link copied.",
+    androidFallback: "This in-app browser cannot open KakaoTalk directly. The share link was copied. Paste it into Chrome to share with KakaoTalk.",
+  },
+  ja: {
+    title: "友だちにテストをシェア",
+    copy: "リンク",
+    kakao: "KakaoTalk",
+    instagram: "公式Instagramを見る",
+    copied: "結果リンクをコピーしました。",
+    androidFallback: "このアプリ内ブラウザからKakaoTalkを直接開けません。共有リンクをコピーしました。Chromeのアドレスバーに貼り付けるとKakaoTalk共有が正常に動作します。",
+  },
 } as const;
 
 function resultUrl(code: string) {
@@ -18,15 +39,6 @@ function resultUrl(code: string) {
 
 function shareUrl(code: string) {
   return `https://layad16.com/s/${code}`;
-}
-
-function chromeSchemeUrl(code: string) {
-  return `googlechrome://navigate?url=${encodeURIComponent(shareUrl(code))}`;
-}
-
-function chromeIntentUrl(code: string) {
-  const fallback = encodeURIComponent(shareUrl(code));
-  return `intent://layad16.com/s/${code}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
 }
 
 function KakaoIcon() {
@@ -102,31 +114,42 @@ export default function MyPageShareBridge() {
     return () => observer.disconnect();
   }, []);
 
+  async function safeCopy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function copyLink() {
-    await navigator.clipboard.writeText(resultUrl(code));
+    await safeCopy(resultUrl(code));
     setStatus(text.copied);
   }
 
-  function openKakaoShare() {
+  async function openKakaoShare() {
     if (!isAndroid) {
       window.location.href = shareUrl(code);
       return;
     }
 
-    setStatus(text.androidOpening);
-
-    try {
-      window.location.href = chromeSchemeUrl(code);
-    } catch {
-      window.location.href = chromeIntentUrl(code);
-      return;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `LAYAD BEAUTY CODE ${code}`,
+          text: "나의 Beauty Code 결과를 확인해 보세요.",
+          url: resultUrl(code),
+        });
+        setStatus("");
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
     }
 
-    window.setTimeout(() => {
-      if (document.visibilityState === "visible") {
-        window.location.href = chromeIntentUrl(code);
-      }
-    }, 700);
+    await safeCopy(shareUrl(code));
+    setStatus(text.androidFallback);
   }
 
   if (!mount || !code) return null;
@@ -148,7 +171,7 @@ export default function MyPageShareBridge() {
         <InstagramIcon />
         <span>{text.instagram}</span>
       </a>
-      {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
+      {status ? <p className="mx-auto mt-3 max-w-md break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
   );
