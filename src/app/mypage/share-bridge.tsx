@@ -20,6 +20,11 @@ function shareUrl(code: string) {
   return `https://layad16.com/s/${code}`;
 }
 
+function androidShareUrl(code: string) {
+  const fallback = encodeURIComponent(shareUrl(code));
+  return `intent://layad16.com/s/${code}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+}
+
 function KakaoIcon() {
   return (
     <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden>
@@ -59,8 +64,10 @@ export default function MyPageShareBridge() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState("");
   const [status, setStatus] = useState("");
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
+    setIsAndroid(/Android/i.test(navigator.userAgent));
     const locate = () => {
       const codeNode = Array.from(document.querySelectorAll("p")).find((node) =>
         /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? ""),
@@ -98,11 +105,13 @@ export default function MyPageShareBridge() {
 
   if (!mount || !code) return null;
 
+  const kakaoHref = isAndroid ? androidShareUrl(code) : shareUrl(code);
+
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-7">
-        <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
+        <a href={kakaoHref} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
           <KakaoIcon />
           <span>{text.kakao}</span>
         </a>
