@@ -14,13 +14,6 @@ const labels = {
 
 function resultUrl(code: string) { return `https://layad16.com/result/${code}`; }
 function shareUrl(code: string) { return `https://layad16.com/s/${code}`; }
-function isAndroidInAppBrowser() {
-  const ua = navigator.userAgent;
-  const android = /Android/i.test(ua);
-  const webView = /;\s*wv\)/i.test(ua) || /\bwv\b/i.test(ua) || /Version\/\d+(?:\.\d+)?[^\n]*Chrome\/[^\n]*Mobile Safari/i.test(ua);
-  const knownInApp = /KAKAOTALK|NAVER|DaumApps|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|Twitter|X\//i.test(ua);
-  return android && (webView || knownInApp);
-}
 
 function KakaoIcon() {
   return <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FEE500]" aria-hidden><svg viewBox="0 0 24 24" className="h-6 w-6 fill-[#191919]"><path d="M12 4C7.58 4 4 6.84 4 10.35c0 2.22 1.43 4.18 3.6 5.32l-.92 3.38a.42.42 0 0 0 .64.46l3.92-2.62c.25.02.5.03.76.03 4.42 0 8-2.84 8-6.35S16.42 4 12 4Z" /></svg></span>;
@@ -38,8 +31,10 @@ export default function MyPageShareBridge() {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const [code, setCode] = useState("");
   const [status, setStatus] = useState("");
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
+    setIsAndroid(/Android/i.test(navigator.userAgent));
     const locate = () => {
       const codeNode = Array.from(document.querySelectorAll("p")).find((node) => /^[OD][GM][PC][VE]$/.test(node.textContent?.trim() ?? "")) as HTMLElement | undefined;
       if (!codeNode) {
@@ -65,17 +60,13 @@ export default function MyPageShareBridge() {
     await navigator.clipboard.writeText(resultUrl(code));
     setStatus(text.copied);
   }
-  function openKakaoShare() {
-    if (isAndroidInAppBrowser()) return;
-    window.location.href = shareUrl(code);
-  }
 
   if (!mount || !code) return null;
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-7">
-        <button type="button" onClick={openKakaoShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}><KakaoIcon /><span>{text.kakao}</span></button>
+        {!isAndroid ? <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}><KakaoIcon /><span>{text.kakao}</span></a> : null}
         <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.copy}><LinkIcon /><span>{text.copy}</span></button>
       </div>
       <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="mx-auto mt-5 inline-flex items-center justify-center gap-2 rounded-full border border-[#d88c9c] bg-white px-5 py-2.5 text-sm font-semibold text-[#a85f6e]"><InstagramIcon /><span>{text.instagram}</span></a>
