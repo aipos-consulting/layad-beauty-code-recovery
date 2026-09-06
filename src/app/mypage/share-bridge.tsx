@@ -7,9 +7,9 @@ import { useLanguage } from "@/app/i18n";
 const INSTAGRAM_URL = "https://www.instagram.com/layad_official";
 
 const labels = {
-  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다." },
-  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied." },
-  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。" },
+  ko: { title: "친구에게 테스트 공유하기", copy: "링크", kakao: "카카오톡", instagram: "공식 인스타 보러가기", copied: "결과 링크가 복사되었습니다.", inApp: "현재 브라우저에서는 카카오톡 직접 공유가 제한됩니다. 우측 상단 ⋮ 메뉴에서 ‘브라우저에서 열기’로 연 뒤 카카오톡 아이콘을 눌러주세요." },
+  en: { title: "Share the test with friends", copy: "Link", kakao: "KakaoTalk", instagram: "Visit official Instagram", copied: "Result link copied.", inApp: "Direct KakaoTalk sharing is limited in this in-app browser. Open this page in your browser from the top-right menu, then tap KakaoTalk again." },
+  ja: { title: "友だちにテストをシェア", copy: "リンク", kakao: "KakaoTalk", instagram: "公式Instagramを見る", copied: "結果リンクをコピーしました。", inApp: "このアプリ内ブラウザではKakaoTalkの直接共有が制限されています。右上メニューからブラウザで開き、もう一度KakaoTalkをタップしてください。" },
 } as const;
 
 function resultUrl(code: string) {
@@ -18,6 +18,14 @@ function resultUrl(code: string) {
 
 function shareUrl(code: string) {
   return `https://layad16.com/s/${code}`;
+}
+
+function isAndroidInAppBrowser() {
+  const ua = navigator.userAgent;
+  const android = /Android/i.test(ua);
+  const webView = /;\s*wv\)/i.test(ua) || /\bwv\b/i.test(ua) || /Version\/\d+(?:\.\d+)?[^\n]*Chrome\/[^\n]*Mobile Safari/i.test(ua);
+  const knownInApp = /KAKAOTALK|NAVER|DaumApps|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|Twitter|X\//i.test(ua);
+  return android && (webView || knownInApp);
 }
 
 function KakaoIcon() {
@@ -96,16 +104,24 @@ export default function MyPageShareBridge() {
     setStatus(text.copied);
   }
 
+  function openKakaoShare() {
+    if (isAndroidInAppBrowser()) {
+      setStatus(text.inApp);
+      return;
+    }
+    window.location.href = shareUrl(code);
+  }
+
   if (!mount || !code) return null;
 
   return createPortal(
     <section className="mx-auto mt-5 max-w-xl text-center">
       <p className="text-sm font-semibold text-[#5f5053]">{text.title}</p>
       <div className="mt-4 flex items-start justify-center gap-7">
-        <a href={shareUrl(code)} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
+        <button type="button" onClick={openKakaoShare} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.kakao}>
           <KakaoIcon />
           <span>{text.kakao}</span>
-        </a>
+        </button>
         <button type="button" onClick={copyLink} className="flex flex-col items-center gap-1.5 text-xs font-medium text-[#6f6164]" aria-label={text.copy}>
           <LinkIcon />
           <span>{text.copy}</span>
@@ -115,7 +131,7 @@ export default function MyPageShareBridge() {
         <InstagramIcon />
         <span>{text.instagram}</span>
       </a>
-      {status ? <p className="mt-3 break-words text-xs leading-5 text-[#806f72]">{status}</p> : null}
+      {status ? <p className="mx-auto mt-3 max-w-sm break-words px-3 text-xs leading-5 text-[#806f72]">{status}</p> : null}
     </section>,
     mount,
   );
