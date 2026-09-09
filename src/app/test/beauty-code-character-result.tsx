@@ -35,11 +35,11 @@ export default function BeautyCodeCharacterResult() {
   useEffect(() => {
     if (!code) return;
     let active = true;
-    fetch(`/api/beauty-code-character?code=${encodeURIComponent(code)}`, { cache: "no-store" })
+    fetch(`/api/beauty-code-character?code=${encodeURIComponent(code)}&locale=${locale}`, { cache: "no-store" })
       .then(async (response) => { const result = await response.json(); if (active) setCharacter(response.ok && result.ok ? result.character ?? null : null); })
       .catch(() => { if (active) setCharacter(null); });
     return () => { active = false; };
-  }, [code]);
+  }, [code, locale]);
 
   if (!mount || !character || (!character.nickname && !character.image_url)) return null;
   return createPortal(
