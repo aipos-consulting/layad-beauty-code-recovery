@@ -43,8 +43,16 @@ export default function BeautyCodeCharacterResult() {
 
   if (!mount || !character || (!character.nickname && !character.image_url)) return null;
   return createPortal(
-    <div className="mx-auto mt-5 flex max-w-[280px] flex-col items-center text-center sm:max-w-[320px]">
-      {character.image_url ? <div className="mb-4 aspect-square w-[148px] overflow-hidden rounded-[28px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)] sm:w-[176px]"><img src={character.image_url} alt={`${character.beauty_code} character`} className="h-full w-full object-cover" /></div> : null}
+    <div className="mx-auto mt-5 flex w-full max-w-[360px] flex-col items-center text-center">
+      {character.image_url ? (
+        <div className="mb-4 flex w-full justify-center overflow-hidden rounded-[28px] bg-[#fff7f8] shadow-[0_12px_30px_rgba(120,70,80,0.12)]">
+          <img
+            src={character.image_url}
+            alt={`${character.beauty_code} character`}
+            className="block h-auto w-full max-w-[340px] object-contain"
+          />
+        </div>
+      ) : null}
       <p className="mb-1 text-base font-semibold text-[#5f5053] sm:text-lg">{beautyCodeNickname(character.beauty_code, locale, character.nickname)}</p>
     </div>, mount
   );
