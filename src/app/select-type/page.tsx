@@ -88,10 +88,10 @@ export default function SelectTypePage() {
   useEffect(() => {
     if (!selectedCode) { setCharacter(null); return; }
     let active = true;
-    fetch(`/api/beauty-code-character?code=${encodeURIComponent(selectedCode)}`, { cache: "no-store" })
+    fetch(`/api/beauty-code-character?code=${encodeURIComponent(selectedCode)}&locale=${locale}`, { cache: "no-store" })
       .then(r => r.json()).then(result => { if (active) setCharacter(result.character ?? null); }).catch(() => { if (active) setCharacter(null); });
     return () => { active = false; };
-  }, [selectedCode]);
+  }, [selectedCode, locale]);
 
   async function saveAgeSession(ageBand: AgeBand | null) {
     if (!selectedCode || savingAge) return;
