@@ -73,6 +73,7 @@ export default function BeautyCodeCharactersPage() {
           <p className="text-xs font-semibold tracking-[.16em] text-[#a94f65]">BEAUTY CODE CHARACTERS</p>
           <h1 className="mt-2 text-2xl font-semibold">유형별 캐릭터 관리</h1>
           <p className="mt-2 text-sm text-[#766767]">Beauty Code는 고정값입니다. 별명, 이미지, 유형 설명을 등록·교체할 수 있습니다.</p>
+          <p className="mt-1 text-xs text-[#9b8b8e]">※ 세로형 이미지도 전체가 잘리지 않게 미리보기됩니다. PNG/JPG/WEBP, 5MB 이하 이미지를 등록할 수 있습니다.</p>
           <p className="mt-1 text-xs text-[#9b8b8e]">※ 유형 설명은 Admin에 저장한 뒤 운영 파일 동기화 시 결과 화면에 반영됩니다.</p>
         </div>
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
@@ -91,9 +92,9 @@ function CharacterCard({ row, saving, saved, onChange, onSave }: { row: Characte
   const preview = file ? URL.createObjectURL(file) : row.image_url;
   return (
     <section className="rounded-2xl border border-[#eadfe1] bg-white p-4 shadow-sm">
-      <div className="grid grid-cols-[88px_1fr] gap-4 sm:grid-cols-[120px_1fr]">
-        <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-[#fff7f8]">
-          {preview ? <img src={preview} alt={`${row.beauty_code} 캐릭터`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-2 text-center text-xs text-[#9c8d90]">이미지 미등록</div>}
+      <div className="grid grid-cols-[128px_1fr] items-start gap-4 sm:grid-cols-[180px_1fr]">
+        <div className="aspect-[9/16] w-full overflow-hidden rounded-2xl border border-[#f0e4e6] bg-[#fff7f8]">
+          {preview ? <img src={preview} alt={`${row.beauty_code} 캐릭터`} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center px-2 text-center text-xs text-[#9c8d90]">이미지 미등록</div>}
         </div>
         <div className="min-w-0">
           <label className="text-xs font-semibold text-[#8b7b7e]">Beauty Code</label>
@@ -112,6 +113,7 @@ function CharacterCard({ row, saving, saved, onChange, onSave }: { row: Characte
 
           <label className="mt-4 block text-xs font-semibold text-[#8b7b7e]">이미지</label>
           <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { setFile(e.target.files?.[0]); onChange(row); }} className="mt-1 block w-full text-xs text-[#766767] file:mr-3 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-3 file:py-2 file:font-semibold file:text-[#a94f65]" />
+          <p className="mt-1 text-[11px] leading-5 text-[#9b8b8e]">세로형 이미지 권장 · PNG/JPG/WEBP · 최대 5MB</p>
           <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, file)} className="mt-4 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
           {saved ? <div className="mt-2 rounded-lg bg-[#fff4f6] px-3 py-2 text-center text-sm font-semibold text-[#a94f65]">✓ {row.beauty_code} 저장 완료</div> : null}
         </div>
