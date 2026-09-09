@@ -133,7 +133,13 @@ export default function SelectTypePage() {
         <div className="mx-auto mt-6 max-w-xl rounded-[28px] border border-[#eadfe1] bg-[#f8f3ef] px-4 py-7 text-center sm:p-8">
           {selectedCode ? <>
             <p className="text-[11px] font-semibold tracking-[0.2em] text-[#c77f8f]">{text.selected}</p>
-            {character?.image_url ? <div className="mx-auto mt-4 w-[148px] overflow-hidden rounded-[28px] bg-[#fff8f8] sm:w-[180px]"><img src={character.image_url} alt={`${selectedCode} character`} className="aspect-[4/5] h-auto w-full object-cover" /></div> : <div className="mx-auto mt-4 flex aspect-[4/5] w-[148px] items-center justify-center rounded-[28px] bg-[#fff8f8] text-xs text-[#a99599] sm:w-[180px]">{text.imagePending}</div>}
+            {character?.image_url ? (
+              <div className="mx-auto mt-4 flex w-full max-w-[340px] justify-center overflow-hidden rounded-[28px] bg-[#fff8f8] shadow-[0_12px_30px_rgba(120,70,80,0.10)]">
+                <img src={character.image_url} alt={`${selectedCode} character`} className="block h-auto w-full object-contain" />
+              </div>
+            ) : (
+              <div className="mx-auto mt-4 flex min-h-[340px] w-full max-w-[340px] items-center justify-center rounded-[28px] bg-[#fff8f8] text-xs text-[#a99599]">{text.imagePending}</div>
+            )}
             <p className="mt-4 text-[44px] font-semibold tracking-[0.18em] text-[#df8ca0] sm:text-5xl">{selectedCode}</p>
             {character?.nickname ? <p className="mt-2 text-lg font-semibold text-[#382d2d]">{character.nickname}</p> : null}
           </> : <p className="flex min-h-52 items-center justify-center text-sm text-[#8b7b7e]">{text.chooseCode}</p>}
