@@ -11,6 +11,7 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 const STORAGE_KEY = "layad-locale";
+const COOKIE_KEY = "layad-locale";
 
 function detectLocale(): Locale {
   if (typeof window === "undefined") return "ko";
@@ -22,6 +23,12 @@ function detectLocale(): Locale {
   return "ko";
 }
 
+function persistLocale(locale: Locale) {
+  window.localStorage.setItem(STORAGE_KEY, locale);
+  document.cookie = `${COOKIE_KEY}=${locale}; path=/; max-age=31536000; samesite=lax`;
+  document.documentElement.lang = locale;
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("ko");
 
@@ -31,12 +38,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = (next: Locale) => {
     setLocaleState(next);
-    window.localStorage.setItem(STORAGE_KEY, next);
-    document.documentElement.lang = next;
+    persistLocale(next);
   };
 
   useEffect(() => {
-    document.documentElement.lang = locale;
+    persistLocale(locale);
   }, [locale]);
 
   const value = useMemo(() => ({ locale, setLocale }), [locale]);
