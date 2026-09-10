@@ -21,11 +21,11 @@ function isBeautyCode(value: string) {
 }
 
 function resultUrl(code: string) {
-  return `https://layad16.com/result/${code}`;
+  return `https://www.layad16.com/result/${code}`;
 }
 
 function shareImageUrl(code: string) {
-  return `https://layad16.com/api/share-card/${code}`;
+  return `https://www.layad16.com/api/share-card/${code}`;
 }
 
 function isAndroidInAppBrowser() {
@@ -134,7 +134,7 @@ export default function SharePage() {
       <main className="mx-auto flex min-h-screen max-w-md items-center justify-center px-6 text-center">
         <div>
           <p className="text-lg font-semibold text-[#5f5053]">유효하지 않은 Beauty Code입니다.</p>
-          <a href="https://layad16.com" className="mt-5 inline-block rounded-full border border-[#d88c9c] px-5 py-3 text-sm font-semibold text-[#a85f6e]">
+          <a href="https://www.layad16.com" className="mt-5 inline-block rounded-full border border-[#d88c9c] px-5 py-3 text-sm font-semibold text-[#a85f6e]">
             LAYAD 홈으로
           </a>
         </div>
