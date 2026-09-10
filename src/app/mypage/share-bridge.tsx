@@ -30,7 +30,7 @@ declare global {
     Kakao?: {
       isInitialized: () => boolean;
       init: (key: string) => void;
-      Share: { sendDefault: (args: unknown) => void };
+      Share: { sendDefault: (args: unknown) => void; createDefaultButton: (args: unknown) => void };
     };
   }
 }
