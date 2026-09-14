@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
+const RETRYABLE_STATUS = new Set([502,503,504]);
 
 function config(){
   return {
@@ -9,13 +10,29 @@ function config(){
   };
 }
 
+function sleep(ms:number){ return new Promise(resolve=>setTimeout(resolve,ms)); }
+
 async function readTable<T>(url:string,key:string,path:string):Promise<T>{
-  const response=await fetch(`${url}/rest/v1/${path}`,{
-    headers:{apikey:key,Authorization:`Bearer ${key}`},
-    cache:"no-store",
-  });
-  if(!response.ok) throw new Error(`Supabase read failed: ${response.status} ${await response.text()}`);
-  return await response.json() as T;
+  let lastError:Error|undefined;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const response=await fetch(`${url}/rest/v1/${path}`,{
+        headers:{apikey:key,Authorization:`Bearer ${key}`},
+        cache:"no-store",
+      });
+      if(response.ok) return await response.json() as T;
+      const text=await response.text();
+      const error=new Error(`Supabase read failed: ${response.status} ${text}`);
+      if(!RETRYABLE_STATUS.has(response.status) || attempt===1) throw error;
+      lastError=error;
+    }catch(error){
+      const e=error instanceof Error?error:new Error("Supabase read failed");
+      if(attempt===1) throw e;
+      lastError=e;
+    }
+    await sleep(700);
+  }
+  throw lastError??new Error("Supabase read failed");
 }
 
 function normalize(value:string){
