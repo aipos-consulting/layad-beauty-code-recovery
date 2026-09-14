@@ -15,6 +15,10 @@ function resolveLabel(form: HTMLFormElement) {
   return LABELS.ko;
 }
 
+function isLegacyProductFitForm(form: HTMLFormElement) {
+  return form.querySelector<HTMLInputElement>("#product-input") instanceof HTMLInputElement;
+}
+
 export default function ProductFitInputBridge() {
   useEffect(() => {
     const replaceProductFitForm = () => {
@@ -24,9 +28,8 @@ export default function ProductFitInputBridge() {
       if (!(input instanceof HTMLInputElement)) return;
 
       const form = input.closest("form");
-      if (!(form instanceof HTMLFormElement) || form.dataset.fitShortcutApplied === "true") return;
+      if (!(form instanceof HTMLFormElement) || !isLegacyProductFitForm(form)) return;
 
-      form.dataset.fitShortcutApplied = "true";
       const requestList = form.nextElementSibling;
       const shortcut = document.createElement("a");
       shortcut.href = "/fit";
@@ -38,11 +41,26 @@ export default function ProductFitInputBridge() {
       if (requestList instanceof HTMLElement) requestList.remove();
     };
 
+    const blockLegacySubmit = (event: Event) => {
+      if (window.location.pathname !== "/test") return;
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !isLegacyProductFitForm(form)) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.location.assign("/fit");
+    };
+
+    document.addEventListener("submit", blockLegacySubmit, true);
     replaceProductFitForm();
+
     const observer = new MutationObserver(replaceProductFitForm);
     observer.observe(document.body, { childList: true, subtree: true });
 
-    return () => observer.disconnect();
+    return () => {
+      document.removeEventListener("submit", blockLegacySubmit, true);
+      observer.disconnect();
+    };
   }, []);
 
   return null;
