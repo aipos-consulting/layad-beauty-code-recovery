@@ -109,7 +109,29 @@ export default function Page(){
             <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">안전 재처리</p>
             <h3 className="mt-2 text-xl font-semibold">기존 요청을 그대로 복구합니다</h3>
             <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다.</p>
-            <button type="button" onClick={reprocess} disabled={busy||!selected.productId} className="mt-6 rounded-2xl bg-[#a94f65] px-6 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{busy?"재처리 중...":"선택 상품 1건 안전 재처리"}</button>
+            <div className="mt-6 rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-4">
+              <p className="text-xs font-semibold text-[#8a7379]">실행 가능한 작업</p>
+              <button
+                type="button"
+                onClick={reprocess}
+                disabled={busy||!selected.productId}
+                aria-disabled={busy||!selected.productId}
+                style={{
+                  marginTop:16,
+                  width:"100%",
+                  minHeight:56,
+                  borderRadius:16,
+                  border:"2px solid #8f3f55",
+                  backgroundColor:busy||!selected.productId?"#d8c9cd":"#a94f65",
+                  color:"#ffffff",
+                  fontWeight:700,
+                  fontSize:15,
+                  cursor:busy||!selected.productId?"not-allowed":"pointer",
+                  boxShadow:busy||!selected.productId?"none":"0 8px 18px rgba(169,79,101,.22)",
+                }}
+              >{busy?"재처리 중...":"선택 상품 1건 안전 재처리"}</button>
+              {!selected.productId?<p className="mt-3 text-sm font-medium text-[#b84f63]">상품 연결 정보가 없어 자동 재처리를 실행할 수 없습니다.</p>:<p className="mt-3 text-xs text-[#817477]">버튼을 누르면 확인창이 뜬 뒤 선택된 1건만 실행됩니다.</p>}
+            </div>
           </section>
         </div>:null}
       </section>:<section className="rounded-3xl border border-[#dfe9e1] bg-[#f4faf6] p-8 text-center"><p className="font-semibold text-[#39714a]">재처리할 대기 상품이 없습니다.</p></section>}
