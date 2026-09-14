@@ -3,81 +3,116 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const CODES=["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
-type Code=typeof CODES[number];
-type Pending={key:string;requestId:string;productId:string|null;name:string;brand:string|null;category:string|null;productUrl:string|null;inputType:"name"|"url";inputValue:string;requestCount:number;uniqueSessions:number;fitCount:number;firstRequestedAt:string;lastRequestedAt:string;statusCounts:Record<string,number>};
+type Pending={
+  key:string;requestId:string;productId:string|null;name:string;brand:string|null;category:string|null;
+  productUrl:string|null;inputType:"name"|"url";inputValue:string;requestCount:number;uniqueSessions:number;
+  fitCount:number;firstRequestedAt:string;lastRequestedAt:string;statusCounts:Record<string,number>;
+};
 type QueueResponse={ok:boolean;total?:number;pending?:Pending[];message?:string};
-type ParsedResult={summary?:string;scores?:Record<string,number>};
+type ReprocessResponse={ok:boolean;status?:string;cached?:boolean;analysisMode?:string;productName?:string;fitCount?:number;confidence?:number;reviewCount?:number;message?:string;code?:string};
 
-function fmt(value:string){try{return new Intl.DateTimeFormat("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(value));}catch{return value;}}
-function emptyScores(){return Object.fromEntries(CODES.map(code=>[code,50])) as Record<Code,number>;}
-function buildPrompt(item:Pending,canonicalName:string){
-  const target=canonicalName.trim()||item.name||item.inputValue;
-  const link=item.productUrl?`\n상품 링크: ${item.productUrl}`:"";
-  return `당신은 LAYAD BEAUTY CODE의 화장품 상품 적합도 분석 담당자입니다.\n\n분석 대상 상품: ${target}${link}\n\nBeauty Code 공식 축 정의\n- O/D\n- G/M\n- P = Perfection focused: 완성도 중심\n- C = Convenient focused: 편의성 중심\n- V = Variable: 제품·환경에 따라 결과가 달라짐\n- E = Even: 비교적 일정하고 안정적인 결과\n\n공개적으로 확인 가능한 상품 정보만 사용하고, 확인할 수 없는 사실은 추정하지 마세요. 상품 특성에 근거해 16개 유형 각각의 적합도를 0~100 정수로 평가하세요. 유형별 상대 차이가 드러나도록 일관된 기준을 적용하세요. 모든 점수를 0으로 두거나 동일한 점수로 채우지 마세요.\n\n응답은 설명 없이 지정된 결과 형식으로만 출력하세요. 모든 코드를 포함하세요.\n{\n  \"summary\": \"상품 특성과 적합도 판단 근거를 3~5문장으로 요약\",\n  \"scores\": {\n    \"OGPV\": 0, \"OGPE\": 0, \"OGCV\": 0, \"OGCE\": 0,\n    \"OMPV\": 0, \"OMPE\": 0, \"OMCV\": 0, \"OMCE\": 0,\n    \"DGPV\": 0, \"DGPE\": 0, \"DGCV\": 0, \"DGCE\": 0,\n    \"DMPV\": 0, \"DMPE\": 0, \"DMCV\": 0, \"DMCE\": 0\n  }\n}`;
-}
-function parseResult(raw:string):ParsedResult{
-  const cleaned=raw.trim().replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"");
-  const parsed=JSON.parse(cleaned) as ParsedResult;
-  const source=parsed.scores??(parsed as unknown as Record<string,number>);
-  for(const code of CODES){const value=Number(source[code]);if(!Number.isInteger(value)||value<0||value>100)throw new Error(`${code} 점수가 0~100 정수가 아닙니다.`);}
-  return {summary:parsed.summary??"",scores:Object.fromEntries(CODES.map(code=>[code,Number(source[code])]))};
+function fmt(value:string){
+  try{return new Intl.DateTimeFormat("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(value));}
+  catch{return value;}
 }
 
 export default function Page(){
   const [data,setData]=useState<QueueResponse|null>(null);
   const [selectedKey,setSelectedKey]=useState("");
-  const [canonicalName,setCanonicalName]=useState("");
-  const [resultText,setResultText]=useState("");
-  const [summary,setSummary]=useState("");
-  const [scores,setScores]=useState<Record<Code,number>>(emptyScores());
   const [notice,setNotice]=useState("");
-  const [saving,setSaving]=useState(false);
+  const [busy,setBusy]=useState(false);
 
   async function load(){
-    const response=await fetch("/api/admin/manual-analysis-workbench",{cache:"no-store"});
+    const response=await fetch("/api/admin/pending-analysis",{cache:"no-store"});
     const payload=await response.json() as QueueResponse;
     setData(payload);
-    if(payload.ok&&payload.pending?.length){setSelectedKey(current=>current&&payload.pending?.some(item=>item.key===current)?current:payload.pending![0].key);}
+    if(payload.ok&&payload.pending?.length){
+      setSelectedKey(current=>current&&payload.pending?.some(item=>item.key===current)?current:payload.pending![0].key);
+    }else setSelectedKey("");
   }
+
   useEffect(()=>{load().catch(()=>setData({ok:false,message:"분석 대기 목록을 불러오지 못했습니다."}));},[]);
   const selected=useMemo(()=>data?.pending?.find(item=>item.key===selectedKey)??null,[data,selectedKey]);
-  useEffect(()=>{if(!selected)return;setCanonicalName(selected.name==="상품명 확인 필요"?"":selected.name);setResultText("");setSummary("");setScores(emptyScores());setNotice("");},[selectedKey]);
-  const prompt=selected?buildPrompt(selected,canonicalName):"";
 
-  async function copyPrompt(){try{await navigator.clipboard.writeText(prompt);setNotice("분석 요청문을 복사했습니다. ChatGPT에 붙여넣어 분석해 주세요.");}catch{setNotice("복사하지 못했습니다. 아래 내용을 직접 선택해 복사해 주세요.");}}
-  function applyResult(){try{const parsed=parseResult(resultText);setSummary(parsed.summary??"");setScores(parsed.scores as Record<Code,number>);setNotice("분석 결과를 읽어 16유형 점수를 채웠습니다. 검토 후 승인해 주세요.");}catch(error){setNotice(error instanceof Error?error.message:"분석 결과 형식을 확인해 주세요.");}}
-  async function approve(){
-    if(!selected)return;
-    if(CODES.some(code=>!Number.isInteger(scores[code])||scores[code]<0||scores[code]>100)){setNotice("16유형 점수를 모두 0~100 정수로 입력해 주세요.");return;}
-    if(!confirm(`${canonicalName||selected.name} 분석 결과를 승인하고 공개하시겠습니까?`))return;
-    setSaving(true);setNotice("승인 결과를 저장 중입니다...");
+  async function reprocess(){
+    if(!selected||busy)return;
+    const label=selected.name||selected.inputValue;
+    if(!confirm(`${label} 1건을 최신 자동 분석 기준으로 재처리하시겠습니까?\n\n기존 요청 ID를 그대로 사용하며 새 요청이나 새 세션은 만들지 않습니다.`))return;
+    setBusy(true);
+    setNotice("기존 요청 ID를 유지한 채 최신 자동 분석을 실행 중입니다...");
     try{
-      const response=await fetch("/api/admin/fit-result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requestId:selected.requestId,scores,summary,canonicalName:canonicalName.trim()||undefined,brand:selected.brand??undefined,category:selected.category??undefined})});
-      const payload=await response.json() as {ok:boolean;message?:string;code?:string};
-      if(!response.ok||!payload.ok)throw new Error(payload.message??payload.code??"저장에 실패했습니다.");
-      setNotice("승인 및 공개가 완료되었습니다.");await load();
-    }catch(error){setNotice(error instanceof Error?error.message:"저장 중 오류가 발생했습니다.");}finally{setSaving(false);}
+      const response=await fetch("/api/admin/reprocess-pending",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({requestId:selected.requestId}),
+      });
+      const payload=await response.json() as ReprocessResponse;
+      if(!response.ok||!payload.ok)throw new Error(payload.message??payload.code??"재처리에 실패했습니다.");
+      setNotice(`${payload.productName??label} 재처리 완료 · ${payload.fitCount??16}/16 · ${payload.cached?"기존 결과 확인":"최신 자동 분석 완료"}`);
+      await load();
+    }catch(error){
+      setNotice(error instanceof Error?`재처리 중단: ${error.message}`:"재처리 중 오류가 발생했습니다.");
+      await load().catch(()=>undefined);
+    }finally{setBusy(false);}
   }
 
-  return <main className="min-h-screen bg-[#f7f4f4] p-4 text-[#382d2d] sm:p-8"><div className="mx-auto max-w-[1500px] space-y-6">
-    <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">LAYAD ADMIN</p><h1 className="mt-2 text-3xl font-semibold">수동 분석 워크벤치</h1><p className="mt-3 text-sm text-[#7b6d70]">대기 상품을 선택하고 ChatGPT로 분석한 결과를 가져와 검토한 뒤 승인합니다.</p></div><div className="flex flex-wrap gap-2"><Link href="/admin" className="rounded-xl border border-[#d9c9cd] bg-white px-4 py-3 text-sm font-semibold">대시보드</Link><Link href="/admin/analysis-data" className="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">완료 데이터 조회</Link></div></header>
+  return <main className="min-h-screen bg-[#f7f4f4] p-4 text-[#382d2d] sm:p-8">
+    <div className="mx-auto max-w-[1400px] space-y-6">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">LAYAD ADMIN</p>
+          <h1 className="mt-2 text-3xl font-semibold">자동 분석 재처리</h1>
+          <p className="mt-3 text-sm leading-6 text-[#7b6d70]">기존 대기 요청 ID와 세션을 그대로 유지하면서 현재 운영 중인 최신 분석 기준으로 재처리합니다. 16유형 저장이 모두 확인된 경우에만 완료 처리합니다.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin" className="rounded-xl border border-[#d9c9cd] bg-white px-4 py-3 text-sm font-semibold">대시보드</Link>
+          <Link href="/admin/analysis-data" className="rounded-xl bg-[#382d2d] px-4 py-3 text-sm font-semibold text-white">완료 데이터 조회</Link>
+        </div>
+      </header>
 
-    {!data?.ok&&data?<div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{data.message??"대기 목록을 불러오지 못했습니다."}</div>:null}
-    <section className="grid gap-4 sm:grid-cols-3"><div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">분석 대기 상품</p><p className="mt-2 text-3xl font-semibold">{data?.total??0}</p></div><div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">분석 방식</p><p className="mt-2 font-semibold">ChatGPT 수동 분석</p></div><div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">비용 방식</p><p className="mt-2 font-semibold">별도 사용료 없음</p></div></section>
+      {!data?.ok&&data?<div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{data.message??"대기 목록을 불러오지 못했습니다."}</div>:null}
+      {notice?<div className="rounded-2xl border border-[#eadfe1] bg-white p-4 text-sm font-medium text-[#6e5c60]">{notice}</div>:null}
 
-    {(data?.pending?.length??0)>0?<section className="grid grid-cols-[minmax(280px,30%)_minmax(0,1fr)] gap-6">
-      <div className="min-w-0 self-start rounded-3xl border border-[#eadfe1] bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-2 px-2"><h2 className="font-semibold">대기 상품</h2><span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-xs font-semibold text-[#b76778]">오래된 신청순</span></div><div className="mt-4 max-h-[calc(100vh-260px)] min-h-[520px] space-y-2 overflow-y-auto pr-1">{data?.pending?.map(item=><button key={item.key} onClick={()=>setSelectedKey(item.key)} className={`w-full rounded-2xl border p-4 text-left transition ${selectedKey===item.key?"border-[#c86f81] bg-[#fff7f8]":"border-[#eee5e7] bg-white hover:bg-[#fffafa]"}`}><div className="flex items-start justify-between gap-3"><p className="font-semibold break-words">{item.name}</p><span className="shrink-0 rounded-full bg-[#fff3de] px-2 py-1 text-xs font-semibold text-[#8a671f]">{item.fitCount}/16</span></div><p className="mt-2 text-xs text-[#817477]">신청 {item.requestCount}건 · 이용자 {item.uniqueSessions}명</p><p className="mt-1 text-xs text-[#a09194]">최초 신청 {fmt(item.firstRequestedAt)}</p></button>)}</div></div>
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">재처리 대기 상품</p><p className="mt-2 text-3xl font-semibold">{data?.total??0}</p></div>
+        <div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">재처리 방식</p><p className="mt-2 font-semibold">기존 요청 ID 재사용</p></div>
+        <div className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-xs text-[#918488]">완료 조건</p><p className="mt-2 font-semibold">16/16 검증 후 완료</p></div>
+      </section>
 
-      {selected?<div className="min-w-0 space-y-6">
-        <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-[#b97b88]">STEP 1 · 상품 확인</p><label className="mt-3 block text-sm font-semibold">분석 상품명</label><input value={canonicalName} onChange={e=>setCanonicalName(e.target.value)} placeholder="정확한 상품명을 입력하세요" className="mt-2 w-full rounded-xl border border-[#dfd1d4] px-4 py-3 outline-none focus:border-[#b76778]"/><p className="mt-2 text-xs text-[#817477]">브랜드 {selected.brand??"-"} · 카테고리 {selected.category??"-"} · 신청 {selected.requestCount}건</p>{selected.productUrl?<a href={selected.productUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#a94f65] underline">상품 링크 확인</a>:null}</div><div className="rounded-2xl bg-[#fffafa] p-4 text-sm"><p className="text-xs text-[#918488]">분석 진행</p><p className="mt-1 text-xl font-semibold">{selected.fitCount}/16</p></div></div></section>
+      {(data?.pending?.length??0)>0?<section className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="min-w-0 self-start rounded-3xl border border-[#eadfe1] bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2 px-2"><h2 className="font-semibold">대기 상품</h2><span className="shrink-0 rounded-full bg-[#fff0f2] px-3 py-1 text-xs font-semibold text-[#b76778]">오래된 신청순</span></div>
+          <div className="mt-4 max-h-[calc(100vh-260px)] min-h-[520px] space-y-2 overflow-y-auto pr-1">
+            {data?.pending?.map(item=><button key={item.key} onClick={()=>{setSelectedKey(item.key);setNotice("");}} className={`w-full rounded-2xl border p-4 text-left transition ${selectedKey===item.key?"border-[#c86f81] bg-[#fff7f8]":"border-[#eee5e7] bg-white hover:bg-[#fffafa]"}`}>
+              <div className="flex items-start justify-between gap-3"><p className="break-words font-semibold">{item.name}</p><span className="shrink-0 rounded-full bg-[#fff3de] px-2 py-1 text-xs font-semibold text-[#8a671f]">{item.fitCount}/16</span></div>
+              <p className="mt-2 text-xs text-[#817477]">신청 {item.requestCount}건 · 이용자 {item.uniqueSessions}명</p>
+              <p className="mt-1 text-xs text-[#a09194]">최초 신청 {fmt(item.firstRequestedAt)}</p>
+            </button>)}
+          </div>
+        </div>
 
-        <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm"><p className="text-xs font-semibold text-[#b97b88]">STEP 2 · ChatGPT 분석</p><p className="mt-2 text-sm text-[#7b6d70]">분석 요청문을 복사한 뒤 ChatGPT에서 분석해 주세요.</p><div className="mt-4 flex flex-wrap gap-2"><button onClick={copyPrompt} className="rounded-xl bg-[#a94f65] px-5 py-3 text-sm font-semibold text-white">분석 요청문 복사</button><a href="https://chatgpt.com/" target="_blank" rel="noreferrer" className="rounded-xl border border-[#d9c9cd] bg-white px-5 py-3 text-sm font-semibold">ChatGPT 열기</a></div><textarea readOnly value={prompt} className="mt-4 h-56 w-full rounded-2xl border border-[#e2d7d9] bg-[#fffafa] p-4 text-xs leading-5 text-[#65585b]"/></section>
+        {selected?<div className="min-w-0 space-y-6">
+          <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">선택 상품</p>
+            <h2 className="mt-2 text-2xl font-semibold break-words">{selected.name}</h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">현재 결과</p><p className="mt-1 text-lg font-semibold">{selected.fitCount}/16</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">신청 건수</p><p className="mt-1 text-lg font-semibold">{selected.requestCount}</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">브랜드</p><p className="mt-1 text-sm font-semibold">{selected.brand??"-"}</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">카테고리</p><p className="mt-1 text-sm font-semibold">{selected.category??"-"}</p></div>
+            </div>
+            <p className="mt-5 break-all text-xs text-[#817477]">요청 ID {selected.requestId}</p>
+            {selected.productUrl?<a href={selected.productUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#a94f65] underline">상품 링크 확인</a>:null}
+          </section>
 
-        <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm"><p className="text-xs font-semibold text-[#b97b88]">STEP 3 · 분석 결과 가져오기</p><p className="mt-2 text-sm text-[#7b6d70]">ChatGPT의 분석 결과 전체를 복사해서 아래에 붙여넣으세요.</p><textarea value={resultText} onChange={e=>setResultText(e.target.value)} placeholder="ChatGPT의 분석 결과를 여기에 붙여넣으세요." className="mt-4 h-44 w-full rounded-2xl border border-[#e2d7d9] p-4 text-sm leading-6 outline-none focus:border-[#b76778]"/><button onClick={applyResult} disabled={!resultText.trim()} className="mt-3 rounded-xl border border-[#d88c9c] px-5 py-3 text-sm font-semibold text-[#b76778] disabled:opacity-40">분석 결과 적용</button></section>
-
-        <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-[#b97b88]">STEP 4 · 검토 및 승인</p><span className="rounded-full bg-[#edf7f0] px-3 py-1 text-xs font-semibold text-[#39714a]">운영자 최종 검토</span></div><label className="mt-4 block text-sm font-semibold">분석 요약</label><textarea value={summary} onChange={e=>setSummary(e.target.value)} className="mt-2 h-28 w-full rounded-xl border border-[#e2d7d9] p-3 text-sm leading-6 outline-none focus:border-[#b76778]"/><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{CODES.map(code=><label key={code} className="rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-3"><span className="text-sm font-semibold">{code}</span><input type="number" min={0} max={100} step={1} value={scores[code]} onChange={e=>setScores(prev=>({...prev,[code]:Math.max(0,Math.min(100,Math.round(Number(e.target.value)||0)))}))} className="mt-2 w-full rounded-lg border border-[#dfd1d4] bg-white px-3 py-2 text-lg font-semibold"/></label>)}</div>{notice?<p className="mt-5 rounded-xl bg-[#fffafa] p-4 text-sm text-[#65585b]">{notice}</p>:null}<div className="mt-5 flex justify-end"><button onClick={approve} disabled={saving} className="rounded-xl bg-[#382d2d] px-6 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving?"저장 중...":"승인 및 공개"}</button></div></section>
-      </div>:null}
-    </section>:data?.ok?<section className="rounded-3xl border border-[#dce9df] bg-[#f6fbf7] p-10 text-center"><p className="text-lg font-semibold text-[#39714a]">현재 분석 대기 상품이 없습니다.</p><p className="mt-2 text-sm text-[#6e8173]">새 상품이 신청되면 이 화면에 자동으로 표시됩니다.</p></section>:null}
-  </div></main>;
+          <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">안전 재처리</p>
+            <h3 className="mt-2 text-xl font-semibold">기존 요청을 그대로 복구합니다</h3>
+            <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다.</p>
+            <button type="button" onClick={reprocess} disabled={busy||!selected.productId} className="mt-6 rounded-2xl bg-[#a94f65] px-6 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{busy?"재처리 중...":"선택 상품 1건 안전 재처리"}</button>
+          </section>
+        </div>:null}
+      </section>:<section className="rounded-3xl border border-[#dfe9e1] bg-[#f4faf6] p-8 text-center"><p className="font-semibold text-[#39714a]">재처리할 대기 상품이 없습니다.</p></section>}
+    </div>
+  </main>;
 }
