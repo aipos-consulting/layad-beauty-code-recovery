@@ -61,7 +61,7 @@ export default function Page(){
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold tracking-[.18em] text-[#b97b88]">LAYAD ADMIN</p>
-          <h1 className="mt-2 text-3xl font-semibold">자동 분석 재처리</h1>
+          <h1 className="mt-2 text-3xl font-semibold">자동분석 재처리</h1>
           <p className="mt-3 text-sm leading-6 text-[#7b6d70]">기존 대기 요청 ID와 세션을 그대로 유지하면서 현재 운영 중인 최신 분석 기준으로 재처리합니다. 16유형 저장이 모두 확인된 경우에만 완료 처리합니다.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -93,23 +93,8 @@ export default function Page(){
 
         {selected?<div className="min-w-0 space-y-6">
           <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
-            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">선택 상품</p>
-            <h2 className="mt-2 text-2xl font-semibold break-words">{selected.name}</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">현재 결과</p><p className="mt-1 text-lg font-semibold">{selected.fitCount}/16</p></div>
-              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">신청 건수</p><p className="mt-1 text-lg font-semibold">{selected.requestCount}</p></div>
-              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">브랜드</p><p className="mt-1 text-sm font-semibold">{selected.brand??"-"}</p></div>
-              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">카테고리</p><p className="mt-1 text-sm font-semibold">{selected.category??"-"}</p></div>
-            </div>
-            <p className="mt-5 break-all text-xs text-[#817477]">요청 ID {selected.requestId}</p>
-            {selected.productUrl?<a href={selected.productUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#a94f65] underline">상품 링크 확인</a>:null}
-          </section>
-
-          <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
-            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">안전 재처리</p>
-            <h3 className="mt-2 text-xl font-semibold">기존 요청을 그대로 복구합니다</h3>
-            <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다.</p>
-            <div className="mt-6 rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-4">
+            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">자동분석 재처리</p>
+            <div className="mt-4 rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-4">
               <p className="text-xs font-semibold text-[#8a7379]">실행 가능한 작업</p>
               <button
                 type="button"
@@ -129,9 +114,28 @@ export default function Page(){
                   cursor:busy||!selected.productId?"not-allowed":"pointer",
                   boxShadow:busy||!selected.productId?"none":"0 8px 18px rgba(169,79,101,.22)",
                 }}
-              >{busy?"재처리 중...":"선택 상품 1건 안전 재처리"}</button>
+              >{busy?"재처리 중...":"선택 상품 1건 자동분석 재처리"}</button>
               {!selected.productId?<p className="mt-3 text-sm font-medium text-[#b84f63]">상품 연결 정보가 없어 자동 재처리를 실행할 수 없습니다.</p>:<p className="mt-3 text-xs text-[#817477]">버튼을 누르면 확인창이 뜬 뒤 선택된 1건만 실행됩니다.</p>}
             </div>
+          </section>
+
+          <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">선택 상품</p>
+            <h2 className="mt-2 text-2xl font-semibold break-words">{selected.name}</h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">현재 결과</p><p className="mt-1 text-lg font-semibold">{selected.fitCount}/16</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">신청 건수</p><p className="mt-1 text-lg font-semibold">{selected.requestCount}</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">브랜드</p><p className="mt-1 text-sm font-semibold">{selected.brand??"-"}</p></div>
+              <div className="rounded-2xl bg-[#fffafa] p-4"><p className="text-xs text-[#918488]">카테고리</p><p className="mt-1 text-sm font-semibold">{selected.category??"-"}</p></div>
+            </div>
+            <p className="mt-5 break-all text-xs text-[#817477]">요청 ID {selected.requestId}</p>
+            {selected.productUrl?<a href={selected.productUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#a94f65] underline">상품 링크 확인</a>:null}
+          </section>
+
+          <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">처리 안내</p>
+            <h3 className="mt-2 text-xl font-semibold">기존 요청을 그대로 복구합니다</h3>
+            <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다.</p>
           </section>
         </div>:null}
       </section>:<section className="rounded-3xl border border-[#dfe9e1] bg-[#f4faf6] p-8 text-center"><p className="font-semibold text-[#39714a]">재처리할 대기 상품이 없습니다.</p></section>}
