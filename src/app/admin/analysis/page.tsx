@@ -10,6 +10,7 @@ type Pending={
 };
 type QueueResponse={ok:boolean;total?:number;pending?:Pending[];message?:string};
 type ReprocessResponse={ok:boolean;status?:string;cached?:boolean;analysisMode?:string;productName?:string;fitCount?:number;confidence?:number;reviewCount?:number;message?:string;code?:string};
+type ExcludeResponse={ok:boolean;status?:string;excludedCount?:number;message?:string;code?:string};
 
 function fmt(value:string){
   try{return new Intl.DateTimeFormat("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(value));}
@@ -75,6 +76,30 @@ export default function Page(){
     }finally{setBusy(false);}
   }
 
+  async function excludePending(){
+    if(!selected||busy)return;
+    const label=selected.name||selected.inputValue;
+    if(!confirm(`${label}을(를) 자동분석 대기목록에서 제외하시겠습니까?\n\nDB 기록은 삭제하지 않고 'excluded' 상태로 남깁니다. 같은 상품의 대기 요청이 여러 건이면 함께 제외됩니다.`))return;
+    setBusy(true);
+    setNotice("선택 상품을 대기목록에서 제외하는 중입니다...");
+    try{
+      const response=await fetch("/api/admin/exclude-pending",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({requestId:selected.requestId,reason:"상품 식별 불충분 또는 관리자 판단으로 자동분석 제외"}),
+      });
+      let payload:ExcludeResponse;
+      try{payload=await response.json() as ExcludeResponse;}
+      catch{payload={ok:false,message:`제외 처리 응답 오류 (${response.status})`};}
+      if(!response.ok||!payload.ok)throw new Error(payload.message??payload.code??"대기목록 제외 처리에 실패했습니다.");
+      setNotice(`${label} 대기목록 제외 완료 · ${payload.excludedCount??0}건 처리`);
+      await load();
+    }catch(error){
+      setNotice(error instanceof Error?`대기목록 제외 중단: ${error.message}`:"대기목록 제외 중 오류가 발생했습니다.");
+      await load().catch(()=>undefined);
+    }finally{setBusy(false);}
+  }
+
   const totalDisplay=data===null?"…":data.ok?(data.total??0):"—";
 
   return <main className="min-h-screen bg-[#f7f4f4] p-4 text-[#382d2d] sm:p-8">
@@ -119,9 +144,13 @@ export default function Page(){
               <p className="text-xs font-semibold text-[#8a7379]">실행 가능한 작업</p>
               <button type="button" onClick={reprocess} disabled={busy||!selected.productId} aria-disabled={busy||!selected.productId}
                 style={{marginTop:16,width:"100%",minHeight:56,borderRadius:16,border:"2px solid #8f3f55",backgroundColor:busy||!selected.productId?"#d8c9cd":"#a94f65",color:"#ffffff",fontWeight:700,fontSize:15,cursor:busy||!selected.productId?"not-allowed":"pointer",boxShadow:busy||!selected.productId?"none":"0 8px 18px rgba(169,79,101,.22)"}}>
-                {busy?"재처리 중...":"선택 상품 1건 자동분석 재처리"}
+                {busy?"처리 중...":"선택 상품 1건 자동분석 재처리"}
               </button>
-              {!selected.productId?<p className="mt-3 text-sm font-medium text-[#b84f63]">상품 연결 정보가 없어 자동 재처리를 실행할 수 없습니다.</p>:<p className="mt-3 text-xs text-[#817477]">버튼을 누르면 확인창이 뜬 뒤 선택된 1건만 실행됩니다.</p>}
+              <button type="button" onClick={excludePending} disabled={busy}
+                className="mt-3 w-full rounded-2xl border-2 border-[#c9b6bb] bg-white px-4 py-4 text-sm font-semibold text-[#6f5a60] hover:bg-[#fff8f9] disabled:cursor-not-allowed disabled:opacity-50">
+                대기목록에서 제외
+              </button>
+              {!selected.productId?<p className="mt-3 text-sm font-medium text-[#b84f63]">상품 연결 정보가 없어 자동 재처리는 실행할 수 없지만, 대기목록 제외는 가능합니다.</p>:<p className="mt-3 text-xs text-[#817477]">재처리는 확인창 후 1건만 실행합니다. 상품 식별이 불충분하면 대기목록에서 제외하세요.</p>}
             </div>
           </section>
 
@@ -141,7 +170,7 @@ export default function Page(){
           <section className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold tracking-[.14em] text-[#b97b88]">처리 안내</p>
             <h3 className="mt-2 text-xl font-semibold">기존 요청을 그대로 복구합니다</h3>
-            <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다.</p>
+            <p className="mt-3 text-sm leading-7 text-[#7b6d70]">새 요청이나 새 세션을 생성하지 않습니다. 부분 결과가 이미 존재하면 자동으로 중단하고, 최신 분석 결과가 16개 모두 저장된 것이 확인된 경우에만 같은 상품의 대기 요청을 완료 상태로 전환합니다. 대기목록 제외는 요청 기록을 삭제하지 않고 excluded 상태로 보관합니다.</p>
           </section>
         </div>:null}
       </section>:<section className="rounded-3xl border border-[#dfe9e1] bg-[#f4faf6] p-8 text-center"><p className="font-semibold text-[#39714a]">재처리할 대기 상품이 없습니다.</p></section>) : data ? <section className="rounded-3xl border border-[#f1d9de] bg-[#fff8f9] p-8 text-center"><p className="font-semibold text-[#a94f65]">대기 목록 조회가 일시적으로 지연되고 있습니다.</p><button type="button" onClick={()=>void load()} className="mt-4 rounded-xl border border-[#d9c9cd] bg-white px-5 py-3 text-sm font-semibold">목록 다시 조회</button></section> : <section className="rounded-3xl border border-[#eadfe1] bg-white p-8 text-center"><p className="text-sm text-[#817477]">대기 목록을 불러오는 중입니다...</p></section>}
