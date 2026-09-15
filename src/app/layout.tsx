@@ -12,6 +12,7 @@ import ToneSurface from "./tone-surface";
 import UserBottomTabs from "./user-bottom-tabs";
 import UserSaveBridge from "./user-save-bridge";
 import UserLocalePolisher from "./user-locale-polisher";
+import MarketingAnalytics from "./marketing-analytics";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({ variable: "--font-league-spartan", subsets: ["latin"] });
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <AdminDataManagementNav />
             <AdminVisualTheme />
             <ProductFitInputBridge />
+            <MarketingAnalytics />
           </ToneSurface>
         </LanguageProvider>
       </body>
