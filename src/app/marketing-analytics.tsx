@@ -123,14 +123,28 @@ export default function MarketingAnalytics() {
   useEffect(() => {
     if (!pathname) return;
 
+    // Admin funnel persistence is intentionally independent from GA event de-duplication.
+    // The API upserts by visit_id, so repeating these updates is safe and prevents old
+    // sessionStorage GA flags from suppressing the marketing funnel state.
+    if (pathname === "/test") {
+      markTestStarted();
+      postAttribution({ action: "test_start" });
+    }
+
+    const resultMatchForAttribution = pathname.match(/^\/result\/([OD][GM][PC][VE])$/i);
+    if (resultMatchForAttribution && hasTestStarted()) {
+      postAttribution({
+        action: "test_complete",
+        beautyCode: resultMatchForAttribution[1].toUpperCase(),
+      });
+    }
+
     const send = () => {
       trackPageView(pathname);
 
       if (pathname === "/test") {
-        markTestStarted();
         oncePerSession("layad_event_test_start_v1", () => {
           trackEvent("test_start");
-          postAttribution({ action: "test_start" });
         });
       }
 
@@ -146,7 +160,6 @@ export default function MarketingAnalytics() {
         if (hasTestStarted()) {
           oncePerSession(`layad_event_test_complete_${beautyCode}_v2`, () => {
             trackEvent("test_complete", { beauty_code: beautyCode });
-            postAttribution({ action: "test_complete", beautyCode });
           });
         }
       }
