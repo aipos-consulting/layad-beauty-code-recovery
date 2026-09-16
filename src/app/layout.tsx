@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { League_Spartan, Source_Code_Pro } from "next/font/google";
 import "./globals.css";
 import "./tone.css";
@@ -17,6 +18,7 @@ import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({ variable: "--font-league-spartan", subsets: ["latin"] });
 const sourceCode = Source_Code_Pro({ variable: "--font-source-code", subsets: ["latin"] });
+const GA4_MEASUREMENT_ID = "G-FS6BM71R4Z";
 
 export const metadata: Metadata = {
   title: "LAYAD BEAUTY CODE",
@@ -26,6 +28,18 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" className={`${leagueSpartan.variable} ${sourceCode.variable} h-full antialiased`}>
+      <head>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="layad-ga4-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA4_MEASUREMENT_ID}', { send_page_view: false });`}
+        </Script>
+      </head>
       <body className="min-h-full flex flex-col pb-20 md:pb-0">
         <LanguageProvider>
           <ToneSurface>
