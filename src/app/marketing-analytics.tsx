@@ -8,6 +8,7 @@ type ClarityFunction = ((...args: unknown[]) => void) & { q?: unknown[][] };
 type AnalyticsWindow = Window & { clarity?: ClarityFunction };
 
 const CLARITY_SCRIPT_ID = "layad-clarity-script";
+const TEST_SESSION_KEY = "layad_test_started_v1";
 
 function ensureClarity(projectId: string) {
   if (typeof window === "undefined" || !projectId) return;
@@ -40,6 +41,22 @@ function oncePerSession(key: string, action: () => void) {
   action();
 }
 
+function markTestStarted() {
+  try {
+    window.sessionStorage.setItem(TEST_SESSION_KEY, "1");
+  } catch {
+    // Analytics must never interrupt the user experience.
+  }
+}
+
+function hasTestStarted() {
+  try {
+    return window.sessionStorage.getItem(TEST_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 function shareChannel(text: string) {
   const normalized = text.toLowerCase();
   if (normalized.includes("kakao") || normalized.includes("카카오")) return "kakao";
@@ -64,6 +81,7 @@ export default function MarketingAnalytics() {
       trackPageView(pathname);
 
       if (pathname === "/test") {
+        markTestStarted();
         oncePerSession("layad_event_test_start_v1", () => trackEvent("test_start"));
       }
 
@@ -73,7 +91,14 @@ export default function MarketingAnalytics() {
 
       const resultMatch = pathname.match(/^\/result\/([OD][GM][PC][VE])$/i);
       if (resultMatch) {
-        trackEvent("result_view", { beauty_code: resultMatch[1].toUpperCase() });
+        const beautyCode = resultMatch[1].toUpperCase();
+        trackEvent("result_view", { beauty_code: beautyCode });
+
+        if (hasTestStarted()) {
+          oncePerSession(`layad_event_test_complete_${beautyCode}_v2`, () => {
+            trackEvent("test_complete", { beauty_code: beautyCode });
+          });
+        }
       }
 
       const sharedMatch = pathname.match(/^\/s\/([OD][GM][PC][VE])$/i);
@@ -106,17 +131,6 @@ export default function MarketingAnalytics() {
 
     const inspectTest = () => {
       const text = document.body.innerText;
-
-      if (text.includes("YOUR BEAUTY CODE")) {
-        const match = text.match(/\b([OD][GM][PC][VE])\b/);
-        if (match) {
-          oncePerSession(`layad_event_test_complete_${match[1]}_v1`, () => {
-            trackEvent("test_complete", { beauty_code: match[1] });
-          });
-        }
-        return;
-      }
-
       const progressMatch = text.match(/\b(\d{1,2})\s*\/\s*20\b/);
       if (!progressMatch) return;
 
