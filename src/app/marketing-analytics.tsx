@@ -124,16 +124,13 @@ export default function MarketingAnalytics() {
   useEffect(() => {
     if (!pathname) return;
 
-    // Admin funnel persistence is intentionally independent from GA event de-duplication.
-    // The API upserts by visit_id, so repeating these updates is safe and prevents old
-    // sessionStorage GA flags from suppressing the marketing funnel state.
     if (pathname === "/test") {
       markTestStarted();
       postAttribution({ action: "test_start" });
     }
 
     const resultMatchForAttribution = pathname.match(/^\/result\/([OD][GM][PC][VE])$/i);
-    if (resultMatchForAttribution && hasTestStarted()) {
+    if (resultMatchForAttribution) {
       postAttribution({
         action: "test_complete",
         beautyCode: resultMatchForAttribution[1].toUpperCase(),
@@ -158,11 +155,9 @@ export default function MarketingAnalytics() {
         const beautyCode = resultMatch[1].toUpperCase();
         trackEvent("result_view", { beauty_code: beautyCode });
 
-        if (hasTestStarted()) {
-          oncePerSession(`layad_event_test_complete_${beautyCode}_v2`, () => {
-            trackEvent("test_complete", { beauty_code: beautyCode });
-          });
-        }
+        oncePerSession(`layad_event_test_complete_${beautyCode}_v2`, () => {
+          trackEvent("test_complete", { beauty_code: beautyCode });
+        });
       }
 
       const sharedMatch = pathname.match(/^\/s\/([OD][GM][PC][VE])$/i);
@@ -195,24 +190,25 @@ export default function MarketingAnalytics() {
 
     const inspectTest = () => {
       const text = document.body.innerText;
-
-      // The live LAYAD test keeps the user on /test and swaps the questionnaire
-      // for the result screen instead of navigating to /result/{code}.
-      const resultCode = Array.from(document.querySelectorAll("h1"))
+      const normalizedText = text.toUpperCase();
+      const headingCode = Array.from(document.querySelectorAll("h1,h2"))
         .map((element) => element.textContent?.trim().toUpperCase() ?? "")
         .find((value) => /^[OD][GM][PC][VE]$/.test(value));
+      const textCode = normalizedText.match(/\b([OD][GM][PC][VE])\b/)?.[1];
+      const resultCode = headingCode ?? textCode;
+      const isResultScreen = normalizedText.includes("YOUR BEAUTY CODE") || Boolean(headingCode);
 
-      if (text.includes("YOUR BEAUTY CODE") && resultCode && !observedInlineCompletions.current.has(resultCode)) {
+      if (isResultScreen && resultCode && !observedInlineCompletions.current.has(resultCode)) {
         observedInlineCompletions.current.add(resultCode);
 
-        if (hasTestStarted()) {
-          postAttribution({ action: "test_complete", beautyCode: resultCode });
-          oncePerSession(`layad_event_test_complete_inline_${resultCode}_v3`, () => {
-            trackEvent("test_complete", { beauty_code: resultCode });
-          });
-        }
+        // Completion is authoritative once the result UI is visible. Do not depend on
+        // sessionStorage because Meta/Instagram in-app browsers can lose session state.
+        postAttribution({ action: "test_complete", beautyCode: resultCode });
 
-        oncePerSession(`layad_event_result_view_inline_${resultCode}_v1`, () => {
+        oncePerSession(`layad_event_test_complete_inline_${resultCode}_v4`, () => {
+          trackEvent("test_complete", { beauty_code: resultCode });
+        });
+        oncePerSession(`layad_event_result_view_inline_${resultCode}_v2`, () => {
           trackEvent("result_view", { beauty_code: resultCode });
         });
       }
