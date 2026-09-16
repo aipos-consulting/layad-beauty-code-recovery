@@ -104,7 +104,7 @@ export default function AdminMarketingPage() {
 
         <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap gap-2">
-            {[['campaign','캠페인'],['ad','광고 소재'],['placement','노출 위치'],['recent','최근 유입']] .map(([id,label]) => <button key={id} onClick={() => setTab(id as typeof tab)} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab===id?'bg-[#d88c9c] text-white':'bg-[#f6edef] text-[#6f6063]'}`}>{label}</button>)}
+            {[['campaign','캠페인'],['ad','광고 소재'],['placement','노출 위치'],['recent','최근 유입']].map(([id,label]) => <button key={id} onClick={() => setTab(id as typeof tab)} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab===id?'bg-[#d88c9c] text-white':'bg-[#f6edef] text-[#6f6063]'}`}>{label}</button>)}
           </div>
 
           {tab !== "recent" ? (
@@ -119,12 +119,6 @@ export default function AdminMarketingPage() {
               <table className="min-w-full text-xs sm:text-sm"><thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-3">시각</th><th className="py-2 pr-3">Source / Medium</th><th className="py-2 pr-3">Campaign</th><th className="py-2 pr-3">Ad</th><th className="py-2 pr-3">Placement</th><th className="py-2">결과</th></tr></thead><tbody>{(data?.recent ?? []).map((row,index)=><tr key={`${row.firstSeenAt}-${index}`} className="border-t border-[#f0e7e8]"><td className="whitespace-nowrap py-3 pr-3">{new Date(row.firstSeenAt).toLocaleString('ko-KR')}</td><td className="py-3 pr-3">{row.source} / {row.medium}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.campaign}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.content}</td><td className="py-3 pr-3">{row.placement}</td><td className="py-3">{row.completed ? `완료 ${row.beautyCode ?? ''}` : row.started ? '진행중' : '유입'}</td></tr>)}</tbody></table>
             </div>
           )}
-        </section>
-
-        <section className="rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-5 text-sm leading-6 text-[#6f6063]">
-          <b className="text-[#382d2d]">Meta Ads Manager 권장 URL Parameters</b>
-          <p className="mt-2 break-all font-mono text-xs">utm_source={'{{site_source_name}}'}&utm_medium=paid_social&utm_campaign={'{{campaign.name}}'}&utm_content={'{{ad.name}}'}&utm_term={'{{adset.name}}'}&campaign_id={'{{campaign.id}}'}&adset_id={'{{adset.id}}'}&ad_id={'{{ad.id}}'}&placement={'{{placement}}'}&site_source_name={'{{site_source_name}}'}</p>
-          <p className="mt-2">Meta 광고의 Tracking → URL Parameters에 위 값을 넣으면 이 화면에서 캠페인·광고·placement별 성과가 자동 집계됩니다.</p>
         </section>
       </div>
     </main>
