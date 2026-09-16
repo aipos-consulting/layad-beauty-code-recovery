@@ -113,6 +113,7 @@ function shareChannel(text: string) {
 export default function MarketingAnalytics() {
   const pathname = usePathname();
   const observedMilestones = useRef(new Set<number>());
+  const observedInlineCompletions = useRef(new Set<string>());
 
   useEffect(() => {
     captureAttribution();
@@ -194,6 +195,28 @@ export default function MarketingAnalytics() {
 
     const inspectTest = () => {
       const text = document.body.innerText;
+
+      // The live LAYAD test keeps the user on /test and swaps the questionnaire
+      // for the result screen instead of navigating to /result/{code}.
+      const resultCode = Array.from(document.querySelectorAll("h1"))
+        .map((element) => element.textContent?.trim().toUpperCase() ?? "")
+        .find((value) => /^[OD][GM][PC][VE]$/.test(value));
+
+      if (text.includes("YOUR BEAUTY CODE") && resultCode && !observedInlineCompletions.current.has(resultCode)) {
+        observedInlineCompletions.current.add(resultCode);
+
+        if (hasTestStarted()) {
+          postAttribution({ action: "test_complete", beautyCode: resultCode });
+          oncePerSession(`layad_event_test_complete_inline_${resultCode}_v3`, () => {
+            trackEvent("test_complete", { beauty_code: resultCode });
+          });
+        }
+
+        oncePerSession(`layad_event_result_view_inline_${resultCode}_v1`, () => {
+          trackEvent("result_view", { beauty_code: resultCode });
+        });
+      }
+
       const progressMatch = text.match(/\b(\d{1,2})\s*\/\s*20\b/);
       if (!progressMatch) return;
 
