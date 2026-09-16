@@ -9,6 +9,7 @@ type AnalyticsWindow = Window & { clarity?: ClarityFunction };
 
 const GA_SCRIPT_ID = "layad-ga4-script";
 const CLARITY_SCRIPT_ID = "layad-clarity-script";
+const DEFAULT_GA4_MEASUREMENT_ID = "G-FS6BM71R4Z";
 
 function ensureGa4(measurementId: string) {
   if (typeof window === "undefined" || !measurementId) return;
@@ -73,7 +74,7 @@ export default function MarketingAnalytics() {
 
   useEffect(() => {
     captureAttribution();
-    ensureGa4(process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? "");
+    ensureGa4(process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? DEFAULT_GA4_MEASUREMENT_ID);
     ensureClarity(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? "");
   }, []);
 
