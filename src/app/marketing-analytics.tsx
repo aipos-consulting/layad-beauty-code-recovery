@@ -9,6 +9,7 @@ type AnalyticsWindow = Window & { clarity?: ClarityFunction };
 
 const CLARITY_SCRIPT_ID = "layad-clarity-script";
 const TEST_SESSION_KEY = "layad_test_started_v1";
+const MARKETING_VISIT_KEY = "layad-marketing-visit-id-v1";
 
 function ensureClarity(projectId: string) {
   if (typeof window === "undefined" || !projectId) return;
@@ -41,6 +42,50 @@ function oncePerSession(key: string, action: () => void) {
   action();
 }
 
+function getVisitId() {
+  try {
+    const existing = window.sessionStorage.getItem(MARKETING_VISIT_KEY);
+    if (existing) return existing;
+    const created = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    window.sessionStorage.setItem(MARKETING_VISIT_KEY, created);
+    return created;
+  } catch {
+    return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
+function postAttribution(payload: Record<string, unknown>) {
+  const visitId = getVisitId();
+  void fetch("/api/marketing-attribution", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visitId, ...payload }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
+function captureServerAttribution() {
+  const params = new URLSearchParams(window.location.search);
+  postAttribution({
+    action: "visit",
+    landingPath: `${window.location.pathname}${window.location.search}`,
+    referrer: document.referrer || null,
+    utmSource: params.get("utm_source"),
+    utmMedium: params.get("utm_medium"),
+    utmCampaign: params.get("utm_campaign"),
+    utmContent: params.get("utm_content"),
+    utmTerm: params.get("utm_term"),
+    campaignId: params.get("campaign_id") ?? params.get("utm_id"),
+    adsetId: params.get("adset_id"),
+    adId: params.get("ad_id"),
+    placement: params.get("placement"),
+    siteSourceName: params.get("site_source_name"),
+    hasFbclid: params.has("fbclid"),
+  });
+}
+
 function markTestStarted() {
   try {
     window.sessionStorage.setItem(TEST_SESSION_KEY, "1");
@@ -71,6 +116,7 @@ export default function MarketingAnalytics() {
 
   useEffect(() => {
     captureAttribution();
+    captureServerAttribution();
     ensureClarity(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? "");
   }, []);
 
@@ -82,7 +128,10 @@ export default function MarketingAnalytics() {
 
       if (pathname === "/test") {
         markTestStarted();
-        oncePerSession("layad_event_test_start_v1", () => trackEvent("test_start"));
+        oncePerSession("layad_event_test_start_v1", () => {
+          trackEvent("test_start");
+          postAttribution({ action: "test_start" });
+        });
       }
 
       if (pathname === "/fit") {
@@ -97,6 +146,7 @@ export default function MarketingAnalytics() {
         if (hasTestStarted()) {
           oncePerSession(`layad_event_test_complete_${beautyCode}_v2`, () => {
             trackEvent("test_complete", { beauty_code: beautyCode });
+            postAttribution({ action: "test_complete", beautyCode });
           });
         }
       }
