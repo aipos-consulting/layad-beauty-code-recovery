@@ -7,27 +7,7 @@ import { captureAttribution, trackEvent, trackPageView } from "@/lib/marketing-a
 type ClarityFunction = ((...args: unknown[]) => void) & { q?: unknown[][] };
 type AnalyticsWindow = Window & { clarity?: ClarityFunction };
 
-const GA_SCRIPT_ID = "layad-ga4-script";
 const CLARITY_SCRIPT_ID = "layad-clarity-script";
-const DEFAULT_GA4_MEASUREMENT_ID = "G-FS6BM71R4Z";
-
-function ensureGa4(measurementId: string) {
-  if (typeof window === "undefined" || !measurementId) return;
-
-  window.dataLayer = window.dataLayer ?? [];
-  window.gtag = window.gtag ?? ((...args: unknown[]) => window.dataLayer?.push(args));
-
-  if (!document.getElementById(GA_SCRIPT_ID)) {
-    const script = document.createElement("script");
-    script.id = GA_SCRIPT_ID;
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
-    document.head.appendChild(script);
-  }
-
-  window.gtag("js", new Date());
-  window.gtag("config", measurementId, { send_page_view: false });
-}
 
 function ensureClarity(projectId: string) {
   if (typeof window === "undefined" || !projectId) return;
@@ -74,32 +54,51 @@ export default function MarketingAnalytics() {
 
   useEffect(() => {
     captureAttribution();
-    ensureGa4(process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? DEFAULT_GA4_MEASUREMENT_ID);
     ensureClarity(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? "");
   }, []);
 
   useEffect(() => {
     if (!pathname) return;
 
-    trackPageView(pathname);
+    const send = () => {
+      trackPageView(pathname);
 
-    if (pathname === "/test") {
-      oncePerSession("layad_event_test_start_v1", () => trackEvent("test_start"));
+      if (pathname === "/test") {
+        oncePerSession("layad_event_test_start_v1", () => trackEvent("test_start"));
+      }
+
+      if (pathname === "/fit") {
+        trackEvent("product_analysis_view");
+      }
+
+      const resultMatch = pathname.match(/^\/result\/([OD][GM][PC][VE])$/i);
+      if (resultMatch) {
+        trackEvent("result_view", { beauty_code: resultMatch[1].toUpperCase() });
+      }
+
+      const sharedMatch = pathname.match(/^\/s\/([OD][GM][PC][VE])$/i);
+      if (sharedMatch) {
+        trackEvent("shared_result_view", { beauty_code: sharedMatch[1].toUpperCase() });
+      }
+    };
+
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      send();
+      return;
     }
 
-    if (pathname === "/fit") {
-      trackEvent("product_analysis_view");
-    }
+    const timer = window.setInterval(() => {
+      if (typeof window.gtag === "function") {
+        window.clearInterval(timer);
+        send();
+      }
+    }, 100);
 
-    const resultMatch = pathname.match(/^\/result\/([OD][GM][PC][VE])$/i);
-    if (resultMatch) {
-      trackEvent("result_view", { beauty_code: resultMatch[1].toUpperCase() });
-    }
-
-    const sharedMatch = pathname.match(/^\/s\/([OD][GM][PC][VE])$/i);
-    if (sharedMatch) {
-      trackEvent("shared_result_view", { beauty_code: sharedMatch[1].toUpperCase() });
-    }
+    const timeout = window.setTimeout(() => window.clearInterval(timer), 5000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(timeout);
+    };
   }, [pathname]);
 
   useEffect(() => {
