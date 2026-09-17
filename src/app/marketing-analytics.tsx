@@ -201,8 +201,6 @@ export default function MarketingAnalytics() {
       if (isResultScreen && resultCode && !observedInlineCompletions.current.has(resultCode)) {
         observedInlineCompletions.current.add(resultCode);
 
-        // Completion is authoritative once the result UI is visible. Do not depend on
-        // sessionStorage because Meta/Instagram in-app browsers can lose session state.
         postAttribution({ action: "test_complete", beautyCode: resultCode });
 
         oncePerSession(`layad_event_test_complete_inline_${resultCode}_v4`, () => {
@@ -247,6 +245,10 @@ export default function MarketingAnalytics() {
 
       if (href === "/fit" || href.startsWith("/fit?")) {
         trackEvent("product_analysis_click", { source_path: pathname ?? "" });
+      }
+
+      if (href.includes("cafe.naver.com/layad16")) {
+        trackEvent("naver_cafe_click", { source_path: pathname ?? "" });
       }
 
       if (/(kakao|카카오|line|라인|share|공유|copy|복사|url|링크)/i.test(text)) {
