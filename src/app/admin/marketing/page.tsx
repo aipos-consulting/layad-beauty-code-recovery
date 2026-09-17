@@ -20,17 +20,49 @@ function rate(done: number, base: number) {
   return base ? `${((done / base) * 100).toFixed(1)}%` : "0.0%";
 }
 
+function ownerFriendlyChannel(label: string) {
+  const normalized = label.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    "ig / paid": "인스타그램 광고",
+    "ig / paid_social": "인스타그램 광고",
+    "instagram / paid": "인스타그램 광고",
+    "instagram / paid_social": "인스타그램 광고",
+    "fb / paid": "페이스북 광고",
+    "fb / paid_social": "페이스북 광고",
+    "facebook / paid": "페이스북 광고",
+    "facebook / paid_social": "페이스북 광고",
+    "direct / none": "직접 유입",
+    "google / cpc": "구글 검색광고",
+    "naver / cpc": "네이버 검색광고",
+    "kakao / social": "카카오 유입",
+    "line / social": "LINE 유입",
+  };
+  if (aliases[normalized]) return aliases[normalized];
+
+  const [sourceRaw, mediumRaw] = label.split("/").map((value) => value.trim());
+  const sourceNames: Record<string, string> = {
+    ig: "인스타그램", instagram: "인스타그램", fb: "페이스북", facebook: "페이스북", meta: "Meta",
+    google: "구글", naver: "네이버", kakao: "카카오", line: "LINE", direct: "직접",
+  };
+  const mediumNames: Record<string, string> = {
+    paid: "광고", paid_social: "광고", cpc: "검색광고", social: "소셜 유입", organic: "자연 유입", none: "유입",
+  };
+  const source = sourceNames[sourceRaw?.toLowerCase()] ?? sourceRaw;
+  const medium = mediumNames[mediumRaw?.toLowerCase()] ?? mediumRaw;
+  return [source, medium].filter(Boolean).join(" · ");
+}
+
 function StatTable({ title, rows }: { title: string; rows: Stat[] }) {
   return (
     <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
       <h3 className="text-lg font-semibold">{title}</h3>
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-4">항목</th><th className="py-2 pr-4">유입</th><th className="py-2 pr-4">테스트 시작</th><th className="py-2 pr-4">테스트 완료</th><th className="py-2">완료율</th></tr></thead>
+          <thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-4">유입 경로</th><th className="py-2 pr-4">유입</th><th className="py-2 pr-4">테스트 시작</th><th className="py-2 pr-4">테스트 완료</th><th className="py-2">완료율</th></tr></thead>
           <tbody>
             {rows.length ? rows.map((row) => (
               <tr key={row.key} className="border-t border-[#f0e7e8]">
-                <td className="max-w-[420px] break-words py-3 pr-4 font-medium">{row.label}</td>
+                <td className="max-w-[420px] break-words py-3 pr-4 font-medium">{ownerFriendlyChannel(row.label)}</td>
                 <td className="py-3 pr-4">{row.visits}</td>
                 <td className="py-3 pr-4">{row.starts}</td>
                 <td className="py-3 pr-4">{row.completes}</td>
@@ -102,7 +134,7 @@ export default function AdminMarketingPage() {
           ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
         </section>
 
-        <StatTable title="유입 소스 / 매체" rows={data?.sourceStats ?? []} />
+        <StatTable title="유입 경로별 성과" rows={data?.sourceStats ?? []} />
 
         <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap gap-2">
@@ -118,7 +150,7 @@ export default function AdminMarketingPage() {
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full text-xs sm:text-sm"><thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-3">시각</th><th className="py-2 pr-3">Source / Medium</th><th className="py-2 pr-3">Campaign</th><th className="py-2 pr-3">Ad</th><th className="py-2 pr-3">Placement</th><th className="py-2">결과</th></tr></thead><tbody>{(data?.recent ?? []).map((row,index)=><tr key={`${row.firstSeenAt}-${index}`} className="border-t border-[#f0e7e8]"><td className="whitespace-nowrap py-3 pr-3">{new Date(row.firstSeenAt).toLocaleString('ko-KR')}</td><td className="py-3 pr-3">{row.source} / {row.medium}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.campaign}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.content}</td><td className="py-3 pr-3">{row.placement}</td><td className="py-3">{row.completed ? `완료 ${row.beautyCode ?? ''}` : row.started ? '진행중' : '유입'}</td></tr>)}</tbody></table>
+              <table className="min-w-full text-xs sm:text-sm"><thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-3">시각</th><th className="py-2 pr-3">유입 경로</th><th className="py-2 pr-3">캠페인</th><th className="py-2 pr-3">광고 소재</th><th className="py-2 pr-3">노출 위치</th><th className="py-2">결과</th></tr></thead><tbody>{(data?.recent ?? []).map((row,index)=><tr key={`${row.firstSeenAt}-${index}`} className="border-t border-[#f0e7e8]"><td className="whitespace-nowrap py-3 pr-3">{new Date(row.firstSeenAt).toLocaleString('ko-KR')}</td><td className="py-3 pr-3">{ownerFriendlyChannel(`${row.source} / ${row.medium}`)}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.campaign}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.content}</td><td className="py-3 pr-3">{row.placement}</td><td className="py-3">{row.completed ? `완료 ${row.beautyCode ?? ''}` : row.started ? '진행중' : '유입'}</td></tr>)}</tbody></table>
             </div>
           )}
         </section>
