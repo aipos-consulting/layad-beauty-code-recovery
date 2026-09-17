@@ -14,6 +14,7 @@ import UserBottomTabs from "./user-bottom-tabs";
 import UserSaveBridge from "./user-save-bridge";
 import UserLocalePolisher from "./user-locale-polisher";
 import MarketingAnalytics from "./marketing-analytics";
+import NaverCafeResultLink from "./naver-cafe-result-link";
 import { LanguageProvider } from "./i18n";
 
 const leagueSpartan = League_Spartan({ variable: "--font-league-spartan", subsets: ["latin"] });
@@ -54,6 +55,7 @@ gtag('config', '${GA4_MEASUREMENT_ID}', { send_page_view: false });`}
             <AdminVisualTheme />
             <ProductFitInputBridge />
             <MarketingAnalytics />
+            <NaverCafeResultLink />
           </ToneSurface>
         </LanguageProvider>
       </body>
