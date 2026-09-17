@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 type Visit = {
   visit_id: string;
   first_seen_at: string;
+  referrer: string | null;
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
@@ -39,6 +40,31 @@ function clean(value: string | null, fallback = "(미설정)") {
   return value?.trim() || fallback;
 }
 
+function isNaverCafeReferrer(referrer: string | null) {
+  if (!referrer) return false;
+  try {
+    const hostname = new URL(referrer).hostname.toLowerCase();
+    return hostname === "cafe.naver.com" || hostname.endsWith(".cafe.naver.com");
+  } catch {
+    return /(^|\.)cafe\.naver\.com/i.test(referrer);
+  }
+}
+
+function sourceOf(row: Visit) {
+  const explicit = row.utm_source?.trim() || row.site_source_name?.trim();
+  if (explicit) return explicit;
+  if (isNaverCafeReferrer(row.referrer)) return "naver_cafe";
+  if (row.has_fbclid) return "meta";
+  return "direct";
+}
+
+function mediumOf(row: Visit) {
+  const explicit = row.utm_medium?.trim();
+  if (explicit) return explicit;
+  if (isNaverCafeReferrer(row.referrer)) return "community";
+  return "none";
+}
+
 function groupBy(rows: Visit[], keyOf: (row: Visit) => string, labelOf?: (row: Visit) => string): Group[] {
   const map = new Map<string, Group>();
   for (const row of rows) {
@@ -63,7 +89,7 @@ export async function GET() {
   if (!url || !key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
 
   const select = [
-    "visit_id","first_seen_at","utm_source","utm_medium","utm_campaign","utm_content","utm_term",
+    "visit_id","first_seen_at","referrer","utm_source","utm_medium","utm_campaign","utm_content","utm_term",
     "campaign_id","adset_id","ad_id","placement","site_source_name","has_fbclid",
     "test_started","test_completed","beauty_code","naver_cafe_clicked",
   ].join(",");
@@ -77,14 +103,14 @@ export async function GET() {
     const rows = (await response.json()) as Visit[];
 
     const totalVisits = rows.length;
-    const metaRows = rows.filter((row) => row.has_fbclid || ["ig", "fb", "instagram", "facebook", "meta"].includes((row.utm_source ?? row.site_source_name ?? "").toLowerCase()));
+    const metaRows = rows.filter((row) => row.has_fbclid || ["ig", "fb", "instagram", "facebook", "meta"].includes(sourceOf(row).toLowerCase()));
     const starts = rows.filter((row) => row.test_started).length;
     const completes = rows.filter((row) => row.test_completed).length;
     const cafeClicks = rows.filter((row) => row.naver_cafe_clicked).length;
 
     const sourceStats = groupBy(
       rows,
-      (row) => `${clean(row.utm_source, "direct")} / ${clean(row.utm_medium, "none")}`,
+      (row) => `${sourceOf(row)} / ${mediumOf(row)}`,
     ).slice(0, 20);
 
     const campaignStats = groupBy(
@@ -107,8 +133,8 @@ export async function GET() {
 
     const recent = rows.slice(0, 100).map((row) => ({
       firstSeenAt: row.first_seen_at,
-      source: clean(row.utm_source, row.site_source_name || (row.has_fbclid ? "meta" : "direct")),
-      medium: clean(row.utm_medium, "none"),
+      source: sourceOf(row),
+      medium: mediumOf(row),
       campaign: clean(row.utm_campaign),
       content: clean(row.utm_content),
       placement: clean(row.placement),
