@@ -184,6 +184,11 @@ export default function TestPage() {
             <div className="mt-5 whitespace-pre-line text-sm leading-7 text-[#6f6063] sm:text-[15px]">{typeDescription}</div>
           </section>
         ) : null}
+        <div className="mt-6 flex justify-center">
+          <a href="https://cafe.naver.com/layad16" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-full border border-[#d88c9c] bg-white px-6 py-3 text-sm font-semibold text-[#a94f65] transition hover:bg-[#fff0f3]">
+            LAYAD 네이버카페 바로가기
+          </a>
+        </div>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
