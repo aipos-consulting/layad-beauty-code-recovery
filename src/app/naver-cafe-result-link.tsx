@@ -4,6 +4,31 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 const CAFE_URL = "https://cafe.naver.com/layad16";
+const MARKETING_VISIT_KEY = "layad-marketing-visit-id-v1";
+
+function getVisitId() {
+  try {
+    const existing = window.sessionStorage.getItem(MARKETING_VISIT_KEY);
+    if (existing) return existing;
+    const created = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    window.sessionStorage.setItem(MARKETING_VISIT_KEY, created);
+    return created;
+  } catch {
+    return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
+function recordCafeClick() {
+  const visitId = getVisitId();
+  void fetch("/api/marketing-attribution", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visitId, action: "naver_cafe_click" }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
 
 export default function NaverCafeResultLink() {
   const [target, setTarget] = useState<HTMLElement | null>(null);
@@ -37,6 +62,7 @@ export default function NaverCafeResultLink() {
         href={CAFE_URL}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={recordCafeClick}
         className="inline-flex h-12 min-w-56 items-center justify-center rounded-full border border-[#03c75a] bg-white px-7 text-sm font-semibold text-[#169b4b]"
       >
         LAYAD 네이버 카페 바로가기
