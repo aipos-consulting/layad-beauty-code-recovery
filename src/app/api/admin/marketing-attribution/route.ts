@@ -17,6 +17,7 @@ type Visit = {
   test_started: boolean;
   test_completed: boolean;
   beauty_code: string | null;
+  naver_cafe_clicked: boolean;
 };
 
 type Group = {
@@ -64,7 +65,7 @@ export async function GET() {
   const select = [
     "visit_id","first_seen_at","utm_source","utm_medium","utm_campaign","utm_content","utm_term",
     "campaign_id","adset_id","ad_id","placement","site_source_name","has_fbclid",
-    "test_started","test_completed","beauty_code",
+    "test_started","test_completed","beauty_code","naver_cafe_clicked",
   ].join(",");
 
   try {
@@ -79,6 +80,7 @@ export async function GET() {
     const metaRows = rows.filter((row) => row.has_fbclid || ["ig", "fb", "instagram", "facebook", "meta"].includes((row.utm_source ?? row.site_source_name ?? "").toLowerCase()));
     const starts = rows.filter((row) => row.test_started).length;
     const completes = rows.filter((row) => row.test_completed).length;
+    const cafeClicks = rows.filter((row) => row.naver_cafe_clicked).length;
 
     const sourceStats = groupBy(
       rows,
@@ -122,8 +124,10 @@ export async function GET() {
         metaVisits: metaRows.length,
         starts,
         completes,
+        cafeClicks,
         startRate: totalVisits ? Math.round((starts / totalVisits) * 1000) / 10 : 0,
         completionRate: starts ? Math.round((completes / starts) * 1000) / 10 : 0,
+        cafeClickRate: completes ? Math.round((cafeClicks / completes) * 1000) / 10 : 0,
       },
       sourceStats,
       campaignStats,
