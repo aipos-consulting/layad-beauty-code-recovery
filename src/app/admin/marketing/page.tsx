@@ -31,6 +31,9 @@ function ownerFriendlyChannel(label: string) {
     "fb / paid_social": "페이스북 광고",
     "facebook / paid": "페이스북 광고",
     "facebook / paid_social": "페이스북 광고",
+    "naver_cafe / community": "네이버카페",
+    "naver cafe / community": "네이버카페",
+    "cafe.naver.com / community": "네이버카페",
     "direct / none": "직접 유입",
     "google / cpc": "구글 검색광고",
     "naver / cpc": "네이버 검색광고",
@@ -42,13 +45,15 @@ function ownerFriendlyChannel(label: string) {
   const [sourceRaw, mediumRaw] = label.split("/").map((value) => value.trim());
   const sourceNames: Record<string, string> = {
     ig: "인스타그램", instagram: "인스타그램", fb: "페이스북", facebook: "페이스북", meta: "Meta",
-    google: "구글", naver: "네이버", kakao: "카카오", line: "LINE", direct: "직접",
+    google: "구글", naver: "네이버", naver_cafe: "네이버카페", "naver cafe": "네이버카페", "cafe.naver.com": "네이버카페",
+    kakao: "카카오", line: "LINE", direct: "직접",
   };
   const mediumNames: Record<string, string> = {
-    paid: "광고", paid_social: "광고", cpc: "검색광고", social: "소셜 유입", organic: "자연 유입", none: "유입",
+    paid: "광고", paid_social: "광고", cpc: "검색광고", social: "소셜 유입", community: "커뮤니티 유입", organic: "자연 유입", none: "유입",
   };
   const source = sourceNames[sourceRaw?.toLowerCase()] ?? sourceRaw;
   const medium = mediumNames[mediumRaw?.toLowerCase()] ?? mediumRaw;
+  if (source === "네이버카페") return "네이버카페";
   return [source, medium].filter(Boolean).join(" · ");
 }
 
@@ -116,7 +121,7 @@ export default function AdminMarketingPage() {
         <section>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">MARKETING ATTRIBUTION</p>
           <h2 className="mt-2 text-2xl font-semibold">Meta · UTM 유입 성과</h2>
-          <p className="mt-2 text-sm text-[#7b6d70]">광고 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. Meta URL Parameters를 설정하면 캠페인·광고·노출위치별로 자동 분류됩니다.</p>
+          <p className="mt-2 text-sm text-[#7b6d70]">광고·네이버카페 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. UTM 또는 네이버카페 Referrer를 기준으로 자동 분류합니다.</p>
         </section>
 
         {!loading && !data?.ok ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{data?.message ?? "데이터를 불러오지 못했습니다."}</div> : null}
