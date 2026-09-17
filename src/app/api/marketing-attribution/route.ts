@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 type Body = {
   visitId?: string;
-  action?: "visit" | "test_start" | "test_complete" | "link_session";
+  action?: "visit" | "test_start" | "test_complete" | "link_session" | "naver_cafe_click";
   landingPath?: string | null;
   referrer?: string | null;
   utmSource?: string | null;
@@ -86,6 +86,9 @@ export async function POST(request: NextRequest) {
     if (typeof body.sessionId === "string" && /^[0-9a-f-]{36}$/i.test(body.sessionId)) {
       payload.test_session_id = body.sessionId;
     }
+  } else if (action === "naver_cafe_click") {
+    payload.naver_cafe_clicked = true;
+    payload.naver_cafe_clicked_at = now;
   }
 
   const response = await fetch(`${url}/rest/v1/marketing_visits?on_conflict=visit_id`, {
