@@ -8,7 +8,7 @@ type Row = { firstSeenAt: string; source: string; medium: string; campaign: stri
 type Data = {
   ok: boolean;
   message?: string;
-  kpis?: { totalVisits: number; metaVisits: number; starts: number; completes: number; startRate: number; completionRate: number };
+  kpis?: { totalVisits: number; metaVisits: number; starts: number; completes: number; cafeClicks: number; startRate: number; completionRate: number; cafeClickRate: number };
   sourceStats?: Stat[];
   campaignStats?: Stat[];
   adStats?: Stat[];
@@ -84,12 +84,12 @@ export default function AdminMarketingPage() {
         <section>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">MARKETING ATTRIBUTION</p>
           <h2 className="mt-2 text-2xl font-semibold">Meta · UTM 유입 성과</h2>
-          <p className="mt-2 text-sm text-[#7b6d70]">광고 유입부터 테스트 시작·완료까지 집계합니다. Meta URL Parameters를 설정하면 캠페인·광고·노출위치별로 자동 분류됩니다.</p>
+          <p className="mt-2 text-sm text-[#7b6d70]">광고 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. Meta URL Parameters를 설정하면 캠페인·광고·노출위치별로 자동 분류됩니다.</p>
         </section>
 
         {!loading && !data?.ok ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{data?.message ?? "데이터를 불러오지 못했습니다."}</div> : null}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
           {[
             ["전체 유입", k?.totalVisits ?? 0],
             ["Meta 유입", k?.metaVisits ?? 0],
@@ -97,6 +97,8 @@ export default function AdminMarketingPage() {
             ["테스트 완료", k?.completes ?? 0],
             ["시작률", `${k?.startRate ?? 0}%`],
             ["완료율", `${k?.completionRate ?? 0}%`],
+            ["카페 이동", k?.cafeClicks ?? 0],
+            ["카페 이동률", `${k?.cafeClickRate ?? 0}%`],
           ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
         </section>
 
