@@ -21,6 +21,14 @@ type Visit = {
   naver_cafe_clicked: boolean;
 };
 
+type ShareEvent = {
+  channel: string;
+  created_at: string;
+  visit_id: string;
+  source_path: string | null;
+  beauty_code: string | null;
+};
+
 type Group = {
   key: string;
   label: string;
@@ -160,11 +168,29 @@ export async function GET() {
       if (page.length < pageSize) break;
     }
 
+    const shareEvents: ShareEvent[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const response = await fetch(
+        `${url}/rest/v1/marketing_share_events?select=channel,created_at,visit_id,source_path,beauty_code&order=created_at.desc&limit=${pageSize}&offset=${offset}`,
+        {
+          headers: { apikey: key, Authorization: `Bearer ${key}` },
+          cache: "no-store",
+        },
+      );
+      if (!response.ok) throw new Error(`Supabase share read failed: ${response.status} ${await response.text()}`);
+      const page = (await response.json()) as ShareEvent[];
+      shareEvents.push(...page);
+      if (page.length < pageSize) break;
+    }
+
     const totalVisits = rows.length;
     const metaRows = rows.filter((row) => row.has_fbclid || ["ig", "fb", "instagram", "facebook", "meta"].includes(sourceOf(row).toLowerCase()));
     const starts = rows.filter((row) => row.test_started).length;
     const completes = rows.filter((row) => row.test_completed).length;
     const cafeClicks = rows.filter((row) => row.naver_cafe_clicked).length;
+    const kakaoShares = shareEvents.filter((event) => event.channel.toLowerCase() === "kakao").length;
+    const kakaoShareVisits = rows.filter((row) => sourceOf(row).toLowerCase() === "kakao" && mediumOf(row).toLowerCase() === "share").length;
+    const kakaoShareRate = kakaoShares ? Math.round((kakaoShareVisits / kakaoShares) * 1000) / 10 : 0;
 
     const sourceStats = groupBy(
       rows,
@@ -209,6 +235,9 @@ export async function GET() {
         starts,
         completes,
         cafeClicks,
+        kakaoShares,
+        kakaoShareVisits,
+        kakaoShareRate,
         startRate: totalVisits ? Math.round((starts / totalVisits) * 1000) / 10 : 0,
         completionRate: starts ? Math.round((completes / starts) * 1000) / 10 : 0,
         cafeClickRate: completes ? Math.round((cafeClicks / completes) * 1000) / 10 : 0,
