@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 type Body = {
   visitId?: string;
-  action?: "visit" | "test_start" | "test_complete" | "link_session" | "naver_cafe_click";
+  action?: "visit" | "test_start" | "test_complete" | "link_session" | "naver_cafe_click" | "share_click";
   landingPath?: string | null;
   referrer?: string | null;
   utmSource?: string | null;
@@ -18,6 +18,8 @@ type Body = {
   hasFbclid?: boolean;
   beautyCode?: string | null;
   sessionId?: string | null;
+  shareChannel?: string | null;
+  sourcePath?: string | null;
 };
 
 function config() {
@@ -54,6 +56,40 @@ export async function POST(request: NextRequest) {
 
   const now = new Date().toISOString();
   const action = body.action ?? "visit";
+
+  if (action === "share_click") {
+    const channel = text(body.shareChannel, 40);
+    if (!channel) return NextResponse.json({ ok: false, code: "INVALID_SHARE_CHANNEL" }, { status: 400 });
+
+    const sharePayload = {
+      visit_id: body.visitId,
+      channel,
+      source_path: text(body.sourcePath, 300),
+      beauty_code: typeof body.beautyCode === "string" && /^[OD][GM][PC][VE]$/.test(body.beautyCode) ? body.beautyCode : null,
+      created_at: now,
+    };
+
+    const shareResponse = await fetch(`${url}/rest/v1/marketing_share_events`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(sharePayload),
+      cache: "no-store",
+    });
+
+    if (!shareResponse.ok) {
+      const detail = await shareResponse.text();
+      console.error("marketing share event write failed", shareResponse.status, detail);
+      return NextResponse.json({ ok: false, code: "SHARE_WRITE_FAILED" }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   const payload: Record<string, unknown> = {
     visit_id: body.visitId,
     last_seen_at: now,
