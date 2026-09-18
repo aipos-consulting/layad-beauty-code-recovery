@@ -72,7 +72,6 @@ export async function POST(request: Request) {
   const typeDescription = String(form.get("typeDescription") ?? "");
 
   if (!CODES.includes(beautyCode)) return NextResponse.json({ ok: false, message: "올바른 Beauty Code가 아닙니다." }, { status: 400 });
-  if (!nickname) return NextResponse.json({ ok: false, message: "별명을 입력해 주세요." }, { status: 400 });
 
   try {
     const [imageUrl, imageUrlEn, imageUrlJa] = await Promise.all([
@@ -93,7 +92,21 @@ export async function POST(request: Request) {
     );
     if (!updateResponse.ok) return NextResponse.json({ ok: false, message: await updateResponse.text() }, { status: 500 });
 
-    const rows = await updateResponse.json() as CharacterRow[];
+    let rows = await updateResponse.json() as CharacterRow[];
+    if (!rows[0]) {
+      const insertResponse = await db(
+        "beauty_code_characters?select=beauty_code,nickname,image_url,image_url_en,image_url_ja,type_description",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ beauty_code: beautyCode, ...payload }),
+        },
+        serverKey,
+      );
+      if (!insertResponse.ok) return NextResponse.json({ ok: false, message: await insertResponse.text() }, { status: 500 });
+      rows = await insertResponse.json() as CharacterRow[];
+    }
+
     return NextResponse.json({ ok: true, character: rows[0] ?? null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "이미지 저장에 실패했습니다.";
