@@ -14,6 +14,40 @@ type CharacterRow = {
 const CODES = ["DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE","OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE"];
 const EMPTY_ROWS: CharacterRow[] = CODES.map(beauty_code => ({ beauty_code, nickname: "", image_url: null, image_url_en: null, image_url_ja: null, type_description: "" }));
 
+async function prepareUploadImage(file?: File) {
+  if (!file || file.size <= 0) return undefined;
+  const safeTypes = ["image/png", "image/jpeg", "image/webp"];
+  if (safeTypes.includes(file.type) && file.size <= 3 * 1024 * 1024) return file;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("선택한 이미지를 모바일 브라우저에서 읽지 못했습니다."));
+      img.src = objectUrl;
+    });
+
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("이미지 변환을 시작할 수 없습니다.");
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+    if (!blob) throw new Error("이미지 변환에 실패했습니다.");
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "beauty-code";
+    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function BeautyCodeCharactersPage() {
   const [rows, setRows] = useState<CharacterRow[]>(EMPTY_ROWS);
   const [loading, setLoading] = useState(true);
@@ -51,10 +85,16 @@ export default function BeautyCodeCharactersPage() {
     form.set("beautyCode", row.beauty_code);
     form.set("nickname", row.nickname);
     form.set("typeDescription", row.type_description ?? "");
-    if (files.ko) form.set("image", files.ko);
-    if (files.en) form.set("imageEn", files.en);
-    if (files.ja) form.set("imageJa", files.ja);
     try {
+      const [imageKo, imageEn, imageJa] = await Promise.all([
+        prepareUploadImage(files.ko),
+        prepareUploadImage(files.en),
+        prepareUploadImage(files.ja),
+      ]);
+      if (imageKo) form.set("image", imageKo);
+      if (imageEn) form.set("imageEn", imageEn);
+      if (imageJa) form.set("imageJa", imageJa);
+
       const response = await fetch("/api/admin/beauty-code-characters", { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok || !result.ok) {
@@ -63,8 +103,8 @@ export default function BeautyCodeCharactersPage() {
         setRows(current => current.map(item => item.beauty_code === row.beauty_code ? result.character : item));
         setSavedCodes(current => ({ ...current, [row.beauty_code]: true }));
       }
-    } catch {
-      setMessage(`${row.beauty_code} 저장 중 네트워크 오류가 발생했습니다.`);
+    } catch (error) {
+      setMessage(`${row.beauty_code} 저장 실패: ${error instanceof Error ? error.message : "네트워크 오류가 발생했습니다."}`);
     } finally {
       setSaving(null);
     }
@@ -83,7 +123,7 @@ export default function BeautyCodeCharactersPage() {
           <h1 className="mt-2 text-2xl font-semibold">유형별 캐릭터 관리</h1>
           <p className="mt-2 text-sm text-[#766767]">한국어 이미지를 기본값으로 사용합니다. 영어·일본어 이미지가 등록되면 해당 언어 화면에서 자동으로 교체됩니다.</p>
           <p className="mt-1 text-xs text-[#9b8b8e]">※ 영어·일본어 이미지 미등록 시 한국어 이미지가 자동 표시됩니다.</p>
-          <p className="mt-1 text-xs text-[#9b8b8e]">※ 세로형 이미지 권장 · PNG/JPG/WEBP · 이미지별 최대 5MB</p>
+          <p className="mt-1 text-xs text-[#9b8b8e]">※ 세로형 이미지 권장 · 모바일 사진(HEIC 포함)은 저장 시 JPG로 자동 변환·최적화됩니다.</p>
           <p className="mt-1 text-xs text-[#9b8b8e]">※ 이미지·별명·유형 설명은 저장 즉시 결과 화면에서 동적으로 조회됩니다. 설명을 비우면 결과 화면에서도 표시되지 않습니다.</p>
         </div>
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
@@ -153,7 +193,7 @@ function ImageUpload({ label, preview, code, file, setFile, fallback = false }: 
       <div className="mt-2 aspect-[9/16] w-full overflow-hidden rounded-2xl border border-[#f0e4e6] bg-[#fff7f8]">
         {preview ? <img src={preview} alt={`${code} ${label} 캐릭터`} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center px-2 text-center text-xs text-[#9c8d90]">이미지 미등록</div>}
       </div>
-      <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFile(e.target.files?.[0])} className="mt-2 block w-full text-[11px] text-[#766767] file:mr-2 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-2.5 file:py-1.5 file:font-semibold file:text-[#a94f65]" />
+      <input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0])} className="mt-2 block w-full text-[11px] text-[#766767] file:mr-2 file:rounded-full file:border-0 file:bg-[#fff0f3] file:px-2.5 file:py-1.5 file:font-semibold file:text-[#a94f65]" />
       {file ? <p className="mt-1 truncate text-[10px] text-[#8b7b7e]">{file.name}</p> : null}
     </div>
   );
