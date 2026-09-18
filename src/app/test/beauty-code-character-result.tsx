@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/i18n";
 import { beautyCodeNickname } from "@/lib/beauty-code-labels";
 
-type Character = { beauty_code: string; nickname: string; image_url: string | null };
+type Character = { beauty_code: string; nickname: string; image_url: string | null; type_description: string };
 
 export default function BeautyCodeCharacterResult() {
   const { locale } = useLanguage();
@@ -41,7 +41,7 @@ export default function BeautyCodeCharacterResult() {
     return () => { active = false; };
   }, [code, locale]);
 
-  if (!mount || !character || (!character.nickname && !character.image_url)) return null;
+  if (!mount || !character || (!character.nickname && !character.image_url && !character.type_description)) return null;
   return createPortal(
     <div className="mx-auto mt-5 flex w-full max-w-[360px] flex-col items-center text-center">
       {character.image_url ? (
@@ -53,7 +53,12 @@ export default function BeautyCodeCharacterResult() {
           />
         </div>
       ) : null}
-      <p className="mb-1 text-base font-semibold text-[#5f5053] sm:text-lg">{beautyCodeNickname(character.beauty_code, locale, character.nickname)}</p>
+      {character.nickname ? <p className="mb-1 text-base font-semibold text-[#5f5053] sm:text-lg">{beautyCodeNickname(character.beauty_code, locale, character.nickname)}</p> : null}
+      {character.type_description?.trim() ? (
+        <div className="mt-4 w-full rounded-3xl border border-[#f1dfe2] bg-[#fffafa] px-5 py-6 text-left">
+          <p className="whitespace-pre-line text-sm leading-7 text-[#6f6063] sm:text-[15px]">{character.type_description}</p>
+        </div>
+      ) : null}
     </div>, mount
   );
 }
