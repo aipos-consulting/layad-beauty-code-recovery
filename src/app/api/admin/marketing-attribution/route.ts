@@ -40,20 +40,30 @@ function clean(value: string | null, fallback = "(미설정)") {
   return value?.trim() || fallback;
 }
 
-function isNaverCafeReferrer(referrer: string | null) {
-  if (!referrer) return false;
+function referrerHost(referrer: string | null) {
+  if (!referrer) return "";
   try {
-    const hostname = new URL(referrer).hostname.toLowerCase();
-    return hostname === "cafe.naver.com" || hostname.endsWith(".cafe.naver.com");
+    return new URL(referrer).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
-    return /(^|\.)cafe\.naver\.com/i.test(referrer);
+    return "";
   }
+}
+
+function isHost(host: string, domain: string) {
+  return host === domain || host.endsWith(`.${domain}`);
 }
 
 function sourceOf(row: Visit) {
   const explicit = row.utm_source?.trim() || row.site_source_name?.trim();
   if (explicit) return explicit;
-  if (isNaverCafeReferrer(row.referrer)) return "naver_cafe";
+
+  const host = referrerHost(row.referrer);
+  if (isHost(host, "cafe.naver.com")) return "naver_cafe";
+  if (isHost(host, "instagram.com")) return "instagram";
+  if (isHost(host, "facebook.com") || isHost(host, "fb.com")) return "facebook";
+  if (isHost(host, "naver.com")) return "naver";
+  if (host === "google.com" || host.startsWith("google.") || host.includes(".google.")) return "google";
+  if (isHost(host, "line.me") || isHost(host, "line-apps.com")) return "line";
   if (row.has_fbclid) return "meta";
   return "direct";
 }
@@ -61,7 +71,11 @@ function sourceOf(row: Visit) {
 function mediumOf(row: Visit) {
   const explicit = row.utm_medium?.trim();
   if (explicit) return explicit;
-  if (isNaverCafeReferrer(row.referrer)) return "community";
+
+  const host = referrerHost(row.referrer);
+  if (isHost(host, "cafe.naver.com")) return "community";
+  if (isHost(host, "instagram.com") || isHost(host, "facebook.com") || isHost(host, "fb.com") || isHost(host, "line.me") || isHost(host, "line-apps.com")) return "referral";
+  if (isHost(host, "naver.com") || host === "google.com" || host.startsWith("google.") || host.includes(".google.")) return "organic";
   return "none";
 }
 
@@ -120,7 +134,7 @@ export async function GET() {
     const sourceStats = groupBy(
       rows,
       (row) => `${sourceOf(row)} / ${mediumOf(row)}`,
-    ).slice(0, 20);
+    ).slice(0, 30);
 
     const campaignStats = groupBy(
       rows.filter((row) => row.utm_campaign || row.campaign_id),
