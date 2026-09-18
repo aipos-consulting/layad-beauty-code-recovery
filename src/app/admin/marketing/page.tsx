@@ -119,6 +119,7 @@ function TrendChart({ rows }: { rows: DailyTrend[] }) {
   const points = (key: "visits" | "starts" | "completes") => rows.map((row, index) => `${scaleX(index)},${scaleY(row[key])}`).join(" ");
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({ ratio, value: Math.round(maxValue * ratio) }));
   const showEvery = Math.max(1, Math.ceil(rows.length / 8));
+  const showValueEvery = rows.length <= 7 ? 1 : Math.max(1, Math.ceil(rows.length / 10));
 
   return (
     <div className="overflow-x-auto">
@@ -133,11 +134,18 @@ function TrendChart({ rows }: { rows: DailyTrend[] }) {
           <polyline points={points("completes")} fill="none" stroke="#a94f65" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
           {rows.map((row, index) => {
             const x = scaleX(index);
+            const visitsY = scaleY(row.visits);
+            const startsY = scaleY(row.starts);
+            const completesY = scaleY(row.completes);
             const showLabel = index % showEvery === 0 || index === rows.length - 1;
+            const showValue = index % showValueEvery === 0 || index === rows.length - 1;
             return <g key={row.date}>
-              <circle cx={x} cy={scaleY(row.visits)} r="4" fill="#382d2d"><title>{`${row.label} 유입 ${row.visits}`}</title></circle>
-              <circle cx={x} cy={scaleY(row.starts)} r="4" fill="#d88c9c"><title>{`${row.label} 시작 ${row.starts}`}</title></circle>
-              <circle cx={x} cy={scaleY(row.completes)} r="4" fill="#a94f65"><title>{`${row.label} 완료 ${row.completes}`}</title></circle>
+              <circle cx={x} cy={visitsY} r="4" fill="#382d2d"><title>{`${row.label} 유입 ${row.visits}`}</title></circle>
+              <circle cx={x} cy={startsY} r="4" fill="#d88c9c"><title>{`${row.label} 시작 ${row.starts}`}</title></circle>
+              <circle cx={x} cy={completesY} r="4" fill="#a94f65"><title>{`${row.label} 완료 ${row.completes}`}</title></circle>
+              {showValue ? <text x={x} y={Math.max(12, visitsY - 10)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#382d2d">{row.visits}</text> : null}
+              {showValue ? <text x={x} y={Math.max(12, startsY - 10)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#d88c9c">{row.starts}</text> : null}
+              {showValue ? <text x={x} y={Math.min(height - bottom - 2, completesY + 16)} textAnchor="middle" fontSize="11" fontWeight="600" fill="#a94f65">{row.completes}</text> : null}
               {showLabel ? <text x={x} y={height - 14} textAnchor="middle" fontSize="11" fill="#7b6d70">{row.label}</text> : null}
             </g>;
           })}
