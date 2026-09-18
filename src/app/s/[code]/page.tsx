@@ -56,16 +56,27 @@ function getMarketingVisitId() {
 
 function recordKakaoShare(code: string) {
   const visitId = getMarketingVisitId();
+  const payload = JSON.stringify({
+    visitId,
+    action: "share_click",
+    shareChannel: "kakao",
+    sourcePath: window.location.pathname,
+    beautyCode: code,
+  });
+
+  try {
+    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+      const blob = new Blob([payload], { type: "application/json" });
+      if (navigator.sendBeacon("/api/marketing-attribution", blob)) return;
+    }
+  } catch {
+    // Fall back to fetch below.
+  }
+
   void fetch("/api/marketing-attribution", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      visitId,
-      action: "share_click",
-      shareChannel: "kakao",
-      sourcePath: window.location.pathname,
-      beautyCode: code,
-    }),
+    body: payload,
     keepalive: true,
   }).catch(() => undefined);
 }
@@ -138,12 +149,16 @@ export default function SharePage() {
     document.head.appendChild(script);
   }, [valid]);
 
-  useEffect(() => {
-    if (!valid || blockedInApp || !ready || !window.Kakao) return;
+  const handleKakaoShare = () => {
+    if (!valid || blockedInApp || !ready || !window.Kakao) {
+      setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
+      return;
+    }
+
+    recordKakaoShare(code);
 
     try {
-      window.Kakao.Share.createDefaultButton({
-        container: "#layad-kakao-share-btn",
+      window.Kakao.Share.sendDefault({
         objectType: "feed",
         content: {
           title: `LAYAD BEAUTY CODE ${code}`,
@@ -166,10 +181,10 @@ export default function SharePage() {
       });
       setStatus("");
     } catch (error) {
-      console.error("[Kakao Button Bind]", error);
-      setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
+      console.error("[Kakao Share]", error);
+      setStatus("카카오 공유를 실행하지 못했습니다.");
     }
-  }, [blockedInApp, code, ready, valid]);
+  };
 
   if (!valid) {
     return (
@@ -193,14 +208,14 @@ export default function SharePage() {
 
         <div className="mt-8 flex flex-col gap-3">
           {!blockedInApp ? (
-            <a
-              id="layad-kakao-share-btn"
-              href="javascript:;"
-              onClickCapture={() => recordKakaoShare(code)}
-              className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
+            <button
+              type="button"
+              onClick={handleKakaoShare}
+              disabled={!ready}
+              className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919] disabled:cursor-not-allowed disabled:opacity-60"
             >
               카카오톡으로 공유하기
-            </a>
+            </button>
           ) : null}
           <a
             href={resultUrl(code)}
