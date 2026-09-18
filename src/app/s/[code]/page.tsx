@@ -16,8 +16,6 @@ declare global {
   }
 }
 
-const MARKETING_VISIT_KEY = "layad-marketing-visit-id-v1";
-
 function isBeautyCode(value: string) {
   return /^[OD][GM][PC][VE]$/.test(value);
 }
@@ -38,41 +36,6 @@ function kakaoSharedResultUrl(code: string) {
 
 function shareImageUrl(code: string) {
   return `https://www.layad16.com/api/share-card/${code}`;
-}
-
-function getMarketingVisitId() {
-  try {
-    const existing = window.sessionStorage.getItem(MARKETING_VISIT_KEY);
-    if (existing) return existing;
-    const created = typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
-    window.sessionStorage.setItem(MARKETING_VISIT_KEY, created);
-    return created;
-  } catch {
-    return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
-  }
-}
-
-async function recordKakaoShare(code: string) {
-  const visitId = getMarketingVisitId();
-  const response = await fetch("/api/marketing-attribution", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      visitId,
-      action: "share_click",
-      shareChannel: "kakao",
-      sourcePath: window.location.pathname,
-      beautyCode: code,
-    }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`share tracking failed: ${response.status} ${detail}`);
-  }
 }
 
 function isAndroidInAppBrowser() {
@@ -144,7 +107,7 @@ export default function SharePage() {
     document.head.appendChild(script);
   }, [valid]);
 
-  const handleKakaoShare = async () => {
+  const handleKakaoShare = () => {
     if (!valid || blockedInApp || !ready || !window.Kakao || sharing) {
       if (!sharing) setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
       return;
@@ -152,15 +115,6 @@ export default function SharePage() {
 
     setSharing(true);
     setStatus("");
-
-    try {
-      await recordKakaoShare(code);
-    } catch (error) {
-      console.error("[Kakao Share Tracking]", error);
-      setStatus("공유 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
-      setSharing(false);
-      return;
-    }
 
     try {
       window.Kakao.Share.sendDefault({
