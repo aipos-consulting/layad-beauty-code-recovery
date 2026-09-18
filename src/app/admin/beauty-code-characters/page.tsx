@@ -129,7 +129,7 @@ function CharacterCard({ row, saving, saved, onChange, onSave }: {
           <ImageUpload label="日本語" preview={previewJa} code={row.beauty_code} file={fileJa} setFile={setFileJa} fallback={!row.image_url_ja && !fileJa} />
         </div>
 
-        <button type="button" disabled={saving || !row.nickname.trim()} onClick={() => void onSave(row, { ko: fileKo, en: fileEn, ja: fileJa })} className="mt-5 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
+        <button type="button" disabled={saving} onClick={() => void onSave(row, { ko: fileKo, en: fileEn, ja: fileJa })} className="mt-5 w-full rounded-full bg-[#a94f65] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? "저장 중..." : "저장"}</button>
         {saved ? <div className="mt-2 rounded-lg bg-[#fff4f6] px-3 py-2 text-center text-sm font-semibold text-[#a94f65]">✓ {row.beauty_code} 저장 완료</div> : null}
       </div>
     </section>
