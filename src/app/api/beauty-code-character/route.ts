@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://mbunlzldwpjgichedzfa.supabase.co";
 
 type Locale = "ko" | "en" | "ja";
-type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null; image_url_en: string | null; image_url_ja: string | null };
+type CharacterRow = { beauty_code: string; nickname: string; image_url: string | null; image_url_en: string | null; image_url_ja: string | null; type_description: string | null };
 
 function key() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY ?? null;
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   }
 
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/beauty_code_characters?beauty_code=eq.${encodeURIComponent(code)}&select=beauty_code,nickname,image_url,image_url_en,image_url_ja&limit=1`,
+    `${SUPABASE_URL}/rest/v1/beauty_code_characters?beauty_code=eq.${encodeURIComponent(code)}&select=beauty_code,nickname,image_url,image_url_en,image_url_ja,type_description&limit=1`,
     { headers: authHeaders(serverKey), cache: "no-store" },
   );
 
@@ -50,5 +50,5 @@ export async function GET(request: Request) {
   if (!row) return NextResponse.json({ ok: true, character: null });
 
   const locale = localeFromRequest(request);
-  return NextResponse.json({ ok: true, character: { beauty_code: row.beauty_code, nickname: row.nickname, image_url: resolveImage(row, locale) } });
+  return NextResponse.json({ ok: true, character: { beauty_code: row.beauty_code, nickname: row.nickname, image_url: resolveImage(row, locale), type_description: row.type_description ?? "" } });
 }
