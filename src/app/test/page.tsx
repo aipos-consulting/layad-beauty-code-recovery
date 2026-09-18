@@ -168,11 +168,6 @@ export default function TestPage() {
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
         <p className="mt-5 text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
         <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[#766767]">{text.resultRule}</p>
-        <div className="mt-9 grid gap-3 sm:grid-cols-2">{(["OD", "GM", "PC", "VE"] as AxisKey[]).map((axis) => {
-          const [first, second] = axisPairs[axis]; const result = scores[first] >= 3 ? first : second;
-          return <div key={axis} className="rounded-2xl border border-[#f1dfe2] bg-[#fffafa] p-5 text-left"><p className="text-xs font-semibold tracking-[0.16em] text-[#b97b88]">{axisNames[axis]}</p><p className="mt-2 text-2xl font-semibold">{result}</p><p className="mt-2 text-sm text-[#7e7070]">{first} {scores[first]}{text.points} · {second} {scores[second]}{text.points}</p></div>;
-        })}</div>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
