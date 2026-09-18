@@ -9,7 +9,19 @@ type DailyTrend = { date: string; label: string; visits: number; starts: number;
 type Data = {
   ok: boolean;
   message?: string;
-  kpis?: { totalVisits: number; metaVisits: number; starts: number; completes: number; cafeClicks: number; startRate: number; completionRate: number; cafeClickRate: number };
+  kpis?: {
+    totalVisits: number;
+    metaVisits: number;
+    starts: number;
+    completes: number;
+    cafeClicks: number;
+    kakaoShares: number;
+    kakaoShareVisits: number;
+    kakaoShareRate: number;
+    startRate: number;
+    completionRate: number;
+    cafeClickRate: number;
+  };
   dailyTrend?: DailyTrend[];
   sourceStats?: Stat[];
   campaignStats?: Stat[];
@@ -192,6 +204,14 @@ export default function AdminMarketingPage() {
             ["완료율", `${k?.completionRate ?? 0}%`],
             ["카페 이동", k?.cafeClicks ?? 0],
             ["카페 이동률", `${k?.cafeClickRate ?? 0}%`],
+          ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
+        </section>
+
+        <section className="grid gap-3 sm:grid-cols-3">
+          {[
+            ["카카오 공유 실행", k?.kakaoShares ?? 0],
+            ["카카오 공유 유입", k?.kakaoShareVisits ?? 0],
+            ["공유→유입률", `${k?.kakaoShareRate ?? 0}%`],
           ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
         </section>
 
