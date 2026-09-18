@@ -14,6 +14,15 @@ const labels = {
 } as const;
 
 function resultUrl(code: string) { return `https://layad16.com/result/${code}`; }
+function copiedResultUrl(code: string) {
+  const params = new URLSearchParams({
+    utm_source: "link_copy",
+    utm_medium: "share",
+    utm_campaign: "beauty_result",
+    utm_content: code,
+  });
+  return `${resultUrl(code)}?${params.toString()}`;
+}
 function shareUrl(code: string) { return `https://layad16.com/s/${code}`; }
 
 function KakaoIcon() {
@@ -63,7 +72,7 @@ export default function ResultShareBridge() {
   }, []);
 
   async function copyLink() {
-    await navigator.clipboard.writeText(resultUrl(code));
+    await navigator.clipboard.writeText(copiedResultUrl(code));
     setStatus(text.copied);
   }
 
