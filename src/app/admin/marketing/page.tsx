@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 
 type Stat = { key: string; label: string; visits: number; starts: number; completes: number };
 type Row = { firstSeenAt: string; source: string; medium: string; campaign: string; content: string; placement: string; started: boolean; completed: boolean; beautyCode: string | null };
+type DailyTrend = { date: string; label: string; visits: number; starts: number; completes: number };
 type Data = {
   ok: boolean;
   message?: string;
   kpis?: { totalVisits: number; metaVisits: number; starts: number; completes: number; cafeClicks: number; startRate: number; completionRate: number; cafeClickRate: number };
+  dailyTrend?: DailyTrend[];
   sourceStats?: Stat[];
   campaignStats?: Stat[];
   adStats?: Stat[];
@@ -88,10 +90,56 @@ function StatTable({ title, rows }: { title: string; rows: Stat[] }) {
   );
 }
 
+function TrendChart({ rows }: { rows: DailyTrend[] }) {
+  if (!rows.length) return <div className="py-12 text-center text-sm text-[#8a7b7e]">일별 데이터가 아직 없습니다.</div>;
+
+  const width = 1000;
+  const height = 300;
+  const left = 56;
+  const right = 20;
+  const top = 20;
+  const bottom = 42;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxValue = Math.max(1, ...rows.flatMap((row) => [row.visits, row.starts, row.completes]));
+  const scaleY = (value: number) => top + plotHeight - (value / maxValue) * plotHeight;
+  const scaleX = (index: number) => rows.length === 1 ? left + plotWidth / 2 : left + (index / (rows.length - 1)) * plotWidth;
+  const points = (key: "visits" | "starts" | "completes") => rows.map((row, index) => `${scaleX(index)},${scaleY(row[key])}`).join(" ");
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({ ratio, value: Math.round(maxValue * ratio) }));
+  const showEvery = Math.max(1, Math.ceil(rows.length / 8));
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[720px]">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="일별 유입, 테스트 시작, 테스트 완료 추이">
+          {ticks.map(({ ratio, value }) => {
+            const y = top + plotHeight - ratio * plotHeight;
+            return <g key={ratio}><line x1={left} y1={y} x2={width - right} y2={y} stroke="#eee5e7" strokeWidth="1" /><text x={left - 10} y={y + 4} textAnchor="end" fontSize="11" fill="#8a7b7e">{value}</text></g>;
+          })}
+          <polyline points={points("visits")} fill="none" stroke="#382d2d" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={points("starts")} fill="none" stroke="#d88c9c" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <polyline points={points("completes")} fill="none" stroke="#a94f65" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          {rows.map((row, index) => {
+            const x = scaleX(index);
+            const showLabel = index % showEvery === 0 || index === rows.length - 1;
+            return <g key={row.date}>
+              <circle cx={x} cy={scaleY(row.visits)} r="4" fill="#382d2d"><title>{`${row.label} 유입 ${row.visits}`}</title></circle>
+              <circle cx={x} cy={scaleY(row.starts)} r="4" fill="#d88c9c"><title>{`${row.label} 시작 ${row.starts}`}</title></circle>
+              <circle cx={x} cy={scaleY(row.completes)} r="4" fill="#a94f65"><title>{`${row.label} 완료 ${row.completes}`}</title></circle>
+              {showLabel ? <text x={x} y={height - 14} textAnchor="middle" fontSize="11" fill="#7b6d70">{row.label}</text> : null}
+            </g>;
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminMarketingPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"campaign" | "ad" | "placement" | "recent">("campaign");
+  const [trendDays, setTrendDays] = useState<7 | 30>(7);
 
   useEffect(() => {
     fetch("/api/admin/marketing-attribution", { cache: "no-store" })
@@ -108,6 +156,7 @@ export default function AdminMarketingPage() {
     if (tab === "placement") return data?.placementStats ?? [];
     return [];
   }, [data, tab]);
+  const trendRows = useMemo(() => (data?.dailyTrend ?? []).slice(-trendDays), [data, trendDays]);
 
   return (
     <main className="min-h-screen bg-[#f7f4f4] text-[#382d2d]">
@@ -144,6 +193,24 @@ export default function AdminMarketingPage() {
             ["카페 이동", k?.cafeClicks ?? 0],
             ["카페 이동률", `${k?.cafeClickRate ?? 0}%`],
           ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
+        </section>
+
+        <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold">일별 유입·테스트 추이</h3>
+              <p className="mt-1 text-xs text-[#7b6d70]">서울시간 기준 · 유입 / 테스트 시작 / 테스트 완료</p>
+            </div>
+            <div className="flex rounded-full bg-[#f6edef] p-1 text-xs font-semibold">
+              {[7, 30].map((days) => <button key={days} type="button" onClick={() => setTrendDays(days as 7 | 30)} className={`rounded-full px-4 py-2 ${trendDays === days ? "bg-[#d88c9c] text-white" : "text-[#6f6063]"}`}>최근 {days}일</button>)}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-5 text-xs font-semibold text-[#6f6063]">
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#382d2d]" />유입</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#d88c9c]" />테스트 시작</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#a94f65]" />테스트 완료</span>
+          </div>
+          <div className="mt-3">{loading ? <div className="py-12 text-center text-sm text-[#8a7b7e]">불러오는 중...</div> : <TrendChart rows={trendRows} />}</div>
         </section>
 
         <StatTable title="유입 경로별 성과" rows={data?.sourceStats ?? []} />
