@@ -84,7 +84,7 @@ export default function BeautyCodeCharactersPage() {
           <p className="mt-2 text-sm text-[#766767]">한국어 이미지를 기본값으로 사용합니다. 영어·일본어 이미지가 등록되면 해당 언어 화면에서 자동으로 교체됩니다.</p>
           <p className="mt-1 text-xs text-[#9b8b8e]">※ 영어·일본어 이미지 미등록 시 한국어 이미지가 자동 표시됩니다.</p>
           <p className="mt-1 text-xs text-[#9b8b8e]">※ 세로형 이미지 권장 · PNG/JPG/WEBP · 이미지별 최대 5MB</p>
-          <p className="mt-1 text-xs text-[#9b8b8e]">※ 유형 설명은 Admin에 저장한 뒤 운영 파일 동기화 시 결과 화면에 반영됩니다.</p>
+          <p className="mt-1 text-xs text-[#9b8b8e]">※ 이미지·별명·유형 설명은 저장 즉시 결과 화면에서 동적으로 조회됩니다. 설명을 비우면 결과 화면에서도 표시되지 않습니다.</p>
         </div>
         {message ? <div className="mb-4 rounded-xl bg-[#fff0f3] px-4 py-3 text-sm text-[#a94f65]">{message}</div> : null}
         {loading ? <p className="text-sm text-[#766767]">불러오는 중...</p> : (
