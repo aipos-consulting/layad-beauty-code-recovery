@@ -95,12 +95,21 @@ export async function GET() {
   ].join(",");
 
   try {
-    const response = await fetch(`${url}/rest/v1/marketing_visits?select=${select}&order=first_seen_at.desc&limit=10000`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`Supabase read failed: ${response.status} ${await response.text()}`);
-    const rows = (await response.json()) as Visit[];
+    const rows: Visit[] = [];
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+      const response = await fetch(
+        `${url}/rest/v1/marketing_visits?select=${select}&order=first_seen_at.desc&limit=${pageSize}&offset=${offset}`,
+        {
+          headers: { apikey: key, Authorization: `Bearer ${key}` },
+          cache: "no-store",
+        },
+      );
+      if (!response.ok) throw new Error(`Supabase read failed: ${response.status} ${await response.text()}`);
+      const page = (await response.json()) as Visit[];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
 
     const totalVisits = rows.length;
     const metaRows = rows.filter((row) => row.has_fbclid || ["ig", "fb", "instagram", "facebook", "meta"].includes(sourceOf(row).toLowerCase()));
