@@ -27,18 +27,24 @@ function ownerFriendlyChannel(label: string) {
     "ig / paid_social": "인스타그램 광고",
     "instagram / paid": "인스타그램 광고",
     "instagram / paid_social": "인스타그램 광고",
+    "instagram / referral": "인스타그램 일반 유입",
     "fb / paid": "페이스북 광고",
     "fb / paid_social": "페이스북 광고",
     "facebook / paid": "페이스북 광고",
     "facebook / paid_social": "페이스북 광고",
+    "facebook / referral": "페이스북 일반 유입",
     "naver_cafe / community": "네이버카페",
     "naver cafe / community": "네이버카페",
     "cafe.naver.com / community": "네이버카페",
+    "naver / organic": "네이버 검색 유입",
+    "google / organic": "구글 검색 유입",
     "direct / none": "직접 유입",
     "google / cpc": "구글 검색광고",
     "naver / cpc": "네이버 검색광고",
     "kakao / share": "카카오톡 공유 유입",
     "kakao / social": "카카오 유입",
+    "link_copy / share": "링크 복사 공유 유입",
+    "line / referral": "LINE 유입",
     "line / social": "LINE 유입",
   };
   if (aliases[normalized]) return aliases[normalized];
@@ -47,10 +53,10 @@ function ownerFriendlyChannel(label: string) {
   const sourceNames: Record<string, string> = {
     ig: "인스타그램", instagram: "인스타그램", fb: "페이스북", facebook: "페이스북", meta: "Meta",
     google: "구글", naver: "네이버", naver_cafe: "네이버카페", "naver cafe": "네이버카페", "cafe.naver.com": "네이버카페",
-    kakao: "카카오", line: "LINE", direct: "직접",
+    kakao: "카카오", link_copy: "링크 복사", line: "LINE", direct: "직접",
   };
   const mediumNames: Record<string, string> = {
-    paid: "광고", paid_social: "광고", cpc: "검색광고", share: "공유 유입", social: "소셜 유입", community: "커뮤니티 유입", organic: "자연 유입", none: "유입",
+    paid: "광고", paid_social: "광고", cpc: "검색광고", share: "공유 유입", referral: "일반 유입", social: "소셜 유입", community: "커뮤니티 유입", organic: "검색 유입", none: "유입",
   };
   const source = sourceNames[sourceRaw?.toLowerCase()] ?? sourceRaw;
   const medium = mediumNames[mediumRaw?.toLowerCase()] ?? mediumRaw;
@@ -121,8 +127,8 @@ export default function AdminMarketingPage() {
       <div className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-8">
         <section>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">MARKETING ATTRIBUTION</p>
-          <h2 className="mt-2 text-2xl font-semibold">Meta · UTM 유입 성과</h2>
-          <p className="mt-2 text-sm text-[#7b6d70]">광고·카카오톡 공유·네이버카페 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. UTM 또는 네이버카페 Referrer를 기준으로 자동 분류합니다.</p>
+          <h2 className="mt-2 text-2xl font-semibold">채널별 유입 성과</h2>
+          <p className="mt-2 text-sm text-[#7b6d70]">광고·공유 링크·검색·커뮤니티 등 식별 가능한 경로를 우선 분리하고, 출처를 확인할 수 없는 경우만 직접 유입으로 표시합니다.</p>
         </section>
 
         {!loading && !data?.ok ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{data?.message ?? "데이터를 불러오지 못했습니다."}</div> : null}
@@ -144,19 +150,19 @@ export default function AdminMarketingPage() {
 
         <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap gap-2">
-            {[['campaign','캠페인'],['ad','광고 소재'],['placement','노출 위치'],['recent','최근 유입']].map(([id,label]) => <button key={id} onClick={() => setTab(id as typeof tab)} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab===id?'bg-[#d88c9c] text-white':'bg-[#f6edef] text-[#6f6063]'}`}>{label}</button>)}
+            {[["campaign","캠페인"],["ad","광고 소재"],["placement","노출 위치"],["recent","최근 유입"]].map(([id,label]) => <button key={id} onClick={() => setTab(id as typeof tab)} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab===id?"bg-[#d88c9c] text-white":"bg-[#f6edef] text-[#6f6063]"}`}>{label}</button>)}
           </div>
 
           {tab !== "recent" ? (
             <div className="mt-5 overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-4">{tab === 'campaign' ? '캠페인' : tab === 'ad' ? '광고' : '노출 위치'}</th><th className="py-2 pr-4">유입</th><th className="py-2 pr-4">시작</th><th className="py-2 pr-4">완료</th><th className="py-2">완료율</th></tr></thead>
+                <thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-4">{tab === "campaign" ? "캠페인" : tab === "ad" ? "광고" : "노출 위치"}</th><th className="py-2 pr-4">유입</th><th className="py-2 pr-4">시작</th><th className="py-2 pr-4">완료</th><th className="py-2">완료율</th></tr></thead>
                 <tbody>{activeRows.length ? activeRows.map(row => <tr key={row.key} className="border-t border-[#f0e7e8]"><td className="max-w-[520px] break-words py-3 pr-4 font-medium">{row.label}</td><td className="py-3 pr-4">{row.visits}</td><td className="py-3 pr-4">{row.starts}</td><td className="py-3 pr-4">{row.completes}</td><td className="py-3">{rate(row.completes,row.starts)}</td></tr>) : <tr><td colSpan={5} className="py-8 text-center text-[#8a7b7e]">UTM/Meta 광고 파라미터가 들어온 뒤 표시됩니다.</td></tr>}</tbody>
               </table>
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full text-xs sm:text-sm"><thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-3">시각</th><th className="py-2 pr-3">유입 경로</th><th className="py-2 pr-3">캠페인</th><th className="py-2 pr-3">광고 소재</th><th className="py-2 pr-3">노출 위치</th><th className="py-2">결과</th></tr></thead><tbody>{(data?.recent ?? []).map((row,index)=><tr key={`${row.firstSeenAt}-${index}`} className="border-t border-[#f0e7e8]"><td className="whitespace-nowrap py-3 pr-3">{new Date(row.firstSeenAt).toLocaleString('ko-KR')}</td><td className="py-3 pr-3">{ownerFriendlyChannel(`${row.source} / ${row.medium}`)}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.campaign}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.content}</td><td className="py-3 pr-3">{row.placement}</td><td className="py-3">{row.completed ? `완료 ${row.beautyCode ?? ''}` : row.started ? '진행중' : '유입'}</td></tr>)}</tbody></table>
+              <table className="min-w-full text-xs sm:text-sm"><thead className="text-left text-xs text-[#7b6d70]"><tr><th className="py-2 pr-3">시각</th><th className="py-2 pr-3">유입 경로</th><th className="py-2 pr-3">캠페인</th><th className="py-2 pr-3">광고 소재</th><th className="py-2 pr-3">노출 위치</th><th className="py-2">결과</th></tr></thead><tbody>{(data?.recent ?? []).map((row,index)=><tr key={`${row.firstSeenAt}-${index}`} className="border-t border-[#f0e7e8]"><td className="whitespace-nowrap py-3 pr-3">{new Date(row.firstSeenAt).toLocaleString("ko-KR")}</td><td className="py-3 pr-3">{ownerFriendlyChannel(`${row.source} / ${row.medium}`)}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.campaign}</td><td className="max-w-[260px] break-words py-3 pr-3">{row.content}</td><td className="py-3 pr-3">{row.placement}</td><td className="py-3">{row.completed ? `완료 ${row.beautyCode ?? ""}` : row.started ? "진행중" : "유입"}</td></tr>)}</tbody></table>
             </div>
           )}
         </section>
