@@ -29,6 +29,14 @@ type Group = {
   completes: number;
 };
 
+type DailyTrend = {
+  date: string;
+  label: string;
+  visits: number;
+  starts: number;
+  completes: number;
+};
+
 function config() {
   return {
     url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -96,6 +104,33 @@ function groupBy(rows: Visit[], keyOf: (row: Visit) => string, labelOf?: (row: V
     map.set(key, current);
   }
   return [...map.values()].sort((a, b) => b.visits - a.visits);
+}
+
+function koreaDateParts(value: string) {
+  const date = new Date(value);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  return { date: `${year}-${month}-${day}`, label: `${Number(month)}/${Number(day)}` };
+}
+
+function dailyTrendOf(rows: Visit[]): DailyTrend[] {
+  const map = new Map<string, DailyTrend>();
+  for (const row of rows) {
+    const { date, label } = koreaDateParts(row.first_seen_at);
+    const current = map.get(date) ?? { date, label, visits: 0, starts: 0, completes: 0 };
+    current.visits += 1;
+    if (row.test_started) current.starts += 1;
+    if (row.test_completed) current.completes += 1;
+    map.set(date, current);
+  }
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
 }
 
 export async function GET() {
@@ -178,6 +213,7 @@ export async function GET() {
         completionRate: starts ? Math.round((completes / starts) * 1000) / 10 : 0,
         cafeClickRate: completes ? Math.round((cafeClicks / completes) * 1000) / 10 : 0,
       },
+      dailyTrend: dailyTrendOf(rows),
       sourceStats,
       campaignStats,
       adStats,
