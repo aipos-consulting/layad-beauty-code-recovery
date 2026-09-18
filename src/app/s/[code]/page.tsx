@@ -54,31 +54,25 @@ function getMarketingVisitId() {
   }
 }
 
-function recordKakaoShare(code: string) {
+async function recordKakaoShare(code: string) {
   const visitId = getMarketingVisitId();
-  const payload = JSON.stringify({
-    visitId,
-    action: "share_click",
-    shareChannel: "kakao",
-    sourcePath: window.location.pathname,
-    beautyCode: code,
-  });
-
-  try {
-    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-      const blob = new Blob([payload], { type: "application/json" });
-      if (navigator.sendBeacon("/api/marketing-attribution", blob)) return;
-    }
-  } catch {
-    // Fall back to fetch below.
-  }
-
-  void fetch("/api/marketing-attribution", {
+  const response = await fetch("/api/marketing-attribution", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: payload,
-    keepalive: true,
-  }).catch(() => undefined);
+    body: JSON.stringify({
+      visitId,
+      action: "share_click",
+      shareChannel: "kakao",
+      sourcePath: window.location.pathname,
+      beautyCode: code,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`share tracking failed: ${response.status} ${detail}`);
+  }
 }
 
 function isAndroidInAppBrowser() {
@@ -96,6 +90,7 @@ export default function SharePage() {
   const valid = isBeautyCode(code);
   const [status, setStatus] = useState("");
   const [ready, setReady] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [blockedInApp, setBlockedInApp] = useState(false);
 
   useEffect(() => {
@@ -149,13 +144,23 @@ export default function SharePage() {
     document.head.appendChild(script);
   }, [valid]);
 
-  const handleKakaoShare = () => {
-    if (!valid || blockedInApp || !ready || !window.Kakao) {
-      setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
+  const handleKakaoShare = async () => {
+    if (!valid || blockedInApp || !ready || !window.Kakao || sharing) {
+      if (!sharing) setStatus("카카오 공유 버튼을 준비하지 못했습니다.");
       return;
     }
 
-    recordKakaoShare(code);
+    setSharing(true);
+    setStatus("");
+
+    try {
+      await recordKakaoShare(code);
+    } catch (error) {
+      console.error("[Kakao Share Tracking]", error);
+      setStatus("공유 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      setSharing(false);
+      return;
+    }
 
     try {
       window.Kakao.Share.sendDefault({
@@ -183,6 +188,8 @@ export default function SharePage() {
     } catch (error) {
       console.error("[Kakao Share]", error);
       setStatus("카카오 공유를 실행하지 못했습니다.");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -211,10 +218,10 @@ export default function SharePage() {
             <button
               type="button"
               onClick={handleKakaoShare}
-              disabled={!ready}
+              disabled={!ready || sharing}
               className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              카카오톡으로 공유하기
+              {sharing ? "공유 준비 중..." : "카카오톡으로 공유하기"}
             </button>
           ) : null}
           <a
