@@ -110,6 +110,15 @@ function shareChannel(text: string) {
   return "other";
 }
 
+function beautyCodeFromPage() {
+  const heading = Array.from(document.querySelectorAll("h1,h2"))
+    .map((element) => element.textContent?.trim().toUpperCase() ?? "")
+    .find((value) => /^[OD][GM][PC][VE]$/.test(value));
+  if (heading) return heading;
+  const match = window.location.pathname.match(/\/(?:result|s)\/([OD][GM][PC][VE])$/i);
+  return match?.[1]?.toUpperCase() ?? null;
+}
+
 export default function MarketingAnalytics() {
   const pathname = usePathname();
   const observedMilestones = useRef(new Set<number>());
@@ -252,10 +261,22 @@ export default function MarketingAnalytics() {
       }
 
       if (/(kakao|카카오|line|라인|share|공유|copy|복사|url|링크)/i.test(text)) {
+        const channel = shareChannel(text);
         trackEvent("share_click", {
-          share_channel: shareChannel(text),
+          share_channel: channel,
           source_path: pathname ?? "",
         });
+
+        const isActualKakaoShare = channel === "kakao" && /^\/s\/[OD][GM][PC][VE]$/i.test(pathname ?? "");
+        const isCopyShare = channel === "url_copy";
+        if (isActualKakaoShare || isCopyShare) {
+          postAttribution({
+            action: "share_click",
+            shareChannel: channel,
+            sourcePath: pathname ?? "",
+            beautyCode: beautyCodeFromPage(),
+          });
+        }
       }
     };
 
