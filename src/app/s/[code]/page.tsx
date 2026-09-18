@@ -16,6 +16,8 @@ declare global {
   }
 }
 
+const MARKETING_VISIT_KEY = "layad-marketing-visit-id-v1";
+
 function isBeautyCode(value: string) {
   return /^[OD][GM][PC][VE]$/.test(value);
 }
@@ -36,6 +38,36 @@ function kakaoSharedResultUrl(code: string) {
 
 function shareImageUrl(code: string) {
   return `https://www.layad16.com/api/share-card/${code}`;
+}
+
+function getMarketingVisitId() {
+  try {
+    const existing = window.sessionStorage.getItem(MARKETING_VISIT_KEY);
+    if (existing) return existing;
+    const created = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+    window.sessionStorage.setItem(MARKETING_VISIT_KEY, created);
+    return created;
+  } catch {
+    return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
+function recordKakaoShare(code: string) {
+  const visitId = getMarketingVisitId();
+  void fetch("/api/marketing-attribution", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      visitId,
+      action: "share_click",
+      shareChannel: "kakao",
+      sourcePath: window.location.pathname,
+      beautyCode: code,
+    }),
+    keepalive: true,
+  }).catch(() => undefined);
 }
 
 function isAndroidInAppBrowser() {
@@ -126,8 +158,8 @@ export default function SharePage() {
           {
             title: "결과 보기",
             link: {
-              mobileWebUrl: resultUrl(code),
-              webUrl: resultUrl(code),
+              mobileWebUrl: kakaoSharedResultUrl(code),
+              webUrl: kakaoSharedResultUrl(code),
             },
           },
         ],
@@ -164,6 +196,7 @@ export default function SharePage() {
             <a
               id="layad-kakao-share-btn"
               href="javascript:;"
+              onClickCapture={() => recordKakaoShare(code)}
               className="rounded-full bg-[#FEE500] px-5 py-4 text-sm font-bold text-[#191919]"
             >
               카카오톡으로 공유하기
