@@ -162,7 +162,11 @@ export default function TestPage() {
 
   const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
 
-  useEffect(() => {\n    if (completed) window.scrollTo({ top: 0, left: 0, behavior: "auto" });\n  }, [completed]);\n\n  if (completed) return (
+  useEffect(() => {
+    if (completed) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [completed]);
+
+  if (completed) return (
     <main className="min-h-screen bg-[#fff8f8] px-5 py-8 text-[#382d2d] sm:px-8">
       <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
