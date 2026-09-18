@@ -24,6 +24,16 @@ function resultUrl(code: string) {
   return `https://www.layad16.com/result/${code}`;
 }
 
+function kakaoSharedResultUrl(code: string) {
+  const params = new URLSearchParams({
+    utm_source: "kakao",
+    utm_medium: "share",
+    utm_campaign: "beauty_result",
+    utm_content: code,
+  });
+  return `${resultUrl(code)}?${params.toString()}`;
+}
+
 function shareImageUrl(code: string) {
   return `https://www.layad16.com/api/share-card/${code}`;
 }
@@ -108,8 +118,8 @@ export default function SharePage() {
           description: "나의 Beauty Code 결과를 확인해 보세요.",
           imageUrl: shareImageUrl(code),
           link: {
-            mobileWebUrl: resultUrl(code),
-            webUrl: resultUrl(code),
+            mobileWebUrl: kakaoSharedResultUrl(code),
+            webUrl: kakaoSharedResultUrl(code),
           },
         },
         buttons: [
