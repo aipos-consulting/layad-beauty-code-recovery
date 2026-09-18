@@ -37,6 +37,7 @@ function ownerFriendlyChannel(label: string) {
     "direct / none": "직접 유입",
     "google / cpc": "구글 검색광고",
     "naver / cpc": "네이버 검색광고",
+    "kakao / share": "카카오톡 공유 유입",
     "kakao / social": "카카오 유입",
     "line / social": "LINE 유입",
   };
@@ -49,7 +50,7 @@ function ownerFriendlyChannel(label: string) {
     kakao: "카카오", line: "LINE", direct: "직접",
   };
   const mediumNames: Record<string, string> = {
-    paid: "광고", paid_social: "광고", cpc: "검색광고", social: "소셜 유입", community: "커뮤니티 유입", organic: "자연 유입", none: "유입",
+    paid: "광고", paid_social: "광고", cpc: "검색광고", share: "공유 유입", social: "소셜 유입", community: "커뮤니티 유입", organic: "자연 유입", none: "유입",
   };
   const source = sourceNames[sourceRaw?.toLowerCase()] ?? sourceRaw;
   const medium = mediumNames[mediumRaw?.toLowerCase()] ?? mediumRaw;
@@ -121,7 +122,7 @@ export default function AdminMarketingPage() {
         <section>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">MARKETING ATTRIBUTION</p>
           <h2 className="mt-2 text-2xl font-semibold">Meta · UTM 유입 성과</h2>
-          <p className="mt-2 text-sm text-[#7b6d70]">광고·네이버카페 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. UTM 또는 네이버카페 Referrer를 기준으로 자동 분류합니다.</p>
+          <p className="mt-2 text-sm text-[#7b6d70]">광고·카카오톡 공유·네이버카페 유입부터 테스트 시작·완료, 네이버카페 이동까지 집계합니다. UTM 또는 네이버카페 Referrer를 기준으로 자동 분류합니다.</p>
         </section>
 
         {!loading && !data?.ok ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{data?.message ?? "데이터를 불러오지 못했습니다."}</div> : null}
