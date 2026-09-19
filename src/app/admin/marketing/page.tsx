@@ -18,6 +18,9 @@ type Data = {
     kakaoShares: number;
     kakaoShareVisits: number;
     kakaoShareRate: number;
+    linkCopyShares: number;
+    linkCopyShareVisits: number;
+    linkCopyShareRate: number;
     startRate: number;
     completionRate: number;
     cafeClickRate: number;
@@ -155,6 +158,22 @@ function TrendChart({ rows }: { rows: DailyTrend[] }) {
   );
 }
 
+function ShareMetricGroup({ title, items, loading }: { title: string; items: Array<[string, string | number]>; loading: boolean }) {
+  return (
+    <div className="rounded-2xl border border-[#eadfe1] bg-[#fffafa] p-4 sm:p-5">
+      <h4 className="text-sm font-semibold text-[#5f5053]">{title}</h4>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {items.map(([label, value]) => (
+          <article key={label} className="rounded-2xl border border-[#efe3e5] bg-white p-4">
+            <p className="text-xs text-[#7c6e71]">{label}</p>
+            <p className="mt-2 text-2xl font-semibold">{loading ? "—" : value}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminMarketingPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,7 +216,7 @@ export default function AdminMarketingPage() {
         <section>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">MARKETING ATTRIBUTION</p>
           <h2 className="mt-2 text-2xl font-semibold">채널별 유입 성과</h2>
-          <p className="mt-2 text-sm text-[#7b6d70]">광고·공유 링크·검색·커뮤니티 등 식별 가능한 경로를 우선 분리하고, 출처를 확인할 수 없는 경우만 직접 유입으로 표시합니다.</p>
+          <p className="mt-2 text-sm text-[#7b6d70]">광고·검색·커뮤니티 등 식별 가능한 실제 유입을 집계하고, 공유 행동과 공유 유입은 아래 공유 성과에서 별도로 표시합니다.</p>
         </section>
 
         {!loading && !data?.ok ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{data?.message ?? "데이터를 불러오지 못했습니다."}</div> : null}
@@ -212,14 +231,6 @@ export default function AdminMarketingPage() {
             ["완료율", `${k?.completionRate ?? 0}%`],
             ["카페 이동", k?.cafeClicks ?? 0],
             ["카페 이동률", `${k?.cafeClickRate ?? 0}%`],
-          ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
-        </section>
-
-        <section className="grid gap-3 sm:grid-cols-3">
-          {[
-            ["카카오 공유 실행", k?.kakaoShares ?? 0],
-            ["카카오 공유 유입", k?.kakaoShareVisits ?? 0],
-            ["공유→유입률", `${k?.kakaoShareRate ?? 0}%`],
           ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs text-[#7c6e71]">{label}</p><p className="mt-3 text-2xl font-semibold">{loading ? "—" : value}</p></article>)}
         </section>
 
@@ -239,6 +250,33 @@ export default function AdminMarketingPage() {
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#a94f65]" />테스트 완료</span>
           </div>
           <div className="mt-3">{loading ? <div className="py-12 text-center text-sm text-[#8a7b7e]">불러오는 중...</div> : <TrendChart rows={trendRows} />}</div>
+        </section>
+
+        <section className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <h3 className="text-lg font-semibold">공유 성과</h3>
+            <p className="mt-1 text-xs text-[#7b6d70]">공유 버튼 실행과 공유 링크를 통한 실제 유입을 채널별로 분리합니다.</p>
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <ShareMetricGroup
+              title="카카오톡 공유"
+              loading={loading}
+              items={[
+                ["공유 실행", k?.kakaoShares ?? 0],
+                ["공유 유입", k?.kakaoShareVisits ?? 0],
+                ["공유→유입률", `${k?.kakaoShareRate ?? 0}%`],
+              ]}
+            />
+            <ShareMetricGroup
+              title="링크 복사 공유"
+              loading={loading}
+              items={[
+                ["링크 복사 실행", k?.linkCopyShares ?? 0],
+                ["복사 링크 유입", k?.linkCopyShareVisits ?? 0],
+                ["복사→유입률", `${k?.linkCopyShareRate ?? 0}%`],
+              ]}
+            />
+          </div>
         </section>
 
         <StatTable title="유입 경로별 성과" rows={data?.sourceStats ?? []} />
