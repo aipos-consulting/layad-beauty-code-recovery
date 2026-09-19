@@ -188,14 +188,19 @@ export async function GET() {
     const starts = rows.filter((row) => row.test_started).length;
     const completes = rows.filter((row) => row.test_completed).length;
     const cafeClicks = rows.filter((row) => row.naver_cafe_clicked).length;
+
     const kakaoShares = shareEvents.filter((event) => event.channel.toLowerCase() === "kakao").length;
     const kakaoShareVisits = rows.filter((row) => sourceOf(row).toLowerCase() === "kakao" && mediumOf(row).toLowerCase() === "share").length;
     const kakaoShareRate = kakaoShares ? Math.round((kakaoShareVisits / kakaoShares) * 1000) / 10 : 0;
 
+    const linkCopyShares = shareEvents.filter((event) => ["url_copy", "link_copy"].includes(event.channel.toLowerCase())).length;
+    const linkCopyShareVisits = rows.filter((row) => sourceOf(row).toLowerCase() === "link_copy" && mediumOf(row).toLowerCase() === "share").length;
+    const linkCopyShareRate = linkCopyShares ? Math.round((linkCopyShareVisits / linkCopyShares) * 1000) / 10 : 0;
+
     const sourceStats = groupBy(
       rows,
       (row) => `${sourceOf(row)} / ${mediumOf(row)}`,
-    ).slice(0, 30);
+    ).filter((row) => !["kakao / share", "link_copy / share"].includes(row.key.toLowerCase())).slice(0, 30);
 
     const campaignStats = groupBy(
       rows.filter((row) => row.utm_campaign || row.campaign_id),
@@ -238,6 +243,9 @@ export async function GET() {
         kakaoShares,
         kakaoShareVisits,
         kakaoShareRate,
+        linkCopyShares,
+        linkCopyShareVisits,
+        linkCopyShareRate,
         startRate: totalVisits ? Math.round((starts / totalVisits) * 1000) / 10 : 0,
         completionRate: starts ? Math.round((completes / starts) * 1000) / 10 : 0,
         cafeClickRate: completes ? Math.round((cafeClicks / completes) * 1000) / 10 : 0,
