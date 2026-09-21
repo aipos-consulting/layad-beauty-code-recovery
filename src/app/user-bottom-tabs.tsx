@@ -34,7 +34,7 @@ export default function UserBottomTabs() {
         {tabs.map((tab) => {
           const on = active(pathname, tab.href);
           return (
-            <Link key={tab.href} href={tab.href} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 text-[11px] font-semibold transition ${on ? "text-[#9b5f61]" : "text-[#736c66]"}`}>
+            <Link prefetch={false} key={tab.href} href={tab.href} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 text-[11px] font-semibold transition ${on ? "text-[#9b5f61]" : "text-[#736c66]"}`}>
               <span className={`text-xl leading-none ${on ? "scale-110" : ""}`}>{tab.icon}</span>
               <span>{tab.label}</span>
             </Link>
