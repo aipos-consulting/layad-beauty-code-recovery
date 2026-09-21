@@ -21,12 +21,15 @@ export async function POST(request: NextRequest) {
 
   const { data: user, error } = await supabase
     .from("layad_users")
-    .select("id,email,password_hash,email_verified")
+    .select("id,email,password_hash,email_verified,blocked_at,blocked_reason")
     .eq("email", email)
     .maybeSingle();
 
   if (error || !user?.id || !user.password_hash) {
     return NextResponse.json({ ok: false, message: "이메일 또는 비밀번호를 확인해 주세요." }, { status: 401 });
+  }
+  if (user.blocked_at) {
+    return NextResponse.json({ ok: false, message: "이 계정은 현재 이용이 제한되어 있습니다." }, { status: 403 });
   }
   if (!user.email_verified) {
     return NextResponse.json({ ok: false, message: "인증 메일을 확인한 뒤 로그인해 주세요." }, { status: 403 });
