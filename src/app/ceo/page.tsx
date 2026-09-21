@@ -71,7 +71,7 @@ export default function CeoPage() {
       }
     };
     void load();
-    const timer = window.setInterval(() => void load(), 15000);
+    const timer = window.setInterval(() => void load(), 300000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, []);
 
@@ -118,7 +118,7 @@ export default function CeoPage() {
         </article>
 
         <article className="rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4"><h2 className="text-lg font-semibold">분석 운영 현황</h2><span className="text-xs text-emerald-700">15초 자동 갱신 · KST</span></div>
+          <div className="flex items-start justify-between gap-4"><h2 className="text-lg font-semibold">분석 운영 현황</h2><span className="text-xs text-emerald-700">5분 자동 갱신 · KST</span></div>
           <dl className="mt-5 space-y-4 text-sm">
             <div className="flex justify-between"><dt className="text-[#7b6d70]">총 실행</dt><dd className="font-semibold">{usage?.ok ? number(usage.localRuns?.total) : "—"}</dd></div>
             <div className="flex justify-between"><dt className="text-[#7b6d70]">완료</dt><dd className="font-semibold">{usage?.ok ? number(usage.localRuns?.completed) : "—"}</dd></div>
