@@ -45,11 +45,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <aside className="hidden min-h-screen w-64 shrink-0 border-r border-[#eadfe1] bg-white px-4 py-6 lg:flex lg:flex-col" style={{ minWidth: 256, maxWidth: 256 }}>
         <div className="px-3"><p className="text-lg font-semibold tracking-[.12em] text-[#a94f65]">LAYAD SYSTEM ADMIN</p></div>
         <nav className="mt-7 flex-1 space-y-6">
-          {menuGroups.map(group => <section key={group.label}><p className="px-3 text-[11px] font-semibold tracking-[.12em] text-[#a39598]">{group.label}</p><div className="mt-2 space-y-1">{group.items.map(item => <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-3 text-sm transition ${isActive(pathname, item.href) ? "bg-[#fff0f3] font-semibold text-[#a94f65]" : "text-[#65585b] hover:bg-[#fbf3f5]"}`}>{item.label}</Link>)}</div></section>)}
+          {menuGroups.map(group => <section key={group.label}><p className="px-3 text-[11px] font-semibold tracking-[.12em] text-[#a39598]">{group.label}</p><div className="mt-2 space-y-1">{group.items.map(item => <Link prefetch={false} key={item.href} href={item.href} className={`block rounded-xl px-3 py-3 text-sm transition ${isActive(pathname, item.href) ? "bg-[#fff0f3] font-semibold text-[#a94f65]" : "text-[#65585b] hover:bg-[#fbf3f5]"}`}>{item.label}</Link>)}</div></section>)}
         </nav>
         <div className="mt-6 space-y-2">
-          <Link href="/ceo" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">CEO Dashboard</Link>
-          <Link href="/" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">사용자 화면</Link>
+          <Link prefetch={false} href="/ceo" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">CEO Dashboard</Link>
+          <Link prefetch={false} href="/" className="block rounded-xl border border-[#eadfe1] px-3 py-3 text-center text-sm font-semibold text-[#65585b] hover:bg-[#fbf3f5]">사용자 화면</Link>
           <button type="button" onClick={() => void logout()} disabled={loggingOut} className="block w-full rounded-xl border border-[#e5c7cc] px-3 py-3 text-center text-sm font-semibold text-[#a94f65] hover:bg-[#fff0f3] disabled:opacity-50">{loggingOut ? "로그아웃 중..." : "로그아웃"}</button>
         </div>
       </aside>
@@ -57,7 +57,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         <div className="border-b border-[#eadfe1] bg-white px-3 py-3 lg:hidden">
           <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {menuGroups.map(group => group.items.map(item => <Link key={item.href} href={item.href} className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>{item.label}</Link>))}
+            {menuGroups.map(group => group.items.map(item => <Link prefetch={false} key={item.href} href={item.href} className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm ${isActive(pathname, item.href) ? "bg-[#a94f65] font-semibold text-white" : "bg-[#f5ecee] text-[#65585b]"}`}>{item.label}</Link>))}
             <button type="button" onClick={() => void logout()} disabled={loggingOut} className="shrink-0 whitespace-nowrap rounded-full border border-[#e5c7cc] bg-white px-4 py-2 text-sm font-semibold text-[#a94f65] disabled:opacity-50">{loggingOut ? "로그아웃 중..." : "로그아웃"}</button>
           </div>
         </div>
