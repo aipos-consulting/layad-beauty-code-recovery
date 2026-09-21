@@ -68,11 +68,22 @@ async function independentUserById(id: string) {
   if (!admin) return null;
   const { data, error } = await admin
     .from("layad_users")
-    .select("id,email,email_verified")
+    .select("id,email,email_verified,blocked_at")
     .eq("id", id)
     .maybeSingle();
-  if (error || !data?.id || !data.email_verified) return null;
+  if (error || !data?.id || !data.email_verified || data.blocked_at) return null;
   return { id: data.id as string, email: String(data.email ?? "") };
+}
+
+async function isBlockedIndependentUser(id: string) {
+  const admin = adminUserClient();
+  if (!admin) return false;
+  const { data, error } = await admin
+    .from("layad_users")
+    .select("blocked_at")
+    .eq("id", id)
+    .maybeSingle();
+  return !error && Boolean(data?.blocked_at);
 }
 
 export async function resolveUser(request: NextRequest) {
@@ -80,6 +91,7 @@ export async function resolveUser(request: NextRequest) {
   if (session) {
     const user = await independentUserById(session.id);
     if (user) return user;
+    if (await isBlockedIndependentUser(session.id)) return null;
   }
 
   // Transitional compatibility for sessions issued by the previous Supabase Auth flow.
@@ -92,7 +104,10 @@ export async function resolveUser(request: NextRequest) {
     });
     if (response.ok) {
       const legacyUser = await response.json() as { id?: string; email?: string };
-      if (legacyUser.id) return { id: legacyUser.id, email: legacyUser.email ?? "" };
+      if (legacyUser.id) {
+        if (await isBlockedIndependentUser(legacyUser.id)) return null;
+        return { id: legacyUser.id, email: legacyUser.email ?? "" };
+      }
     }
   }
 
@@ -100,12 +115,14 @@ export async function resolveUser(request: NextRequest) {
   if (!persisted) return null;
   const independent = await independentUserById(persisted.id);
   if (independent) return independent;
+  if (await isBlockedIndependentUser(persisted.id)) return null;
 
   if (!url || !serviceRoleKey) return null;
   const admin = adminUserClient();
   if (!admin) return null;
   const { data, error } = await admin.auth.admin.getUserById(persisted.id);
   if (error || !data.user) return null;
+  if (await isBlockedIndependentUser(data.user.id)) return null;
   return { id: data.user.id, email: data.user.email ?? persisted.email };
 }
 
