@@ -104,10 +104,25 @@ async function createProduct(inputType: "name" | "url", inputValue: string, key:
   const rows = await response.json() as ProductCandidate[];
   if (!rows[0]?.id) throw new Error("상품 ID를 생성하지 못했습니다."); return rows[0];
 }
-async function fitCount(productId: string, key: string) {
-  const response = await db(`product_type_fits?product_id=eq.${productId}&select=beauty_code&limit=17`, { method: "GET" }, key);
-  if (!response.ok) return 0;
-  const rows = await response.json() as Array<{ beauty_code: string }>; return new Set(rows.map((row) => row.beauty_code)).size;
+async function analysisCompleteness(productId: string, key: string) {
+  const [axisResponse, fitResponse] = await Promise.all([
+    db(`product_axis_profiles?product_id=eq.${encodeURIComponent(productId)}&select=axis&limit=8`, { method: "GET" }, key),
+    db(`product_type_fits?product_id=eq.${encodeURIComponent(productId)}&select=beauty_code&limit=32`, { method: "GET" }, key),
+  ]);
+  if (!axisResponse.ok || !fitResponse.ok) return { complete: false, axisCount: 0, fitCount: 0 };
+  const axes = await axisResponse.json() as Array<{ axis: string }>;
+  const fits = await fitResponse.json() as Array<{ beauty_code: string }>;
+  const axisCount = new Set(axes.map((row) => row.axis)).size;
+  const fitCount = new Set(fits.map((row) => row.beauty_code)).size;
+  return { complete: axisCount >= 4 && fitCount >= 16, axisCount, fitCount };
+}
+async function setRequestStatus(requestId: string, status: "completed" | "submitted", key: string) {
+  const response = await db(`product_analysis_requests?id=eq.${encodeURIComponent(requestId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ status }),
+  }, key);
+  if (!response.ok) throw new Error(`분석 요청 상태 보정 실패: ${response.status}`);
 }
 
 export async function POST(request: NextRequest) {
@@ -122,10 +137,13 @@ export async function POST(request: NextRequest) {
   if(body.inputType==="name" && !UUID.test(body.sessionId?.trim()??"") && body.beautyCode && BEAUTY_CODE.test(body.beautyCode)){
     try{
       const row=await fastNameRequest(request,inputValue,body.beautyCode,key);
+      const completeness = await analysisCompleteness(row.product_id, key);
+      const status = completeness.complete ? "completed" : "submitted";
+      if (row.request_status !== status) await setRequestStatus(row.request_id, status, key);
       return NextResponse.json({
         ok:true,requestId:row.request_id,sessionId:row.session_id,productId:row.product_id,
-        productName:row.product_name??inputValue,status:row.request_status,resolvedByAlias:row.resolved_by_alias,resolvedByBrand:false,
-        message:row.request_status==="completed"?"이미 분석된 상품 결과가 있습니다.":"상품 분석 요청을 등록했습니다.",
+        productName:row.product_name??inputValue,status,resolvedByAlias:row.resolved_by_alias,resolvedByBrand:false,
+        message:status==="completed"?"이미 분석된 상품 결과가 있습니다.":"상품 분석 요청을 등록했습니다.",
       });
     }catch(error){
       console.error("Fast name request failed; falling back",error);
@@ -152,7 +170,8 @@ export async function POST(request: NextRequest) {
       else if (brandMatches.length > 1) return NextResponse.json({ ok: false, code: "AMBIGUOUS_BRAND", message: `${inputValue} 브랜드 상품이 여러 개입니다. 분석할 정확한 상품명을 입력해 주세요.` }, { status: 409 });
     }
     if (!product) product = await createProduct(body.inputType, inputValue, key);
-    const count = await fitCount(product.id, key); const status = count === 16 ? "completed" : "submitted";
+    const completeness = await analysisCompleteness(product.id, key);
+    const status = completeness.complete ? "completed" : "submitted";
     const storedInput = (resolvedByBrand || resolvedByAlias) && product.canonical_name ? product.canonical_name : inputValue;
     const insert = await db("product_analysis_requests", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ session_id: sessionId, input_type: body.inputType, input_value: storedInput, product_id: product.id, status }) }, key);
     if (!insert.ok) throw new Error(`분석 요청 저장 실패: ${insert.status}`);
