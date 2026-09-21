@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 
 function config(){return{url:process.env.SUPABASE_URL??process.env.NEXT_PUBLIC_SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SECRET_KEY};}
 async function read<T>(url:string,key:string,path:string):Promise<T>{const r=await fetch(`${url}/rest/v1/${path}`,{headers:{apikey:key,Authorization:`Bearer ${key}`},cache:"no-store"});if(!r.ok)throw new Error(`${r.status} ${await r.text()}`);return await r.json() as T;}
+async function readAll<T>(url:string,key:string,path:string):Promise<T[]>{
+ const pageSize=1000; const all:T[]=[]; let offset=0;
+ while(true){
+  const sep=path.includes("?")?"&":"?";
+  const page=await read<T[]>(url,key,`${path}${sep}limit=${pageSize}&offset=${offset}`);
+  all.push(...page);
+  if(page.length<pageSize)break;
+  offset+=pageSize;
+ }
+ return all;
+}
 function dayKst(v:string){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(v));}
 function pct(n:number,d:number){return d?Math.round(n/d*1000)/10:0;}
 function change(cur:number,prev:number){if(!prev)return cur?100:null;return Math.round((cur-prev)/prev*1000)/10;}
@@ -10,10 +21,10 @@ export async function GET(){
  const {url,key}=config(); if(!url||!key)return NextResponse.json({ok:false,code:"SUPABASE_NOT_CONFIGURED"},{status:503});
  try{
   const [visits,sessions,requests,saves] = await Promise.all([
-   read<Array<{visit_id:string;created_at:string;utm_source:string|null;utm_campaign:string|null;referrer:string|null;test_started:boolean;test_completed:boolean;beauty_code:string|null}>>(url,key,"marketing_visits?select=visit_id,created_at,utm_source,utm_campaign,referrer,test_started,test_completed,beauty_code&order=created_at.asc&limit=20000"),
-   read<Array<{id:string;created_at:string;completed:boolean;beauty_code:string|null;age_band:string|null;country_code:string|null;device_type:string|null;excluded_from_statistics:boolean|null}>>(url,key,"test_sessions?select=id,created_at,completed,beauty_code,age_band,country_code,device_type,excluded_from_statistics&order=created_at.asc&limit=20000"),
-   read<Array<{id:string;session_id:string;input_value:string;status:string;product_id:string|null;created_at:string;deleted_at:string|null}>>(url,key,"product_analysis_requests?select=id,session_id,input_value,status,product_id,created_at,deleted_at&order=created_at.asc&limit=20000"),
-   read<Array<{id:string;product_name:string;beauty_code:string;fit_score:number;created_at:string}>>(url,key,"user_saved_products?select=id,product_name,beauty_code,fit_score,created_at&order=created_at.asc&limit=20000")
+   readAll<{visit_id:string;created_at:string;utm_source:string|null;utm_campaign:string|null;referrer:string|null;test_started:boolean;test_completed:boolean;beauty_code:string|null}>(url,key,"marketing_visits?select=visit_id,created_at,utm_source,utm_campaign,referrer,test_started,test_completed,beauty_code&order=created_at.asc"),
+   readAll<{id:string;created_at:string;completed:boolean;beauty_code:string|null;age_band:string|null;country_code:string|null;device_type:string|null;excluded_from_statistics:boolean|null}>(url,key,"test_sessions?select=id,created_at,completed,beauty_code,age_band,country_code,device_type,excluded_from_statistics&order=created_at.asc"),
+   readAll<{id:string;session_id:string;input_value:string;status:string;product_id:string|null;created_at:string;deleted_at:string|null}>(url,key,"product_analysis_requests?select=id,session_id,input_value,status,product_id,created_at,deleted_at&order=created_at.asc"),
+   readAll<{id:string;product_name:string;beauty_code:string;fit_score:number;created_at:string}>(url,key,"user_saved_products?select=id,product_name,beauty_code,fit_score,created_at&order=created_at.asc")
   ]);
   const goodSessions=sessions.filter(s=>!s.excluded_from_statistics);
   const completed=goodSessions.filter(s=>s.completed&&s.beauty_code);
@@ -46,6 +57,6 @@ export async function GET(){
   const crossMap=new Map<string,{count:number}>();for(const s of completed){const key2=`${s.age_band??"unknown"}|${s.beauty_code}`;crossMap.set(key2,{count:(crossMap.get(key2)?.count??0)+1});}
   const ageCode=[...crossMap.entries()].map(([k,v])=>{const [age,code]=k.split("|");return{age,code,count:v.count};}).sort((a,b)=>b.count-a.count).slice(0,20);
 
-  return NextResponse.json({ok:true,phase1:{funnel,acquisition,beautyCodes,products},phase2:{daily:days,comparison,ageCode},generatedAt:new Date().toISOString()});
+  return NextResponse.json({ok:true,phase1:{funnel,acquisition,beautyCodes,products},phase2:{daily:days,comparison,ageCode},meta:{rowCounts:{visits:visits.length,sessions:sessions.length,requests:requests.length,saves:saves.length},pagination:"1000-row pages until exhausted"},generatedAt:new Date().toISOString()});
  }catch(e){return NextResponse.json({ok:false,code:"INSIGHT_READ_FAILED",message:e instanceof Error?e.message:"Unknown"},{status:500});}
 }
