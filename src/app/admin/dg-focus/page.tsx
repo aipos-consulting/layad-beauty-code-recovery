@@ -10,12 +10,13 @@ type DgData = {
     completedUsers: number;
     dgUsers: number;
     dgShare: number;
+    dgMembers: number;
     dgAnalysisUsers: number;
     dgAnalysisRate: number;
     dgAnalysisRequests: number;
   };
   subtypes?: Array<{ code: string; count: number; share: number }>;
-  channels?: Array<{ key: string; label: string; users: number; analyses: number; analysisRate: number }>;
+  channels?: Array<{ key: string; label: string; users: number; share: number }>;
   products?: Array<{ name: string; brand: string; category: string; requests: number; users: number }>;
   generatedAt?: string;
 };
@@ -49,11 +50,12 @@ export default function DgFocusPage() {
 
   const k = data.kpis;
   const cards = [
-    ["DG 사용자", fmt(k?.dgUsers), "테스트 완료 후 DG 계열로 판정된 사용자"],
-    ["DG 비중", pct(k?.dgShare), "전체 테스트 완료자 중 DG 비중"],
-    ["DG 상품분석 사용자", fmt(k?.dgAnalysisUsers), "DG 중 상품 적합도 분석을 실행한 사용자"],
-    ["DG 상품분석률", pct(k?.dgAnalysisRate), "DG 사용자 대비 상품분석 사용자 비율"],
-    ["DG 상품분석 건수", fmt(k?.dgAnalysisRequests), "DG 사용자의 누적 상품분석 요청"],
+    ["DG 유입 사용자", fmt(k?.dgUsers), "테스트 완료 후 DG 계열로 판정된 유입 건"],
+    ["DG 비중", pct(k?.dgShare), "전체 테스트 완료 유입 중 DG 비중"],
+    ["DG 회원", fmt(k?.dgMembers), "현재 Beauty Code가 DG인 회원"],
+    ["DG 상품분석 회원", fmt(k?.dgAnalysisUsers), "상품분석 결과가 저장된 DG 회원"],
+    ["DG 상품분석률", pct(k?.dgAnalysisRate), "DG 회원 대비 상품분석 회원 비율"],
+    ["DG 상품분석 결과", fmt(k?.dgAnalysisRequests), "DG 회원 계정에 저장된 상품분석 결과"],
   ];
 
   return <main className="min-h-screen bg-[#fbf7f7] p-5 text-[#382d2d] sm:p-8">
@@ -64,7 +66,7 @@ export default function DgFocusPage() {
         <p className="mt-2 text-sm text-[#7b6d70]">DGPV · DGPE · DGCV · DGCE 사용자의 유입과 상품 관심 행동을 판매 타겟 관점에서 분석합니다.</p>
       </header>
 
-      <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         {cards.map(([label, value, note]) => <article key={label} className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm">
           <p className="text-xs text-[#7b6d70]">{label}</p>
           <p className="mt-2 text-2xl font-semibold">{value}</p>
@@ -73,7 +75,7 @@ export default function DgFocusPage() {
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
-        <div><h2 className="text-lg font-semibold">DG 하위유형 분포</h2><p className="mt-1 text-xs text-[#7b6d70]">DG 판매 타겟을 4개 하위 Beauty Code로 분리합니다.</p></div>
+        <div><h2 className="text-lg font-semibold">DG 하위유형 분포</h2><p className="mt-1 text-xs text-[#7b6d70]">완료 유입 기준으로 DG 판매 타겟을 4개 하위 Beauty Code로 분리합니다.</p></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {(data.subtypes ?? []).map((row) => <article key={row.code} className="rounded-2xl bg-[#fbf7f7] p-5">
             <div className="flex items-center justify-between"><span className="text-lg font-semibold">{row.code}</span><span className="rounded-full bg-[#fff0f3] px-3 py-1 text-xs font-semibold text-[#a94f65]">{pct(row.share)}</span></div>
@@ -86,32 +88,32 @@ export default function DgFocusPage() {
       <section className="mt-5 grid gap-5 xl:grid-cols-2">
         <article className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold">DG 유입채널</h2>
-          <p className="mt-1 text-xs text-[#7b6d70]">어떤 채널에서 DG가 들어오고 상품분석까지 이어지는지 봅니다.</p>
-          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[560px] text-sm">
-            <thead className="text-left text-xs text-[#8a7d80]"><tr><th className="pb-3">채널</th><th>DG 사용자</th><th>상품분석</th><th>분석/사용자</th></tr></thead>
-            <tbody>{(data.channels ?? []).map((row) => <tr key={row.key} className="border-t border-[#f0e7e9]"><td className="py-3 font-medium">{row.label}</td><td>{fmt(row.users)}</td><td>{fmt(row.analyses)}</td><td>{pct(row.analysisRate)}</td></tr>)}</tbody>
+          <p className="mt-1 text-xs text-[#7b6d70]">유입채널은 marketing visit 기준으로 별도 집계합니다.</p>
+          <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[460px] text-sm">
+            <thead className="text-left text-xs text-[#8a7d80]"><tr><th className="pb-3">채널</th><th>DG 유입</th><th>DG 유입 비중</th></tr></thead>
+            <tbody>{(data.channels ?? []).map((row) => <tr key={row.key} className="border-t border-[#f0e7e9]"><td className="py-3 font-medium">{row.label}</td><td>{fmt(row.users)}</td><td>{pct(row.share)}</td></tr>)}</tbody>
           </table></div>
         </article>
 
         <article className="rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold">DG 판매 타겟 기준</h2>
-          <p className="mt-1 text-xs text-[#7b6d70]">1차는 기존 운영 데이터만 읽어 안정적으로 관찰합니다.</p>
+          <p className="mt-1 text-xs text-[#7b6d70]">유입과 회원 상품행동을 서로 다른 식별키로 안전하게 관리합니다.</p>
           <div className="mt-4 space-y-3 text-sm">
-            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>1. DG 판정</b><p className="mt-1 text-[#7b6d70]">Beauty Code가 DGPV, DGPE, DGCV, DGCE인 완료 사용자입니다.</p></div>
-            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>2. 관심 행동</b><p className="mt-1 text-[#7b6d70]">상품 적합도 분석 실행을 구매관심의 1차 행동지표로 사용합니다.</p></div>
-            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>3. 다음 단계</b><p className="mt-1 text-[#7b6d70]">데이터가 충분히 쌓이면 재방문·공유·구매 CTA를 결합한 DG High Intent Score로 확장할 수 있습니다.</p></div>
+            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>1. DG 유입</b><p className="mt-1 text-[#7b6d70]">marketing_visits에서 완료된 DG Beauty Code를 집계합니다.</p></div>
+            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>2. DG 상품행동</b><p className="mt-1 text-[#7b6d70]">회원 user_id와 현재 Beauty Code, 저장된 상품분석 결과를 연결합니다.</p></div>
+            <div className="rounded-2xl bg-[#fbf7f7] p-4"><b>3. 안정성</b><p className="mt-1 text-[#7b6d70]">기존 DB 구조와 사용자 분석 흐름은 변경하지 않고 조회 집계만 수정했습니다.</p></div>
           </div>
         </article>
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-semibold">DG 관심 상품 Top 20</h2>
-        <p className="mt-1 text-xs text-[#7b6d70]">DG 사용자가 실제로 적합도 분석을 요청한 상품 기준입니다.</p>
+        <p className="mt-1 text-xs text-[#7b6d70]">DG 회원 계정에 저장된 상품분석 결과를 기준으로 집계합니다.</p>
         <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-sm">
-          <thead className="text-left text-xs text-[#8a7d80]"><tr><th className="pb-3">순위</th><th>상품</th><th>브랜드</th><th>카테고리</th><th>분석 요청</th><th>분석 사용자</th></tr></thead>
+          <thead className="text-left text-xs text-[#8a7d80]"><tr><th className="pb-3">순위</th><th>상품</th><th>브랜드</th><th>카테고리</th><th>분석 결과</th><th>분석 회원</th></tr></thead>
           <tbody>{(data.products ?? []).map((row, index) => <tr key={`${row.name}-${index}`} className="border-t border-[#f0e7e9]"><td className="py-3 font-semibold text-[#a94f65]">{index + 1}</td><td className="max-w-[360px] font-medium">{row.name}</td><td>{row.brand}</td><td>{row.category}</td><td>{fmt(row.requests)}</td><td>{fmt(row.users)}</td></tr>)}</tbody>
         </table></div>
-        {!(data.products ?? []).length ? <p className="py-8 text-center text-sm text-[#8a7d80]">아직 DG 사용자의 상품분석 데이터가 없습니다.</p> : null}
+        {!(data.products ?? []).length ? <p className="py-8 text-center text-sm text-[#8a7d80]">아직 DG 회원의 저장된 상품분석 결과가 없습니다.</p> : null}
       </section>
     </div>
   </main>;
