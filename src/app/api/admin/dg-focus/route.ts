@@ -12,6 +12,13 @@ type Visit = {
   beauty_code: string | null;
 };
 
+type TestSession = {
+  id: string;
+  completed: boolean;
+  beauty_code: string | null;
+  excluded_from_statistics: boolean | null;
+};
+
 type UserBeautyCode = {
   user_id: string;
   beauty_code: string;
@@ -111,39 +118,42 @@ function channelLabel(source: string, medium: string) {
   return labels[key] ?? key;
 }
 
+function subtypeStats(codes: Array<string | null>) {
+  const map = new Map<string, number>(DG_CODES.map((code) => [code, 0]));
+  for (const raw of codes) {
+    const code = (raw ?? "").trim();
+    if (DG_CODES.includes(code)) map.set(code, (map.get(code) ?? 0) + 1);
+  }
+  const total = [...map.values()].reduce((sum, value) => sum + value, 0);
+  return DG_CODES.map((code) => ({
+    code,
+    count: map.get(code) ?? 0,
+    share: total ? Math.round(((map.get(code) ?? 0) / total) * 1000) / 10 : 0,
+  }));
+}
+
 export async function GET() {
   const { url, key } = config();
   if (!url || !key) return NextResponse.json({ ok: false, message: "Supabase 설정을 확인해 주세요." }, { status: 503 });
 
   try {
-    const [visits, currentCodes, savedProducts, products] = await Promise.all([
-      readAll<Visit>(
-        url,
-        key,
-        "marketing_visits?select=visit_id,first_seen_at,referrer,utm_source,utm_medium,site_source_name,has_fbclid,test_completed,beauty_code&order=first_seen_at.desc",
-      ),
-      readAll<UserBeautyCode>(
-        url,
-        key,
-        "user_beauty_codes?is_current=eq.true&select=user_id,beauty_code,is_current&order=created_at.desc",
-      ),
-      readAll<SavedProduct>(
-        url,
-        key,
-        "user_saved_products?select=user_id,product_ref,product_name,beauty_code,fit_score,created_at&order=created_at.desc",
-      ),
-      readAll<Product>(
-        url,
-        key,
-        "products?deleted_at=is.null&select=id,canonical_name,brand,category&order=updated_at.desc",
-      ),
+    const [visits, sessions, currentCodes, savedProducts, products] = await Promise.all([
+      readAll<Visit>(url, key, "marketing_visits?select=visit_id,first_seen_at,referrer,utm_source,utm_medium,site_source_name,has_fbclid,test_completed,beauty_code&order=first_seen_at.desc"),
+      readAll<TestSession>(url, key, "test_sessions?select=id,completed,beauty_code,excluded_from_statistics&order=created_at.desc"),
+      readAll<UserBeautyCode>(url, key, "user_beauty_codes?is_current=eq.true&select=user_id,beauty_code,is_current&order=created_at.desc"),
+      readAll<SavedProduct>(url, key, "user_saved_products?select=user_id,product_ref,product_name,beauty_code,fit_score,created_at&order=created_at.desc"),
+      readAll<Product>(url, key, "products?deleted_at=is.null&select=id,canonical_name,brand,category&order=updated_at.desc"),
     ]);
 
-    // 유입 분석은 visit 기준. 기존 마케팅 데이터와의 연속성을 유지합니다.
-    const completed = visits.filter((v) => v.test_completed && v.beauty_code);
-    const dgVisits = completed.filter((v) => DG_CODES.includes((v.beauty_code ?? "").trim()));
+    // VISIT: 마케팅 유입/완료 방문 기준. 동일 사용자의 재방문·재테스트가 중복될 수 있습니다.
+    const completedVisits = visits.filter((v) => v.test_completed && v.beauty_code);
+    const dgVisits = completedVisits.filter((v) => DG_CODES.includes((v.beauty_code ?? "").trim()));
 
-    // 상품 행동은 회원 user_id 기준. marketing_visits.test_session_id 누락과 무관하게 정확히 연결합니다.
+    // SESSION: 실제 테스트 세션 기준. 통계 제외 세션은 제외합니다.
+    const completedSessions = sessions.filter((s) => s.completed && !s.excluded_from_statistics && s.beauty_code);
+    const dgSessions = completedSessions.filter((s) => DG_CODES.includes((s.beauty_code ?? "").trim()));
+
+    // MEMBER: 현재 회원의 Beauty Code 기준. 상품행동은 user_id로 연결합니다.
     const dgMemberCode = new Map<string, string>();
     for (const row of currentCodes) {
       const code = (row.beauty_code ?? "").trim();
@@ -151,27 +161,21 @@ export async function GET() {
     }
     const dgMemberIds = new Set(dgMemberCode.keys());
     const dgSavedProducts = savedProducts.filter((row) => dgMemberIds.has(row.user_id));
-    const dgAnalysisUsers = new Set(dgSavedProducts.map((row) => row.user_id));
+    const dgAnalysisMembers = new Set(dgSavedProducts.map((row) => row.user_id));
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    const subtypeMap = new Map<string, number>(DG_CODES.map((code) => [code, 0]));
-    for (const row of dgVisits) {
-      const code = (row.beauty_code ?? "").trim();
-      subtypeMap.set(code, (subtypeMap.get(code) ?? 0) + 1);
-    }
-
-    const channelMap = new Map<string, { key: string; label: string; users: number }>();
+    const channelMap = new Map<string, { key: string; label: string; visits: number }>();
     for (const row of dgVisits) {
       const source = sourceOf(row);
       const medium = mediumOf(row);
       const keyName = `${source} / ${medium}`;
-      const current = channelMap.get(keyName) ?? { key: keyName, label: channelLabel(source, medium), users: 0 };
-      current.users += 1;
+      const current = channelMap.get(keyName) ?? { key: keyName, label: channelLabel(source, medium), visits: 0 };
+      current.visits += 1;
       channelMap.set(keyName, current);
     }
 
-    const productCounts = new Map<string, { name: string; brand: string; category: string; requests: number; users: Set<string> }>();
+    const productCounts = new Map<string, { name: string; brand: string; category: string; results: number; members: Set<string> }>();
     for (const row of dgSavedProducts) {
       const product = productMap.get(row.product_ref);
       const name = product?.canonical_name?.trim() || row.product_name?.trim() || "(상품명 없음)";
@@ -180,41 +184,40 @@ export async function GET() {
         name,
         brand: product?.brand ?? "-",
         category: product?.category ?? "-",
-        requests: 0,
-        users: new Set<string>(),
+        results: 0,
+        members: new Set<string>(),
       };
-      current.requests += 1;
-      current.users.add(row.user_id);
+      current.results += 1;
+      current.members.add(row.user_id);
       productCounts.set(keyName, current);
     }
 
-    const dgUsers = dgVisits.length;
-    const completedUsers = completed.length;
     const dgMembers = dgMemberIds.size;
 
     return NextResponse.json({
       ok: true,
       kpis: {
         totalVisits: visits.length,
-        completedUsers,
-        dgUsers,
-        dgShare: completedUsers ? Math.round((dgUsers / completedUsers) * 1000) / 10 : 0,
+        completedVisits: completedVisits.length,
+        dgVisits: dgVisits.length,
+        dgVisitShare: completedVisits.length ? Math.round((dgVisits.length / completedVisits.length) * 1000) / 10 : 0,
+        completedSessions: completedSessions.length,
+        dgSessions: dgSessions.length,
+        dgSessionShare: completedSessions.length ? Math.round((dgSessions.length / completedSessions.length) * 1000) / 10 : 0,
         dgMembers,
-        dgAnalysisUsers: dgAnalysisUsers.size,
-        dgAnalysisRate: dgMembers ? Math.round((dgAnalysisUsers.size / dgMembers) * 1000) / 10 : 0,
-        dgAnalysisRequests: dgSavedProducts.length,
+        dgAnalysisMembers: dgAnalysisMembers.size,
+        dgAnalysisRate: dgMembers ? Math.round((dgAnalysisMembers.size / dgMembers) * 1000) / 10 : 0,
+        dgAnalysisResults: dgSavedProducts.length,
       },
-      subtypes: DG_CODES.map((code) => ({
-        code,
-        count: subtypeMap.get(code) ?? 0,
-        share: dgUsers ? Math.round(((subtypeMap.get(code) ?? 0) / dgUsers) * 1000) / 10 : 0,
-      })),
+      visitSubtypes: subtypeStats(dgVisits.map((row) => row.beauty_code)),
+      sessionSubtypes: subtypeStats(dgSessions.map((row) => row.beauty_code)),
+      memberSubtypes: subtypeStats([...dgMemberCode.values()]),
       channels: [...channelMap.values()]
-        .map((row) => ({ ...row, share: dgUsers ? Math.round((row.users / dgUsers) * 1000) / 10 : 0 }))
-        .sort((a, b) => b.users - a.users),
+        .map((row) => ({ ...row, share: dgVisits.length ? Math.round((row.visits / dgVisits.length) * 1000) / 10 : 0 }))
+        .sort((a, b) => b.visits - a.visits),
       products: [...productCounts.values()]
-        .map((row) => ({ name: row.name, brand: row.brand, category: row.category, requests: row.requests, users: row.users.size }))
-        .sort((a, b) => b.requests - a.requests)
+        .map((row) => ({ name: row.name, brand: row.brand, category: row.category, results: row.results, members: row.members.size }))
+        .sort((a, b) => b.results - a.results)
         .slice(0, 20),
       generatedAt: new Date().toISOString(),
     });
