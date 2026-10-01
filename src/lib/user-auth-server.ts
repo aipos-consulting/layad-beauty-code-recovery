@@ -9,7 +9,6 @@ export const USER_PERSIST_MAX_AGE = 60 * 60 * 24 * 30;
 
 type PersistedUser = {
   id: string;
-  email: string;
   exp: number;
 };
 
@@ -20,16 +19,22 @@ export function userAuthConfig() {
   return { url, publishableKey, serviceRoleKey };
 }
 
-function signingKey() {
-  return userAuthConfig().serviceRoleKey ?? "";
+function primarySigningKey() {
+  // Dedicated session secret is preferred. The service role fallback keeps current
+  // production sessions working until USER_SESSION_SECRET is configured in Vercel.
+  return process.env.USER_SESSION_SECRET ?? userAuthConfig().serviceRoleKey ?? "";
 }
 
-function signUserCookie(user: { id: string; email?: string | null }, maxAge: number) {
-  const key = signingKey();
+function verificationKeys() {
+  const keys = [process.env.USER_SESSION_SECRET, userAuthConfig().serviceRoleKey].filter((v): v is string => Boolean(v));
+  return [...new Set(keys)];
+}
+
+function signUserCookie(user: { id: string }, maxAge: number) {
+  const key = primarySigningKey();
   if (!key || !user.id) return null;
   const payload: PersistedUser = {
     id: user.id,
-    email: user.email ?? "",
     exp: Math.floor(Date.now() / 1000) + maxAge,
   };
   const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
@@ -37,29 +42,38 @@ function signUserCookie(user: { id: string; email?: string | null }, maxAge: num
   return `${encoded}.${signature}`;
 }
 
-function readSignedUserCookie(value: string | undefined): PersistedUser | null {
-  const key = signingKey();
-  if (!key || !value) return null;
-  const [encoded, signature] = value.split(".");
-  if (!encoded || !signature) return null;
+function signatureMatches(encoded: string, signature: string, key: string) {
   const expected = createHmac("sha256", key).update(encoded).digest("base64url");
   try {
     const actualBuffer = Buffer.from(signature);
     const expectedBuffer = Buffer.from(expected);
-    if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) return null;
-    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as PersistedUser;
+    return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+  } catch {
+    return false;
+  }
+}
+
+function readSignedUserCookie(value: string | undefined): PersistedUser | null {
+  if (!value) return null;
+  const [encoded, signature] = value.split(".");
+  if (!encoded || !signature) return null;
+  if (!verificationKeys().some(key => signatureMatches(encoded, signature, key))) return null;
+
+  try {
+    // Older cookies may contain an email property. It is intentionally ignored.
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as Partial<PersistedUser>;
     if (!payload.id || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
-    return payload;
+    return { id: payload.id, exp: payload.exp };
   } catch {
     return null;
   }
 }
 
-export function createUserSessionCookie(user: { id: string; email?: string | null }) {
+export function createUserSessionCookie(user: { id: string }) {
   return signUserCookie(user, USER_SESSION_MAX_AGE);
 }
 
-export function createPersistentUserCookie(user: { id: string; email?: string | null }) {
+export function createPersistentUserCookie(user: { id: string }) {
   return signUserCookie(user, USER_PERSIST_MAX_AGE);
 }
 
@@ -123,7 +137,7 @@ export async function resolveUser(request: NextRequest) {
   const { data, error } = await admin.auth.admin.getUserById(persisted.id);
   if (error || !data.user) return null;
   if (await isBlockedIndependentUser(data.user.id)) return null;
-  return { id: data.user.id, email: data.user.email ?? persisted.email };
+  return { id: data.user.id, email: data.user.email ?? "" };
 }
 
 export function adminUserClient() {

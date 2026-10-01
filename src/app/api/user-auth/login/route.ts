@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   const { data: user, error } = await supabase
     .from("layad_users")
-    .select("id,email,password_hash,email_verified,blocked_at,blocked_reason")
+    .select("id,password_hash,email_verified,blocked_at,blocked_reason")
     .eq("email", email)
     .maybeSingle();
 
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
   const valid = await bcrypt.compare(password, String(user.password_hash)).catch(() => false);
   if (!valid) return NextResponse.json({ ok: false, message: "이메일 또는 비밀번호를 확인해 주세요." }, { status: 401 });
 
-  const sessionCookie = createUserSessionCookie({ id: String(user.id), email: String(user.email ?? email) });
-  const persistentCookie = createPersistentUserCookie({ id: String(user.id), email: String(user.email ?? email) });
+  // Privacy: the signed session cookie contains only the internal user ID and expiry.
+  const sessionCookie = createUserSessionCookie({ id: String(user.id) });
+  const persistentCookie = createPersistentUserCookie({ id: String(user.id) });
   if (!sessionCookie || !persistentCookie) {
     return NextResponse.json({ ok: false, message: "로그인 보안 설정이 준비되지 않았습니다." }, { status: 503 });
   }
