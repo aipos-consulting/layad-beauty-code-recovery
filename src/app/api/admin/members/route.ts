@@ -25,25 +25,24 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const page = Math.max(1, Number(sp.get("page") || 1));
     const pageSize = 50;
-    const q = (sp.get("q") || "").trim();
     const verified = sp.get("verified") || "all";
     const locale = (sp.get("locale") || "all").trim();
     const offset = (page - 1) * pageSize;
 
     const filters: string[] = [];
-    if (q) filters.push(`email=ilike.*${encodeURIComponent(q)}*`);
     if (verified === "yes") filters.push("email_verified=eq.true");
     if (verified === "no") filters.push("email_verified=eq.false");
     if (locale !== "all") filters.push(`locale=eq.${encodeURIComponent(locale)}`);
 
-    const userPath = `layad_users?select=id,email,email_verified,locale,created_at,updated_at&order=created_at.desc&limit=${pageSize}&offset=${offset}${filters.length ? `&${filters.join("&")}` : ""}`;
+    // Privacy: the admin API must not send customer email addresses to the browser.
+    const userPath = `layad_users?select=id,email_verified,locale,created_at,updated_at&order=created_at.desc&limit=${pageSize}&offset=${offset}${filters.length ? `&${filters.join("&")}` : ""}`;
     const userRes = await fetch(`${url}/rest/v1/${userPath}`, {
       headers: headers(key, { Prefer: "count=exact" }),
       cache: "no-store",
     });
     if (!userRes.ok) throw new Error(`${userRes.status} ${await userRes.text()}`);
 
-    const users = (await userRes.json()) as Array<{ id: string; email: string; email_verified: boolean; locale: string | null; created_at: string; updated_at: string }>;
+    const users = (await userRes.json()) as Array<{ id: string; email_verified: boolean; locale: string | null; created_at: string; updated_at: string }>;
     const contentRange = userRes.headers.get("content-range") || "";
     const totalMatch = contentRange.match(/\/(\d+)$/);
     const total = totalMatch ? Number(totalMatch[1]) : users.length;
@@ -73,7 +72,7 @@ export async function GET(req: NextRequest) {
       const recentActivityAt = [u.updated_at, save.lastAt].filter(Boolean).sort().at(-1) ?? u.updated_at;
       return {
         id: u.id,
-        email: u.email,
+        memberCode: u.id.replace(/-/g, "").slice(0, 8).toUpperCase(),
         nickname: profileMap.get(u.id) ?? null,
         emailVerified: u.email_verified,
         locale: u.locale,
