@@ -152,23 +152,53 @@ export default function CeoPage() {
           </div>
           <span className="rounded-full bg-[#fff0f3] px-3 py-1 text-xs font-semibold text-[#a94f65]">CURATION REVIEW</span>
         </div>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {top3ByCode.map(group => <article key={group.code} className="rounded-2xl border border-[#eadfe1] bg-[#fcfbfb] p-4">
-            <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">{group.code}</h3><span className="text-[11px] text-[#8a7a7d]">자동 TOP3</span></div>
-            <div className="mt-3 space-y-2">
-              {group.rows.length ? group.rows.map((row, index) => <div key={row.product.id} className="rounded-xl bg-white px-3 py-3">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#d88c9c] text-xs font-bold text-white">{index + 1}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{row.product.canonical_name || "(상품명 없음)"}</p>
-                    <p className="mt-1 truncate text-[11px] text-[#8a7a7d]">{row.product.brand || row.product.category || "-"}</p>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-[#a94f65]">{Math.round(row.score)}</span>
-                </div>
-              </div>) : <p className="rounded-xl bg-white px-3 py-4 text-center text-xs text-[#8a7a7d]">분석 데이터 없음</p>}
-            </div>
-          </article>)}
+
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-[#eadfe1]">
+          <table className="w-full min-w-[980px] border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-[#f8f4f5] text-left text-xs font-semibold text-[#6f6164]">
+              <tr>
+                <th className="border-b border-r border-[#eadfe1] px-4 py-3">Beauty Code</th>
+                <th className="border-b border-r border-[#eadfe1] px-4 py-3 text-center">순위</th>
+                <th className="border-b border-r border-[#eadfe1] px-4 py-3">상품명</th>
+                <th className="border-b border-r border-[#eadfe1] px-4 py-3">브랜드</th>
+                <th className="border-b border-r border-[#eadfe1] px-4 py-3">카테고리</th>
+                <th className="border-b border-[#eadfe1] px-4 py-3 text-right">적합도</th>
+              </tr>
+            </thead>
+            <tbody>
+              {top3ByCode.flatMap(group => group.rows.length
+                ? group.rows.map((row, index) => (
+                  <tr key={`${group.code}-${row.product.id}`} className={index === 0 ? "border-t-2 border-[#dfc7cd]" : ""}>
+                    {index === 0 ? (
+                      <td rowSpan={group.rows.length} className="w-[110px] border-b border-r border-[#eadfe1] bg-[#fff8f9] px-4 py-3 align-top font-bold text-[#a94f65]">
+                        {group.code}
+                      </td>
+                    ) : null}
+                    <td className="w-[72px] border-b border-r border-[#eadfe1] px-4 py-3 text-center font-semibold">{index + 1}</td>
+                    <td className="min-w-[360px] border-b border-r border-[#eadfe1] px-4 py-3 font-semibold leading-6 text-[#382d2d]">
+                      <span className="whitespace-normal break-words">{row.product.canonical_name || "(상품명 없음)"}</span>
+                    </td>
+                    <td className="min-w-[180px] border-b border-r border-[#eadfe1] px-4 py-3 leading-6 text-[#6f6164]">
+                      <span className="whitespace-normal break-words">{row.product.brand || "-"}</span>
+                    </td>
+                    <td className="min-w-[160px] border-b border-r border-[#eadfe1] px-4 py-3 leading-6 text-[#6f6164]">
+                      <span className="whitespace-normal break-words">{row.product.category || "-"}</span>
+                    </td>
+                    <td className="w-[90px] border-b border-[#eadfe1] px-4 py-3 text-right text-base font-bold text-[#a94f65]">{Math.round(row.score)}</td>
+                  </tr>
+                ))
+                : [(
+                  <tr key={`${group.code}-empty`} className="border-t-2 border-[#dfc7cd]">
+                    <td className="border-b border-r border-[#eadfe1] bg-[#fff8f9] px-4 py-3 font-bold text-[#a94f65]">{group.code}</td>
+                    <td className="border-b border-r border-[#eadfe1] px-4 py-3 text-center">-</td>
+                    <td colSpan={4} className="border-b border-[#eadfe1] px-4 py-3 text-[#8a7a7d]">분석 데이터 없음</td>
+                  </tr>
+                )]
+              )}
+            </tbody>
+          </table>
         </div>
+        <p className="mt-3 text-[11px] leading-5 text-[#8a7a7d]">상품명·브랜드·카테고리는 줄임표 없이 전체 표시합니다. 화면이 좁으면 좌우 스크롤로 확인할 수 있습니다.</p>
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
