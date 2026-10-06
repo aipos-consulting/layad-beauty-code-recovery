@@ -49,16 +49,6 @@ type StoredFitState = {
   detail: DetailPayload | null;
 };
 
-type CuratedProduct = {
-  id: string;
-  rank: number;
-  name: string;
-  brand: string | null;
-  category: string | null;
-  productUrl: string | null;
-  fitScore: number;
-};
-
 const copy = {
   ko: {
     loadingCode: "Beauty Code를 확인하는 중입니다.",
@@ -97,10 +87,6 @@ const copy = {
     high: "높음",
     medium: "보통",
     reference: "참고용",
-    curationEyebrow: "BEAUTY CODE CURATION",
-    curationTitle: "내 유형 추천 TOP 3",
-    curationScore: "적합도",
-    curationNote: "현재 분석 완료 상품 중 Beauty Code 적합도 상위 제품입니다.",
   },
   en: {
     loadingCode: "Checking your Beauty Code.",
@@ -139,10 +125,6 @@ const copy = {
     high: "High",
     medium: "Medium",
     reference: "Reference",
-    curationEyebrow: "BEAUTY CODE CURATION",
-    curationTitle: "Top 3 for my type",
-    curationScore: "Fit",
-    curationNote: "Top products among completed analyses for your Beauty Code.",
   },
   ja: {
     loadingCode: "Beauty Codeを確認しています。",
@@ -181,10 +163,6 @@ const copy = {
     high: "高い",
     medium: "普通",
     reference: "参考",
-    curationEyebrow: "BEAUTY CODE CURATION",
-    curationTitle: "私のタイプおすすめ TOP 3",
-    curationScore: "適合度",
-    curationNote: "分析済み商品の中からBeauty Code適合度上位の商品です。",
   },
 } as const;
 
@@ -209,7 +187,6 @@ export default function FitPage() {
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
   const [detailError, setDetailError] = useState("");
-  const [topProducts, setTopProducts] = useState<CuratedProduct[]>([]);
 
   const confidenceLabel = (value: number) => value >= 0.85 ? t.high : value >= 0.7 ? t.medium : t.reference;
 
@@ -251,21 +228,6 @@ export default function FitPage() {
       }
     })();
   }, [t.loadCodeFailed]);
-
-  useEffect(() => {
-    if (!beautyCode) {
-      setTopProducts([]);
-      return;
-    }
-    let active = true;
-    fetch(`/api/beauty-code-top-products?code=${encodeURIComponent(beautyCode)}`, { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => ({}));
-        if (active) setTopProducts(response.ok && payload?.ok ? payload.products ?? [] : []);
-      })
-      .catch(() => { if (active) setTopProducts([]); });
-    return () => { active = false; };
-  }, [beautyCode]);
 
   const sortedFits = useMemo(() => [...(detail?.fits ?? [])].sort((a, b) => b.fitScore - a.fitScore), [detail]);
 
@@ -378,37 +340,6 @@ export default function FitPage() {
           <h1 className="mt-4 text-3xl font-semibold">{t.title}</h1>
           <p className="mt-3 text-sm leading-7 text-[#766767]">{t.currentCodePrefix} <strong className="text-[#a85f6e]">{beautyCode}</strong> {t.currentCodeSuffix}</p>
         </div>
-
-        {topProducts.length ? (
-          <section className="mt-8 rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
-            <div className="text-center">
-              <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">{t.curationEyebrow}</p>
-              <h2 className="mt-2 text-xl font-semibold">{t.curationTitle}</h2>
-              <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-[#8b7b7e]">{t.curationNote}</p>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {topProducts.map((product) => {
-                const content = (
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d88c9c] text-sm font-bold text-white">{product.rank}</span>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#a94f65]">{t.curationScore} {product.fitScore}</span>
-                    </div>
-                    <p className="mt-4 line-clamp-2 text-left text-sm font-semibold leading-6 text-[#4f4245]">{product.name}</p>
-                    <p className="mt-2 text-left text-xs text-[#8b7b7e]">{product.brand || product.category || "LAYAD"}</p>
-                  </>
-                );
-                return product.productUrl ? (
-                  <a key={product.id} href={product.productUrl} target="_blank" rel="noopener noreferrer" className="block rounded-2xl border border-[#efdde1] bg-white p-4 no-underline shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                    {content}
-                  </a>
-                ) : (
-                  <article key={product.id} className="rounded-2xl border border-[#efdde1] bg-white p-4 shadow-sm">{content}</article>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         <form onSubmit={submit} data-direct-product-fit="true" className="mt-6 rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
           <label htmlFor="fit-product-input" className="text-sm font-semibold">{t.productLabel}</label>
