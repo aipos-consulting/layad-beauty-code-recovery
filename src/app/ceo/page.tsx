@@ -102,7 +102,7 @@ export default function CeoPage() {
   const cards = [
     ["전체 사용자", dashboard?.kpis?.totalUsers ?? "—"],
     ["상품 신청", dashboard?.kpis?.productRequests ?? "—"],
-    ["분석 완료 상품", dashboard?.kpis?.completedProducts ?? "—"],
+    ["완전 분석 상품", dashboard?.kpis?.completedProducts ?? "—"],
     ["현재 AI 사용료", costLabel],
     ["월 AI 예산", usage?.ok ? money(usage.budgetUsd) : "—"],
     ["AI 예산 사용률", utilizationLabel],
