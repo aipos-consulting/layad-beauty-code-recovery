@@ -6,6 +6,7 @@ function cfg(){ return { key: process.env.SUPABASE_SECRET_KEY ?? process.env.SUP
 function headers(key:string, extra?:HeadersInit):HeadersInit { const base:Record<string,string>={apikey:key,"Content-Type":"application/json"}; if(!key.startsWith("sb_secret_")) base.Authorization=`Bearer ${key}`; return {...base,...(extra??{})}; }
 async function db(path:string, init:RequestInit, key:string){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:headers(key,init.headers),cache:"no-store"}); }
 async function json<T>(res:Response,label:string):Promise<T>{ if(!res.ok) throw new Error(`${label}: ${await res.text()}`); return res.json() as Promise<T>; }
+async function dbAll<T>(path:string,key:string,label:string):Promise<T[]>{ const all:T[]=[]; const pageSize=1000; for(let offset=0;;offset+=pageSize){ const sep=path.includes("?")?"&":"?"; const res=await db(`${path}${sep}limit=${pageSize}&offset=${offset}`,{method:"GET"},key); const page=await json<T[]>(res,label); all.push(...page); if(page.length<pageSize) break; if(offset>=99000) throw new Error(`${label}: pagination safety limit exceeded`); } return all; }
 
 type Product = { id:string; canonical_name:string; brand:string|null; category:string|null; verification_status:string; updated_at:string };
 type Run = { id:string; product_id:string; provider:string|null; model_name:string|null; analysis_version:string|null; input_review_count:number|null; completed_at:string|null; created_at:string };
@@ -47,37 +48,29 @@ export async function GET(request:NextRequest){
       return NextResponse.json({ok:true,product:products[0]??null,runs,axes,fits,evidenceCount:Number(runs[0]?.input_review_count??0),storedReviewCount:reviews.length,reviews:reviews.map(r=>({...r,source:r.source_id?sourceMap.get(r.source_id)??null:null,features:featureMap.get(r.id)??[]}))});
     }
 
-    const [pRes,runRes,revRes,featRes,axisRes,fitRes,candRes,masterRes]=await Promise.all([
-      db("products?deleted_at=is.null&select=id,canonical_name,brand,category,verification_status,updated_at&order=updated_at.desc&limit=500",{method:"GET"},key),
-      db("review_analysis_runs?status=eq.completed&select=id,product_id,provider,model_name,analysis_version,input_review_count,completed_at,created_at&order=completed_at.desc.nullslast&limit=1000",{method:"GET"},key),
-      db("reviews?select=id,product_id&limit=5000",{method:"GET"},key),
-      db("review_features?select=id,review_id&limit=10000",{method:"GET"},key),
-      db("product_axis_profiles?select=product_id,axis&limit=5000",{method:"GET"},key),
-      db("product_type_fits?select=product_id,beauty_code&limit=10000",{method:"GET"},key),
-      db("review_keyword_candidates?select=id,candidate_keyword,language_code,suggested_axis,suggested_code,suggested_weight,ai_confidence,occurrence_count,status,first_product_id,last_product_id,sample_context,updated_at&order=updated_at.desc.nullslast&limit=1000",{method:"GET"},key),
-      db("review_keyword_master?select=id,canonical_keyword,language_code,axis,code,default_weight,active,synonyms,updated_at&order=updated_at.desc.nullslast&limit=1000",{method:"GET"},key),
+    const [products,runs,reviews,features,axes,fits,candidates,masters]=await Promise.all([
+      dbAll<Product>("products?deleted_at=is.null&select=id,canonical_name,brand,category,verification_status,updated_at&order=updated_at.desc",key,"상품 목록 조회 실패"),
+      dbAll<Run>("review_analysis_runs?status=eq.completed&select=id,product_id,provider,model_name,analysis_version,input_review_count,completed_at,created_at&order=completed_at.desc.nullslast",key,"분석 기록 조회 실패"),
+      dbAll<{id:string;product_id:string}>("reviews?select=id,product_id",key,"리뷰 집계 조회 실패"),
+      dbAll<{id:string;review_id:string}>("review_features?select=id,review_id",key,"키워드 집계 조회 실패"),
+      dbAll<{product_id:string;axis:string}>("product_axis_profiles?select=product_id,axis",key,"4축 집계 조회 실패"),
+      dbAll<{product_id:string;beauty_code:string}>("product_type_fits?select=product_id,beauty_code",key,"적합도 집계 조회 실패"),
+      dbAll<Record<string,unknown>>("review_keyword_candidates?select=id,candidate_keyword,language_code,suggested_axis,suggested_code,suggested_weight,ai_confidence,occurrence_count,status,first_product_id,last_product_id,sample_context,updated_at&order=updated_at.desc.nullslast",key,"Candidate 조회 실패"),
+      dbAll<Record<string,unknown>>("review_keyword_master?select=id,canonical_keyword,language_code,axis,code,default_weight,active,synonyms,updated_at&order=updated_at.desc.nullslast",key,"Master 조회 실패"),
     ]);
-    const products=await json<Product[]>(pRes,"상품 목록 조회 실패");
-    const runs=await json<Run[]>(runRes,"분석 기록 조회 실패");
-    const reviews=await json<Array<{id:string;product_id:string}>>(revRes,"리뷰 집계 조회 실패");
-    const features=await json<Array<{id:string;review_id:string}>>(featRes,"키워드 집계 조회 실패");
-    const axes=await json<Array<{product_id:string;axis:string}>>(axisRes,"4축 집계 조회 실패");
-    const fits=await json<Array<{product_id:string;beauty_code:string}>>(fitRes,"적합도 집계 조회 실패");
-    const candidates=await json<Record<string,unknown>[]>(candRes,"Candidate 조회 실패");
-    const masters=await json<Record<string,unknown>[]>(masterRes,"Master 조회 실패");
 
     const reviewProduct=new Map(reviews.map(r=>[r.id,r.product_id]));
     const storedReviewCount=new Map<string,number>(); for(const r of reviews) storedReviewCount.set(r.product_id,(storedReviewCount.get(r.product_id)??0)+1);
     const featureCount=new Map<string,number>(); for(const f of features){ const pid=reviewProduct.get(f.review_id); if(pid) featureCount.set(pid,(featureCount.get(pid)??0)+1); }
-    const axisCount=new Map<string,number>(); for(const a of axes) axisCount.set(a.product_id,(axisCount.get(a.product_id)??0)+1);
-    const fitCount=new Map<string,number>(); for(const f of fits) fitCount.set(f.product_id,(fitCount.get(f.product_id)??0)+1);
+    const axisCount=new Map<string,Set<string>>(); for(const a of axes){ const set=axisCount.get(a.product_id)??new Set<string>(); set.add(a.axis); axisCount.set(a.product_id,set); }
+    const fitCount=new Map<string,Set<string>>(); for(const f of fits){ const set=fitCount.get(f.product_id)??new Set<string>(); set.add(f.beauty_code); fitCount.set(f.product_id,set); }
     const lastRun=new Map<string,Run>(); for(const r of runs) if(!lastRun.has(r.product_id)) lastRun.set(r.product_id,r);
     const candidateCount=new Map<string,number>(); for(const c of candidates){ const pid=String(c.last_product_id??c.first_product_id??""); if(pid) candidateCount.set(pid,(candidateCount.get(pid)??0)+1); }
 
     const productRows=products.map(p=>{
       const run=lastRun.get(p.id);
-      const axisN=axisCount.get(p.id)??0;
-      const fitN=fitCount.get(p.id)??0;
+      const axisN=axisCount.get(p.id)?.size??0;
+      const fitN=fitCount.get(p.id)?.size??0;
       const legacy=fitN>=16&&axisN<4;
       return {
         ...p,
