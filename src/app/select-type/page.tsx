@@ -12,6 +12,15 @@ const SAVED_SOURCE_KEY = "layad-saved-beauty-code-source";
 
 type AgeBand = "14-19" | "20-29" | "30-39" | "40-49" | "50-59" | "60+" | "prefer_not_to_say";
 type Character = { beauty_code: string; nickname: string; image_url: string | null };
+type CuratedProduct = {
+  id: string;
+  rank: number;
+  name: string;
+  brand: string | null;
+  category: string | null;
+  productUrl: string | null;
+  fitScore: number;
+};
 
 type Copy = {
   title: string; subtitle: string; selected: string; imagePending: string; chooseCode: string;
@@ -19,6 +28,7 @@ type Copy = {
   productPlaceholder: string; analyze: string; sessionNeeded: string; pending: string; requestReceived: string;
   requestTime: string; home: string; ageTitle: string; ageDesc: string; skipAge: string;
   saveAgeError: string; networkError: string; sessionError: string; invalidInput: string; duplicate: string;
+  curationEyebrow: string; curationTitle: string; curationScore: string; curationNote: string;
 };
 
 const copy: Record<Locale, Copy> = {
@@ -31,7 +41,9 @@ const copy: Record<Locale, Copy> = {
     requestTime: "요청 시각", home: "처음 화면으로", ageTitle: "연령대를 선택해 주세요",
     ageDesc: "서비스 개선을 위한 선택 항목입니다. 정확한 나이와 생년월일은 저장하지 않습니다.", skipAge: "선택하지 않고 저장",
     saveAgeError: "연령대 저장에 실패했습니다. 다시 시도해 주세요.", networkError: "네트워크 문제로 저장하지 못했습니다. 다시 시도해 주세요.",
-    sessionError: "상품 분석 전에 연령대 선택과 익명 세션 저장을 완료해 주세요.", invalidInput: "입력값을 확인해 주세요.", duplicate: "같은 상품이 이미 분석 준비 중입니다."
+    sessionError: "상품 분석 전에 연령대 선택과 익명 세션 저장을 완료해 주세요.", invalidInput: "입력값을 확인해 주세요.", duplicate: "같은 상품이 이미 분석 준비 중입니다.",
+    curationEyebrow: "BEAUTY CODE CURATION", curationTitle: "내 유형 추천 TOP 3", curationScore: "적합도",
+    curationNote: "현재 분석 완료 상품 중 선택한 Beauty Code 적합도 상위 제품입니다."
   },
   en: {
     title: "Choose My Beauty Code", subtitle: "Select the Beauty Code you already know.", selected: "SELECTED BEAUTY CODE",
@@ -42,7 +54,9 @@ const copy: Record<Locale, Copy> = {
     requestTime: "Requested", home: "Back to home", ageTitle: "Select your age range",
     ageDesc: "This optional item helps improve the service. We do not store your exact age or date of birth.", skipAge: "Save without selecting",
     saveAgeError: "We could not save the age range. Please try again.", networkError: "A network issue prevented saving. Please try again.",
-    sessionError: "Please select an age range and save the anonymous session before product analysis.", invalidInput: "Please check your input.", duplicate: "This product is already being prepared for analysis."
+    sessionError: "Please select an age range and save the anonymous session before product analysis.", invalidInput: "Please check your input.", duplicate: "This product is already being prepared for analysis.",
+    curationEyebrow: "BEAUTY CODE CURATION", curationTitle: "Top 3 for my type", curationScore: "Fit",
+    curationNote: "Top analyzed products for the selected Beauty Code."
   },
   ja: {
     title: "自分のBeauty Codeを選ぶ", subtitle: "すでに知っているBeauty Codeを選択してください。", selected: "選択した BEAUTY CODE",
@@ -53,7 +67,9 @@ const copy: Record<Locale, Copy> = {
     requestTime: "リクエスト時刻", home: "最初の画面へ", ageTitle: "年齢層を選択してください",
     ageDesc: "サービス改善のための任意項目です。正確な年齢や生年月日は保存しません。", skipAge: "選択せずに保存",
     saveAgeError: "年齢層を保存できませんでした。もう一度お試しください。", networkError: "ネットワークの問題で保存できませんでした。もう一度お試しください。",
-    sessionError: "商品分析の前に年齢層を選択し、匿名セッションを保存してください。", invalidInput: "入力内容を確認してください。", duplicate: "同じ商品がすでに分析準備中です。"
+    sessionError: "商品分析の前に年齢層を選択し、匿名セッションを保存してください。", invalidInput: "入力内容を確認してください。", duplicate: "同じ商品がすでに分析準備中です。",
+    curationEyebrow: "BEAUTY CODE CURATION", curationTitle: "私のタイプおすすめ TOP 3", curationScore: "適合度",
+    curationNote: "選択したBeauty Codeの分析済み上位商品です。"
   }
 };
 
@@ -83,6 +99,7 @@ export default function SelectTypePage() {
   const [productInput, setProductInput] = useState("");
   const [productError, setProductError] = useState("");
   const [requests, setRequests] = useState<ProductAnalysisRequest[]>([]);
+  const [topProducts, setTopProducts] = useState<CuratedProduct[]>([]);
 
   useEffect(() => { setSessionReady(Boolean(sessionStorage.getItem(SESSION_KEY))); }, []);
   useEffect(() => {
@@ -92,6 +109,18 @@ export default function SelectTypePage() {
       .then(r => r.json()).then(result => { if (active) setCharacter(result.character ?? null); }).catch(() => { if (active) setCharacter(null); });
     return () => { active = false; };
   }, [selectedCode, locale]);
+
+  useEffect(() => {
+    if (!selectedCode) { setTopProducts([]); return; }
+    let active = true;
+    fetch(`/api/beauty-code-top-products?code=${encodeURIComponent(selectedCode)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json().catch(() => ({}));
+        if (active) setTopProducts(response.ok && result?.ok ? result.products ?? [] : []);
+      })
+      .catch(() => { if (active) setTopProducts([]); });
+    return () => { active = false; };
+  }, [selectedCode]);
 
   async function saveAgeSession(ageBand: AgeBand | null) {
     if (!selectedCode || savingAge) return;
@@ -153,6 +182,35 @@ export default function SelectTypePage() {
         </div> : null}
 
         {confirmed && selectedCode ? <section className="mt-10 border-t border-[#f1dfe2] pt-9">
+          {topProducts.length ? (
+            <section className="mx-auto mb-10 max-w-3xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
+              <div className="text-center">
+                <p className="text-xs font-semibold tracking-[0.18em] text-[#b97b88]">{text.curationEyebrow}</p>
+                <h2 className="mt-2 text-xl font-semibold">{text.curationTitle}</h2>
+                <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-[#8b7b7e]">{text.curationNote}</p>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {topProducts.map(product => {
+                  const card = (
+                    <>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d88c9c] text-sm font-bold text-white">{product.rank}</span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#a94f65]">{text.curationScore} {product.fitScore}</span>
+                      </div>
+                      <p className="mt-4 line-clamp-2 text-left text-sm font-semibold leading-6 text-[#4f4245]">{product.name}</p>
+                      <p className="mt-2 text-left text-xs text-[#8b7b7e]">{product.brand || product.category || "LAYAD"}</p>
+                    </>
+                  );
+                  return product.productUrl ? (
+                    <a key={product.id} href={product.productUrl} target="_blank" rel="noopener noreferrer" className="block rounded-2xl border border-[#efdde1] bg-white p-4 no-underline shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">{card}</a>
+                  ) : (
+                    <article key={product.id} className="rounded-2xl border border-[#efdde1] bg-white p-4 shadow-sm">{card}</article>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.fitTitle}</h2><p className="mt-3 text-sm leading-7 text-[#766767]">{text.fitDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-7 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
             <label htmlFor="manual-product-input" className="text-sm font-semibold">{text.productLabel}</label>
