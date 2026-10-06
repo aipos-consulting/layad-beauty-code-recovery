@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-type Dashboard = { ok?: boolean; kpis?: { totalUsers?: number; productRequests?: number; requestedProducts?: number; completedProducts?: number } };
+type DashboardProduct = { id: string; canonical_name?: string | null; brand?: string | null; category?: string | null; fits?: Array<{ beautyCode: string; fitScore: number }> };
+type Dashboard = { ok?: boolean; kpis?: { totalUsers?: number; productRequests?: number; requestedProducts?: number; completedProducts?: number }; products?: DashboardProduct[] };
 type Usage = {
   ok?: boolean;
   costAvailable?: boolean;
@@ -50,6 +51,7 @@ function capacityValue(metric: CapacityMetric) {
   const digits = metric.unit.includes("request") ? 0 : 1;
   return `${metric.value.toLocaleString("ko-KR", { maximumFractionDigits: digits })} / ${metric.limit.toLocaleString("ko-KR")} ${metric.unit}`;
 }
+const BEAUTY_CODES = ["OGPV","OGPE","OGCV","OGCE","OMPV","OMPE","OMCV","OMCE","DGPV","DGPE","DGCV","DGCE","DMPV","DMPE","DMCV","DMCE"] as const;
 
 export default function CeoPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -85,6 +87,17 @@ export default function CeoPage() {
   const remainingLabel = costReady ? money(usage?.remainingUsd) : costNotConfigured ? "비용 API 미설정" : "공식 비용 집계 대기";
   const blockedLabel = usage?.blocked === true ? "차단 중" : usage?.blocked === false ? "정상" : costNotConfigured ? "비용 API 미설정" : "비용 집계 확인 중";
   const capacityWarnings = capacity?.warnings ?? [];
+  const top3ByCode = BEAUTY_CODES.map(code => {
+    const rows = (dashboard?.products ?? [])
+      .map(product => {
+        const fit = product.fits?.find(row => row.beautyCode === code);
+        return fit ? { product, score: Number(fit.fitScore) } : null;
+      })
+      .filter((row): row is { product: DashboardProduct; score: number } => Boolean(row && Number.isFinite(row.score)))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+    return { code, rows };
+  });
 
   const cards = [
     ["전체 사용자", dashboard?.kpis?.totalUsers ?? "—"],
@@ -129,6 +142,33 @@ export default function CeoPage() {
             <div className="flex justify-between"><dt className="text-[#7b6d70]">마지막 AI 호출</dt><dd className="font-semibold">{kstTime(usage?.lastCallAt)}</dd></div>
           </dl>
         </article>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">16유형별 TOP 3</h2>
+            <p className="mt-1 text-xs leading-5 text-[#7b6d70]">현재 적합도 점수 기준 자동 순위입니다. CEO 큐레이션 검토용이며 사용자 화면에는 노출하지 않습니다.</p>
+          </div>
+          <span className="rounded-full bg-[#fff0f3] px-3 py-1 text-xs font-semibold text-[#a94f65]">CURATION REVIEW</span>
+        </div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {top3ByCode.map(group => <article key={group.code} className="rounded-2xl border border-[#eadfe1] bg-[#fcfbfb] p-4">
+            <div className="flex items-center justify-between"><h3 className="text-lg font-semibold">{group.code}</h3><span className="text-[11px] text-[#8a7a7d]">자동 TOP3</span></div>
+            <div className="mt-3 space-y-2">
+              {group.rows.length ? group.rows.map((row, index) => <div key={row.product.id} className="rounded-xl bg-white px-3 py-3">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#d88c9c] text-xs font-bold text-white">{index + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{row.product.canonical_name || "(상품명 없음)"}</p>
+                    <p className="mt-1 truncate text-[11px] text-[#8a7a7d]">{row.product.brand || row.product.category || "-"}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-[#a94f65]">{Math.round(row.score)}</span>
+                </div>
+              </div>) : <p className="rounded-xl bg-white px-3 py-4 text-center text-xs text-[#8a7a7d]">분석 데이터 없음</p>}
+            </div>
+          </article>)}
+        </div>
       </section>
 
       <section className="mt-5 rounded-3xl border border-[#eadfe1] bg-white p-6 shadow-sm">
