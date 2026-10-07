@@ -72,7 +72,7 @@ export async function GET() {
       countRows(url, key, "test_sessions?select=id"),
       countRows(url, key, "product_analysis_requests?select=id"),
       countRows(url, key, "layad_users?select=id"),
-      countRows(url, key, "product_type_fits?select=id"),
+      countRows(url, key, "product_type_fits?select=product_id"),
     ]);
 
     const recentDays = await Promise.all([1, 2, 3, 4, 5].map(async daysAgo => {
