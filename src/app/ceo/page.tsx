@@ -63,7 +63,7 @@ export default function CeoPage() {
     const load = async () => {
       try {
         const [d, u, c] = await Promise.all([
-          fetch(`/api/admin/dashboard?t=${Date.now()}`, { cache: "no-store" }).then(r => r.json()),
+          fetch("/api/admin/dashboard", { cache: "no-store" }).then(r => r.json()),
           fetch(`/api/admin/ai-usage?days=31&t=${Date.now()}`, { cache: "no-store" }).then(r => r.json()),
           fetch(`/api/admin/capacity?t=${Date.now()}`, { cache: "no-store" }).then(r => r.json()),
         ]);
