@@ -4,9 +4,9 @@ const SUPABASE_URL = "https://mbunlzldwpjgichedzfa.supabase.co";
 
 function cfg(){ return { key: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY }; }
 function headers(key:string, extra?:HeadersInit):HeadersInit { const base:Record<string,string>={apikey:key,"Content-Type":"application/json"}; if(!key.startsWith("sb_secret_")) base.Authorization=`Bearer ${key}`; return {...base,...(extra??{})}; }
-async function db(path:string, init:RequestInit, key:string){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:headers(key,init.headers),cache:"no-store"}); }
+async function db(path:string, init:RequestInit, key:string, cached=false){ return fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...init,headers:headers(key,init.headers),...(cached?{next:{revalidate:300}}:{cache:"no-store" as const})}); }
 async function json<T>(res:Response,label:string):Promise<T>{ if(!res.ok) throw new Error(`${label}: ${await res.text()}`); return res.json() as Promise<T>; }
-async function dbAll<T>(path:string,key:string,label:string):Promise<T[]>{ const all:T[]=[]; const pageSize=1000; for(let offset=0;;offset+=pageSize){ const sep=path.includes("?")?"&":"?"; const res=await db(`${path}${sep}limit=${pageSize}&offset=${offset}`,{method:"GET"},key); const page=await json<T[]>(res,label); all.push(...page); if(page.length<pageSize) break; if(offset>=99000) throw new Error(`${label}: pagination safety limit exceeded`); } return all; }
+async function dbAll<T>(path:string,key:string,label:string,cached=true):Promise<T[]>{ const all:T[]=[]; const pageSize=1000; for(let offset=0;;offset+=pageSize){ const sep=path.includes("?")?"&":"?"; const res=await db(`${path}${sep}limit=${pageSize}&offset=${offset}`,{method:"GET"},key,cached); const page=await json<T[]>(res,label); all.push(...page); if(page.length<pageSize) break; if(offset>=99000) throw new Error(`${label}: pagination safety limit exceeded`); } return all; }
 
 type Product = { id:string; canonical_name:string; brand:string|null; category:string|null; verification_status:string; updated_at:string };
 type Run = { id:string; product_id:string; provider:string|null; model_name:string|null; analysis_version:string|null; input_review_count:number|null; completed_at:string|null; created_at:string };
@@ -21,6 +21,7 @@ export async function GET(request:NextRequest){
   if(!key) return NextResponse.json({ok:false,message:"Supabase server key가 없습니다."},{status:503});
   try{
     const productId=request.nextUrl.searchParams.get("productId");
+    const forceFresh=request.nextUrl.searchParams.get("fresh")==="1";
     if(productId){
       const [pRes,runRes,revRes,srcRes,axisRes,fitRes]=await Promise.all([
         db(`products?id=eq.${encodeURIComponent(productId)}&select=id,canonical_name,brand,category,verification_status,updated_at&limit=1`,{method:"GET"},key),
@@ -49,14 +50,14 @@ export async function GET(request:NextRequest){
     }
 
     const [products,runs,reviews,features,axes,fits,candidates,masters]=await Promise.all([
-      dbAll<Product>("products?deleted_at=is.null&select=id,canonical_name,brand,category,verification_status,updated_at&order=updated_at.desc",key,"상품 목록 조회 실패"),
-      dbAll<Run>("review_analysis_runs?status=eq.completed&select=id,product_id,provider,model_name,analysis_version,input_review_count,completed_at,created_at&order=completed_at.desc.nullslast",key,"분석 기록 조회 실패"),
-      dbAll<{id:string;product_id:string}>("reviews?select=id,product_id",key,"리뷰 집계 조회 실패"),
-      dbAll<{id:string;review_id:string}>("review_features?select=id,review_id",key,"키워드 집계 조회 실패"),
-      dbAll<{product_id:string;axis:string}>("product_axis_profiles?select=product_id,axis",key,"4축 집계 조회 실패"),
-      dbAll<{product_id:string;beauty_code:string}>("product_type_fits?select=product_id,beauty_code",key,"적합도 집계 조회 실패"),
-      dbAll<Record<string,unknown>>("review_keyword_candidates?select=id,candidate_keyword,language_code,suggested_axis,suggested_code,suggested_weight,ai_confidence,occurrence_count,status,first_product_id,last_product_id,sample_context,updated_at&order=updated_at.desc.nullslast",key,"Candidate 조회 실패"),
-      dbAll<Record<string,unknown>>("review_keyword_master?select=id,canonical_keyword,language_code,axis,code,default_weight,active,synonyms,updated_at&order=updated_at.desc.nullslast",key,"Master 조회 실패"),
+      dbAll<Product>("products?deleted_at=is.null&select=id,canonical_name,brand,category,verification_status,updated_at&order=updated_at.desc",key,"상품 목록 조회 실패",!forceFresh),
+      dbAll<Run>("review_analysis_runs?status=eq.completed&select=id,product_id,provider,model_name,analysis_version,input_review_count,completed_at,created_at&order=completed_at.desc.nullslast",key,"분석 기록 조회 실패",!forceFresh),
+      dbAll<{id:string;product_id:string}>("reviews?select=id,product_id",key,"리뷰 집계 조회 실패",!forceFresh),
+      dbAll<{id:string;review_id:string}>("review_features?select=id,review_id",key,"키워드 집계 조회 실패",!forceFresh),
+      dbAll<{product_id:string;axis:string}>("product_axis_profiles?select=product_id,axis",key,"4축 집계 조회 실패",!forceFresh),
+      dbAll<{product_id:string;beauty_code:string}>("product_type_fits?select=product_id,beauty_code",key,"적합도 집계 조회 실패",!forceFresh),
+      dbAll<Record<string,unknown>>("review_keyword_candidates?select=id,candidate_keyword,language_code,suggested_axis,suggested_code,suggested_weight,ai_confidence,occurrence_count,status,first_product_id,last_product_id,sample_context,updated_at&order=updated_at.desc.nullslast",key,"Candidate 조회 실패",!forceFresh),
+      dbAll<Record<string,unknown>>("review_keyword_master?select=id,canonical_keyword,language_code,axis,code,default_weight,active,synonyms,updated_at&order=updated_at.desc.nullslast",key,"Master 조회 실패",!forceFresh),
     ]);
 
     const reviewProduct=new Map(reviews.map(r=>[r.id,r.product_id]));
