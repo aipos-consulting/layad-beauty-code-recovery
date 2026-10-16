@@ -356,11 +356,15 @@ export default function FitPage() {
           </button>
         </form>
 
-        <aside aria-label="적합도 분석 서비스 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-xs leading-6 text-[#665b5e] sm:text-sm">
-          <p className="font-semibold">적합도 분석 서비스 안내</p>
-          <p className="mt-2">1. 적합도 분석 서비스는 현재 베타 서비스 중입니다.</p>
-          <p>2. 네이버 스마트스토어에서만 판매중인 제품은 분석이 어렵습니다.</p>
-          <p>3. 본 테스트 결과는 공개된 제품 정보와 사용자 경험을 바탕으로 유형별 예상 적합도를 분석한 것으로, 제품의 우열을 나타내거나 기능을 보장하는 것이 아님을 알려 드립니다.</p>
+        <aside aria-label="적합도 분석 서비스 이용 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-sm leading-6 text-[#665b5e]">
+          <div className="flex items-center gap-2"><span aria-hidden="true">ⓘ</span><p className="font-semibold">적합도 분석 서비스 이용 안내</p><span className="rounded-full bg-[#eee6e8] px-2 py-0.5 text-[10px] font-semibold tracking-wide">BETA SERVICE</span></div>
+          <p className="mt-3">LAYAD16의 제품 적합도 분석은 현재 베타 서비스로 제공되고 있으며, 분석 가능한 제품 및 정보의 범위에 일부 제한이 있을 수 있습니다.</p>
+          <p className="mt-3 font-semibold">분석 대상 안내</p>
+          <p>공개적으로 확인할 수 있는 제품 정보 및 사용자 경험 자료가 부족한 경우 분석이 제한될 수 있습니다. 특히 네이버 스마트스토어에서만 판매되는 제품은 분석이 어려울 수 있습니다.</p>
+          <p className="mt-3 font-semibold">분석 결과 안내</p>
+          <p>본 서비스는 공개된 제품 정보와 사용자 경험을 바탕으로 Beauty Code 유형별 예상 적합도를 분석하여 참고 정보를 제공합니다.</p>
+          <p className="mt-2">분석 결과 및 적합도 점수는 제품 간 우열이나 품질·성능을 평가하는 절대적 기준이 아니며, 특정 효과나 기능, 개인별 사용 결과를 보장하지 않습니다.</p>
+          <p className="mt-3 text-xs text-[#84777a]">※ 실제 사용 경험은 개인의 피부 상태, 사용 환경 및 제품 특성 등에 따라 달라질 수 있습니다.</p>
         </aside>
 
         {message ? <p className="mt-5 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{message}</p> : null}
@@ -381,12 +385,17 @@ export default function FitPage() {
               </button>
             </section>
 
-        <aside aria-label="적합도 분석 서비스 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-xs leading-6 text-[#665b5e] sm:text-sm">
-          <p className="font-semibold">적합도 분석 서비스 안내</p>
-          <p className="mt-2">1. 적합도 분석 서비스는 현재 베타 서비스 중입니다.</p>
-          <p>2. 네이버 스마트스토어에서만 판매중인 제품은 분석이 어렵습니다.</p>
-          <p>3. 본 테스트 결과는 공개된 제품 정보와 사용자 경험을 바탕으로 유형별 예상 적합도를 분석한 것으로, 제품의 우열을 나타내거나 기능을 보장하는 것이 아님을 알려 드립니다.</p>
-        </aside>
+            <aside aria-label="적합도 분석 결과 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-sm leading-6 text-[#665b5e]">
+              <p className="font-semibold">ⓘ 분석 결과 안내 <span className="ml-2 rounded-full bg-[#eee6e8] px-2 py-0.5 text-[10px]">BETA SERVICE</span></p>
+              <p className="mt-2">본 서비스는 공개된 제품 정보와 사용자 경험을 바탕으로 Beauty Code 유형별 예상 적합도를 분석하여 참고 정보를 제공합니다.</p>
+              <p className="mt-2">분석 결과 및 적합도 점수는 제품 간 우열이나 품질·성능을 평가하는 절대적 기준이 아니며, 특정 효과나 기능, 개인별 사용 결과를 보장하지 않습니다.</p>
+              <details className="mt-3 border-t border-[#e8dfe1] pt-3">
+                <summary className="cursor-pointer font-semibold">서비스 및 분석 대상 안내 자세히 보기</summary>
+                <p className="mt-2">LAYAD16의 제품 적합도 분석은 현재 베타 서비스로 제공되고 있으며, 분석 가능한 제품 및 정보의 범위에 일부 제한이 있을 수 있습니다.</p>
+                <p className="mt-2">공개적으로 확인할 수 있는 제품 정보 및 사용자 경험 자료가 부족한 경우 분석이 제한될 수 있습니다. 특히 네이버 스마트스토어에서만 판매되는 제품은 분석이 어려울 수 있습니다.</p>
+                <p className="mt-2 text-xs text-[#84777a]">※ 실제 사용 경험은 개인의 피부 상태, 사용 환경 및 제품 특성 등에 따라 달라질 수 있습니다.</p>
+              </details>
+            </aside>
 
             {detailError ? <p className="mt-4 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{detailError}</p> : null}
 
