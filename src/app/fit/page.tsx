@@ -356,6 +356,13 @@ export default function FitPage() {
           </button>
         </form>
 
+        <aside aria-label="적합도 분석 서비스 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-xs leading-6 text-[#665b5e] sm:text-sm">
+          <p className="font-semibold">적합도 분석 서비스 안내</p>
+          <p className="mt-2">1. 적합도 분석 서비스는 현재 베타 서비스 중입니다.</p>
+          <p>2. 네이버 스마트스토어에서만 판매중인 제품은 분석이 어렵습니다.</p>
+          <p>3. 본 테스트 결과는 공개된 제품 정보와 사용자 경험을 바탕으로 유형별 예상 적합도를 분석한 것으로, 제품의 우열을 나타내거나 기능을 보장하는 것이 아님을 알려 드립니다.</p>
+        </aside>
+
         {message ? <p className="mt-5 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{message}</p> : null}
 
         {result ? (
@@ -373,6 +380,13 @@ export default function FitPage() {
                 {detailBusy ? t.loadingDetail : detail ? t.closeDetail : t.openDetail}
               </button>
             </section>
+
+        <aside aria-label="적합도 분석 서비스 안내" className="mt-4 rounded-2xl border border-[#e8dfe1] bg-[#faf8f8] p-4 text-left text-xs leading-6 text-[#665b5e] sm:text-sm">
+          <p className="font-semibold">적합도 분석 서비스 안내</p>
+          <p className="mt-2">1. 적합도 분석 서비스는 현재 베타 서비스 중입니다.</p>
+          <p>2. 네이버 스마트스토어에서만 판매중인 제품은 분석이 어렵습니다.</p>
+          <p>3. 본 테스트 결과는 공개된 제품 정보와 사용자 경험을 바탕으로 유형별 예상 적합도를 분석한 것으로, 제품의 우열을 나타내거나 기능을 보장하는 것이 아님을 알려 드립니다.</p>
+        </aside>
 
             {detailError ? <p className="mt-4 rounded-2xl bg-[#fff3df] p-4 text-sm leading-6 text-[#8d5a23]">{detailError}</p> : null}
 
