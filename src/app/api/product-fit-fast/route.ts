@@ -141,6 +141,7 @@ export async function POST(request:NextRequest){
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SECRET_KEY;
   const openai=process.env.OPENAI_API_KEY;
   if(!key||!openai) return NextResponse.json({ok:false,code:!key?"SUPABASE_NOT_CONFIGURED":"OPENAI_NOT_CONFIGURED"},{status:503});
+  let activeRequestId: string | null = null;
   try{
     const body=await request.json() as {beautyCode?:string;inputValue?:string};
     const beautyCode=body.beautyCode?.trim()??""; let inputValue=body.inputValue?.trim()??"";
@@ -153,6 +154,7 @@ export async function POST(request:NextRequest){
     if(!beginResponse.ok) throw new Error(`상품 준비 실패: ${beginResponse.status} ${(await beginResponse.text()).slice(0,300)}`);
     const row=(await beginResponse.json() as BeginRow[])[0];
     if(!row?.request_id||!row.product_id) throw new Error("상품 준비 결과가 올바르지 않습니다.");
+    activeRequestId = row.request_id;
     if(row.request_status==="completed"&&row.cached_fit_score!=null) return NextResponse.json({ok:true,status:"completed",cached:true,requestId:row.request_id,sessionId:row.session_id,productName:row.product_name||inputValue,beautyCode,fitScore:Math.round(Number(row.cached_fit_score)),confidence:Number(row.cached_confidence??0),reviewCount:Number(row.cached_review_count??0),timings:{beginMs,openAiMs:0,finalizeMs:0,totalMs:Date.now()-startedAll}});
     if(row.ai_mode==="off") return NextResponse.json({ok:false,code:"AI_MODE_OFF",message:"실시간 분석이 현재 중지되어 있습니다."},{status:503});
     const aiStarted=Date.now();
@@ -181,6 +183,12 @@ export async function POST(request:NextRequest){
     const isMalformed=error instanceof SyntaxError||(error instanceof Error&&/JSON|완전하지|8개/i.test(error.message));
     const message=isTimeout?"상품 분석 서버가 혼잡합니다. 잠시 후 다시 시도해 주세요.":isMalformed?"상품 분석 결과를 완성하지 못했습니다. 다시 한 번 시도해 주세요.":error instanceof Error?error.message:"적합도 분석에 실패했습니다.";
     console.error("Single-call product fit failed",error);
+    if(activeRequestId && key){
+      try {
+        const saveError=await db(`product_analysis_requests?id=eq.${encodeURIComponent(activeRequestId)}` ,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:"failed",error_message:message.slice(0,500),updated_at:new Date().toISOString()})},key);
+        if(!saveError.ok) console.error("Could not persist product fit failure",saveError.status);
+      } catch (persistError) { console.error("Could not persist product fit failure",persistError); }
+    }
     return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":isMalformed?"PRODUCT_FIT_INCOMPLETE":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
   }
 }
