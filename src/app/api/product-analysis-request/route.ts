@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
   if (!key) return NextResponse.json({ ok: false, code: "SUPABASE_NOT_CONFIGURED" }, { status: 503 });
   let body: ProductRequestInput;
   try { body = await request.json() as ProductRequestInput; } catch { return NextResponse.json({ ok: false, message: "잘못된 요청입니다." }, { status: 400 }); }
-  let inputValue = body.inputValue?.trim();
+  let inputValue = body.inputValue?.trim() ?? "";
   if (!inputValue || inputValue.length > 2000) return NextResponse.json({ ok: false, message: "상품명 또는 상품 링크를 확인해 주세요." }, { status: 400 });
   if (body.inputType !== "name" && body.inputType !== "url") return NextResponse.json({ ok: false, message: "상품 입력 유형이 올바르지 않습니다." }, { status: 400 });
 
