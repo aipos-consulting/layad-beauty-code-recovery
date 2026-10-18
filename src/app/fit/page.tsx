@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import ProductFitEvidencePanel from "./product-fit-evidence-panel";
 
@@ -182,6 +182,7 @@ export default function FitPage() {
   const [authRequired, setAuthRequired] = useState(false);
   const [productInput, setProductInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const activeSubmissionRef = useRef(false);
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<ResultState | null>(null);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
@@ -233,7 +234,8 @@ export default function FitPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!beautyCode || !productInput.trim() || busy) return;
+    if (!beautyCode || !productInput.trim() || busy || activeSubmissionRef.current) return;
+    activeSubmissionRef.current = true;
 
     const inputValue = productInput.trim();
     setBusy(true);
@@ -273,6 +275,7 @@ export default function FitPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t.fitFailed);
     } finally {
+      activeSubmissionRef.current = false;
       setBusy(false);
     }
   }
