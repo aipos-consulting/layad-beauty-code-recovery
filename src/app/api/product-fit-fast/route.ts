@@ -142,12 +142,27 @@ export async function POST(request:NextRequest){
   const openai=process.env.OPENAI_API_KEY;
   if(!key||!openai) return NextResponse.json({ok:false,code:!key?"SUPABASE_NOT_CONFIGURED":"OPENAI_NOT_CONFIGURED"},{status:503});
   let activeRequestId: string | null = null;
+  let lockKey: string | null = null;
+  const lockToken = crypto.randomUUID();
   try{
     const body=await request.json() as {beautyCode?:string;inputValue?:string};
     const beautyCode=body.beautyCode?.trim()??""; let inputValue=body.inputValue?.trim()??"";
     if(!BEAUTY_CODE.test(beautyCode)) return NextResponse.json({ok:false,message:"Beauty Code를 확인해 주세요."},{status:400});
     if(!inputValue||inputValue.length>2000) return NextResponse.json({ok:false,message:"상품명 또는 상품 링크를 확인해 주세요."},{status:400});
     const inputType=/^https?:\/\//i.test(inputValue)?"url":"name"; if(inputType==="url") inputValue=await resolveUrl(inputValue);
+    // Atomic cross-instance lease prevents two concurrent AI calls for the same input.
+    // Fail closed if the lock service is unavailable.
+    const requestedLockKey = `${inputType}:${normalize(inputValue)}`;
+    const claimResponse = await db("rpc/claim_product_fit_analysis_lock", {
+      method:"POST", body:JSON.stringify({p_lock_key:requestedLockKey,p_owner_token:lockToken})
+    },key);
+    if(!claimResponse.ok) throw new Error(`중복 분석 잠금 확인 실패: ${claimResponse.status}`);
+    const claimed = await claimResponse.json() as boolean;
+    if(!claimed) return NextResponse.json({
+      ok:false,code:"ANALYSIS_ALREADY_IN_PROGRESS",
+      message:"동일한 상품의 적합도 분석이 진행 중입니다. 잠시 후 결과를 다시 확인해 주세요."
+    },{status:409});
+    lockKey = requestedLockKey;
     const beginStarted=Date.now();
     const beginResponse=await db("rpc/begin_product_fit_analysis_v2",{method:"POST",body:JSON.stringify({p_input_type:inputType,p_input_value:inputValue,p_normalized_name:normalize(inputValue),p_beauty_code:beautyCode,p_country_code:request.headers.get("x-vercel-ip-country")||null,p_region_code:request.headers.get("x-vercel-ip-country-region")||null,p_device_type:device(request.headers.get("user-agent")??"")})},key);
     const beginMs=Date.now()-beginStarted;
@@ -190,5 +205,12 @@ export async function POST(request:NextRequest){
       } catch (persistError) { console.error("Could not persist product fit failure",persistError); }
     }
     return NextResponse.json({ok:false,code:isTimeout?"PRODUCT_FIT_TIMEOUT":isMalformed?"PRODUCT_FIT_INCOMPLETE":"PRODUCT_FIT_FAILED",message,timings:{totalMs:Date.now()-startedAll}},{status:isTimeout?504:500});
+  } finally {
+    if(lockKey){
+      try {
+        const released=await db("rpc/release_product_fit_analysis_lock",{method:"POST",body:JSON.stringify({p_lock_key:lockKey,p_owner_token:lockToken})},key);
+        if(!released.ok) console.error("Failed to release product analysis lock",released.status);
+      } catch (releaseError) { console.error("Failed to release product analysis lock",releaseError); }
+    }
   }
 }
