@@ -1,3 +1,4 @@
+import { POST as analyzeProductFit } from "../product-fit-fast/route";
 import { NextRequest, NextResponse } from "next/server";
 
 type ProductRequestInput = { sessionId?: string; beautyCode?: string; inputType: "name" | "url"; inputValue: string };
@@ -133,6 +134,41 @@ export async function POST(request: NextRequest) {
   let inputValue = body.inputValue?.trim();
   if (!inputValue || inputValue.length > 2000) return NextResponse.json({ ok: false, message: "상품명 또는 상품 링크를 확인해 주세요." }, { status: 400 });
   if (body.inputType !== "name" && body.inputType !== "url") return NextResponse.json({ ok: false, message: "상품 입력 유형이 올바르지 않습니다." }, { status: 400 });
+
+  // Reuse the production real-time analysis path instead of leaving new products queued.
+  // The legacy client expects requestId/sessionId and reads the stored result separately.
+  let effectiveBeautyCode = body.beautyCode?.trim() ?? "";
+  if (!BEAUTY_CODE.test(effectiveBeautyCode) && UUID.test(body.sessionId?.trim() ?? "")) {
+    const sessionResponse = await db(`test_sessions?id=eq.${encodeURIComponent(body.sessionId!.trim())}&select=beauty_code&limit=1`, { method: "GET" }, key);
+    if (sessionResponse.ok) {
+      const sessions = await sessionResponse.json() as Array<{ beauty_code: string | null }>;
+      effectiveBeautyCode = sessions[0]?.beauty_code ?? "";
+    }
+  }
+  if (BEAUTY_CODE.test(effectiveBeautyCode)) {
+    const forwarded = new NextRequest(request.url, {
+      method: "POST",
+      headers: request.headers,
+      body: JSON.stringify({ beautyCode: effectiveBeautyCode, inputValue }),
+    });
+    const response = await analyzeProductFit(forwarded);
+    const result = await response.json() as Record<string, unknown>;
+    if (!response.ok || result.ok !== true) {
+      return NextResponse.json({
+        ok: false, code: result.code || "PRODUCT_FIT_FAILED",
+        message: result.message || "상품 적합도 분석에 실패했습니다. 다시 시도해 주세요.",
+      }, { status: response.status });
+    }
+    return NextResponse.json({
+      ...result, ok: true, requestId: result.requestId, sessionId: result.sessionId,
+      productName: result.productName || inputValue, status: "completed",
+      message: "상품 적합도 분석을 완료했습니다.",
+    });
+  }
+  // Do not create an unprocessable 'submitted' entry without a valid Beauty Code.
+  return NextResponse.json({ ok: false, code: "BEAUTY_CODE_REQUIRED",
+    message: "Beauty Code를 확인할 수 없습니다. 적합도 분석 화면에서 다시 신청해 주세요." }, { status: 400 });
+
 
   if(body.inputType==="name" && !UUID.test(body.sessionId?.trim()??"") && body.beautyCode && BEAUTY_CODE.test(body.beautyCode)){
     try{
