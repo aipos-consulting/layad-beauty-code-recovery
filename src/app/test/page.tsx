@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BEAUTY_TYPES, type BeautyTypeCode } from "@/lib/review-product-fit";
-import { createProductAnalysisRequest, validateProductInput, type ProductAnalysisRequest } from "@/lib/product-analysis-request";
 import { LanguageSwitcher, type Locale, useLanguage } from "../i18n";
 
 type Code = "O" | "D" | "G" | "M" | "P" | "C" | "V" | "E";
@@ -119,9 +118,6 @@ export default function TestPage() {
   const [answers, setAnswers] = useState<Record<number, Code>>({});
   const [completed, setCompleted] = useState(false);
   const [advancing, setAdvancing] = useState(false);
-  const [productInput, setProductInput] = useState("");
-  const [productError, setProductError] = useState("");
-  const [analysisRequests, setAnalysisRequests] = useState<ProductAnalysisRequest[]>([]);
 
   const definition = definitions[currentIndex];
   const localized = questionText[locale][currentIndex];
@@ -150,17 +146,7 @@ export default function TestPage() {
     }, 180);
   };
 
-  const submitProduct = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const validation = validateProductInput(productInput);
-    if (!validation.valid) { setProductError(text.invalid); return; }
-    const normalized = productInput.trim();
-    if (analysisRequests[0]?.inputValue === normalized) { setProductError(text.duplicate); return; }
-    setAnalysisRequests((previous) => [createProductAnalysisRequest(normalized, finalCode), ...previous]);
-    setProductInput(""); setProductError("");
-  };
-
-  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); setProductInput(""); setProductError(""); setAnalysisRequests([]); };
+  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); };
 
   useEffect(() => {
     if (completed) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -174,13 +160,8 @@ export default function TestPage() {
         <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
-          <form onSubmit={submitProduct} className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
-            <label htmlFor="product-input" className="text-sm font-semibold text-[#5f5053]">{text.productLabel}</label>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row"><input id="product-input" value={productInput} onChange={(e) => { setProductInput(e.target.value); setProductError(""); }} placeholder={text.productPlaceholder} className="min-w-0 flex-1 rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none" /><button type="submit" disabled={!productInput.trim()} className="rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white disabled:bg-[#d8cccc]">{text.submit}</button></div>
-            {productError && <p className="mt-3 text-sm font-medium text-[#b84f63]">{productError}</p>}
-          </form>
-          <div className="mt-7 space-y-4">{analysisRequests.length === 0 ? <div className="rounded-2xl border border-dashed border-[#e3c7cd] px-5 py-8 text-center text-sm text-[#806f72]">{text.empty}</div> : analysisRequests.map((request) => <article key={request.id} className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6"><div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-[#d88c9c] px-3 py-1 text-xs font-semibold text-white">{text.myType} {request.userBeautyCode}</span><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">{text.pending}</span></div><h3 className="mt-5 text-lg font-semibold">{text.requested}</h3><p className="mt-3 break-all text-sm text-[#806f72]">{request.inputValue}</p><div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-8">{BEAUTY_TYPES.map((code) => <div key={code} className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold ${code === request.userBeautyCode ? "border-[#d88c9c] bg-[#d88c9c] text-white" : "border-[#ead7db] bg-white/80"}`}>{code}</div>)}</div></article>)}</div>
-        </section>
+          <div className="mx-auto mt-8 max-w-2xl text-center"><Link href="/fit" className="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-[#d88c9c] px-8 py-3 text-sm font-semibold text-white hover:bg-[#c8798a]">{locale === "en" ? "View product fit analysis" : locale === "ja" ? "商品適合度分析へ" : "상품 적합도 분석 바로가기"}</Link><p className="mt-3 text-xs text-[#806f72]">{locale === "en" ? "Submit a product and see its results on the product fit analysis page." : locale === "ja" ? "商品申請と結果確認は商品適合度分析ページで行えます。" : "상품 신청과 분석 결과 확인은 적합도 분석 화면에서 진행됩니다."}</p></div>
+         </section>
         <button type="button" onClick={resetTest} className="mt-9 rounded-full bg-[#d88c9c] px-7 py-3 text-sm font-semibold text-white">{text.reset}</button>
       </section>
     </main>
