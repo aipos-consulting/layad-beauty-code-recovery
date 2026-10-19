@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LayadHiddenEventPopup from "../layad-hidden-event-popup";
 import { useEffect, useMemo, useState } from "react";
 import { BEAUTY_TYPES, type BeautyTypeCode } from "@/lib/review-product-fit";
 import { LanguageSwitcher, type Locale, useLanguage } from "../i18n";
@@ -117,6 +118,7 @@ export default function TestPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, Code>>({});
   const [completed, setCompleted] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
   const [advancing, setAdvancing] = useState(false);
 
   const definition = definitions[currentIndex];
@@ -140,13 +142,13 @@ export default function TestPage() {
     setAdvancing(true);
     setAnswers((previous) => ({ ...previous, [definition.id]: code }));
     window.setTimeout(() => {
-      if (currentIndex === definitions.length - 1) setCompleted(true);
+      if (currentIndex === definitions.length - 1) { setCompleted(true); setEventOpen(true); }
       else setCurrentIndex((index) => index + 1);
       setAdvancing(false);
     }, 180);
   };
 
-  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setAdvancing(false); };
+  const resetTest = () => { setAnswers({}); setCurrentIndex(0); setCompleted(false); setEventOpen(false); setAdvancing(false); };
 
   useEffect(() => {
     if (completed) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -164,6 +166,7 @@ export default function TestPage() {
          </section>
         <button type="button" onClick={resetTest} className="mt-9 rounded-full bg-[#d88c9c] px-7 py-3 text-sm font-semibold text-white">{text.reset}</button>
       </section>
+      {eventOpen ? <LayadHiddenEventPopup beautyCode={finalCode} onClose={() => setEventOpen(false)} /> : null}
     </main>
   );
 
