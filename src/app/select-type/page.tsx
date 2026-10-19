@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { BEAUTY_TYPES, type BeautyTypeCode } from "@/lib/review-product-fit";
-import { createProductAnalysisRequest, validateProductInput, type ProductAnalysisRequest } from "@/lib/product-analysis-request";
+import { validateProductInput } from "@/lib/product-analysis-request";
 import { LanguageSwitcher, type Locale, useLanguage } from "../i18n";
 
 const SESSION_KEY = "layad-supabase-session-id";
@@ -12,6 +12,7 @@ const SAVED_SOURCE_KEY = "layad-saved-beauty-code-source";
 
 type AgeBand = "14-19" | "20-29" | "30-39" | "40-49" | "50-59" | "60+" | "prefer_not_to_say";
 type Character = { beauty_code: string; nickname: string; image_url: string | null };
+type FitResult = { status: "completed"; productName: string; beautyCode: string; fitScore: number; confidence: number; reviewCount: number; cached?: boolean };
 type Copy = {
   title: string; subtitle: string; selected: string; imagePending: string; chooseCode: string;
   continue: string; takeTest: string; fitTitle: string; fitDesc: string; productLabel: string;
@@ -64,11 +65,6 @@ const ageLabels: Record<Locale, Record<AgeBand, string>> = {
 
 const ageValues: AgeBand[] = ["14-19", "20-29", "30-39", "40-49", "50-59", "60+", "prefer_not_to_say"];
 
-function formatRequestTime(iso: string, locale: Locale) {
-  const localeCode = locale === "en" ? "en-US" : locale === "ja" ? "ja-JP" : "ko-KR";
-  return new Intl.DateTimeFormat(localeCode, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
-}
-
 export default function SelectTypePage() {
   const { locale } = useLanguage();
   const text = copy[locale];
@@ -81,7 +77,9 @@ export default function SelectTypePage() {
   const [ageError, setAgeError] = useState("");
   const [productInput, setProductInput] = useState("");
   const [productError, setProductError] = useState("");
-  const [requests, setRequests] = useState<ProductAnalysisRequest[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const submittingRef = useRef(false);
+  const [fitResult, setFitResult] = useState<FitResult | null>(null);
 
   useEffect(() => { setSessionReady(Boolean(sessionStorage.getItem(SESSION_KEY))); }, []);
   useEffect(() => {
@@ -105,17 +103,37 @@ export default function SelectTypePage() {
     finally { setSavingAge(false); }
   }
 
-  function submitProduct(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!selectedCode) return;
-    const sessionId = sessionStorage.getItem(SESSION_KEY);
-    if (!sessionId || !sessionReady) { setShowAgePrompt(true); setProductError(text.sessionError); return; }
-    const validation = validateProductInput(productInput); if (!validation.valid) { setProductError(text.invalidInput); return; }
-    const normalized = productInput.trim(); if (requests[0]?.inputValue === normalized) { setProductError(text.duplicate); return; }
-    setRequests(previous => [createProductAnalysisRequest(normalized, selectedCode), ...previous]); setProductInput(""); setProductError("");
+  async function submitProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCode || submittingRef.current) return;
+    if (!sessionReady || !sessionStorage.getItem(SESSION_KEY)) {
+      setShowAgePrompt(true); setProductError(text.sessionError); return;
+    }
+    const validation = validateProductInput(productInput);
+    if (!validation.valid) { setProductError(text.invalidInput); return; }
+    submittingRef.current = true;
+    setAnalyzing(true); setProductError(""); setFitResult(null);
+    try {
+      const response = await fetch("/api/product-fit-fast", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beautyCode: selectedCode, inputValue: productInput.trim() })
+      });
+      const payload = await response.json() as { ok?: boolean; status?: string; message?: string; code?: string; productName?: string; beautyCode?: string; fitScore?: number; confidence?: number; reviewCount?: number; cached?: boolean };
+      if (!response.ok || !payload.ok || payload.status !== "completed" || typeof payload.fitScore !== "number") {
+        throw new Error(payload.message || (locale === "ko" ? "상품 분석 결과를 확인하지 못했습니다." : "Could not retrieve the product analysis."));
+      }
+      setFitResult({ status: "completed", productName: payload.productName || productInput.trim(), beautyCode: payload.beautyCode || selectedCode, fitScore: payload.fitScore, confidence: payload.confidence ?? 0, reviewCount: payload.reviewCount ?? 0, cached: payload.cached });
+      setProductInput("");
+    } catch (error) {
+      setProductError(error instanceof Error ? error.message : text.networkError);
+    } finally {
+      submittingRef.current = false;
+      setAnalyzing(false);
+    }
   }
 
   function choose(code: BeautyTypeCode) {
-    setSelectedCode(code); setConfirmed(false); setSessionReady(false); setRequests([]); setProductError("");
+    setSelectedCode(code); setConfirmed(false); setSessionReady(false); setFitResult(null); setProductError("");
     sessionStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SAVED_CODE_KEY); sessionStorage.removeItem(SAVED_SOURCE_KEY);
   }
 
@@ -155,10 +173,16 @@ export default function SelectTypePage() {
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.fitTitle}</h2><p className="mt-3 text-sm leading-7 text-[#766767]">{text.fitDesc}</p></div>
           <form onSubmit={submitProduct} className="mx-auto mt-7 max-w-2xl rounded-3xl border border-[#f1dfe2] bg-[#fffafa] p-5 sm:p-6">
             <label htmlFor="manual-product-input" className="text-sm font-semibold">{text.productLabel}</label>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row"><input id="manual-product-input" value={productInput} onChange={e => { setProductInput(e.target.value); if (productError) setProductError(""); }} placeholder={text.productPlaceholder} maxLength={2000} className="min-w-0 flex-1 rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none focus:border-[#d88c9c]" /><button type="submit" disabled={!productInput.trim() || !sessionReady} className="rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white disabled:bg-[#d8cccc]">{text.analyze}</button></div>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row"><input id="manual-product-input" value={productInput} onChange={e => { setProductInput(e.target.value); if (productError) setProductError(""); }} placeholder={text.productPlaceholder} maxLength={2000} className="min-w-0 flex-1 rounded-2xl border border-[#e8cfd4] bg-white px-4 py-3 text-sm outline-none focus:border-[#d88c9c]" /><button type="submit" disabled={!productInput.trim() || !sessionReady || analyzing} className="rounded-2xl bg-[#d88c9c] px-6 py-3 text-sm font-semibold text-white disabled:bg-[#d8cccc]">{text.analyze}</button></div>
             {!sessionReady ? <p className="mt-3 text-sm text-[#806f72]">{text.sessionNeeded}</p> : null}{productError ? <p className="mt-3 text-sm font-medium text-[#b84f63]">{productError}</p> : null}
           </form>
-          <div className="mt-6 space-y-4">{requests.map(request => <article key={request.id} className="rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-[#a85f6e]">{request.userBeautyCode}</span><span className="rounded-full border border-[#e6a8b5] bg-white px-3 py-1 text-xs font-semibold text-[#a85f6e]">{text.pending}</span></div><h3 className="mt-4 text-lg font-semibold">{text.requestReceived}</h3><p className="mt-3 text-sm text-[#806f72]">{text.requestTime} {formatRequestTime(request.createdAt, locale)}</p></article>)}</div>
+          {analyzing ? <div role="status" className="mt-6 rounded-3xl border border-[#e6a8b5] bg-[#fff8f8] p-6 text-center text-sm font-medium text-[#a85f6e]">{locale === "ko" ? "상품의 실제 분석 결과를 확인하고 있습니다…" : locale === "ja" ? "商品分析結果を確認しています…" : "Checking the actual product analysis result…"}</div> : null}
+          {fitResult ? <article className="mt-6 rounded-3xl border-2 border-[#d88c9c] bg-[#fff0f2] p-6" aria-live="polite">
+            <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-[#a85f6e]">{fitResult.beautyCode}</span><span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#a85f6e]">{locale === "ko" ? "분석 완료" : locale === "ja" ? "分析完了" : "Analysis complete"}</span></div>
+            <h3 className="mt-4 text-lg font-semibold">{fitResult.productName}</h3>
+            <p className="mt-4 text-3xl font-semibold text-[#a85f6e]">{fitResult.fitScore}<span className="ml-1 text-base">/ 100</span></p>
+            <p className="mt-2 text-sm text-[#806f72]">{locale === "ko" ? "선택하신 Beauty Code의 상품 적합도" : locale === "ja" ? "選択したBeauty Codeの適合度" : "Product fit for your Beauty Code"}</p>
+          </article> : null}
         </section> : null}
         <div className="mt-9 text-center"><Link href="/" className="text-sm text-[#7e7070] hover:underline">{text.home}</Link></div>
       </section>
