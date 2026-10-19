@@ -52,7 +52,7 @@ export default function LayadHiddenEventPopup({onClose,beautyCode}:{onClose:()=>
     <p className="mt-1 text-center text-xs">(막상 써보니까 안 맞았다? 무료 반품)</p>
     <p className="mt-4 text-center text-lg font-extrabold text-[#ee3f3b]">안 맞는다고? 그건 내가 판단할래!</p>
     <p className="mt-1 text-center text-xs text-[#e44a45]">(실험정신 존중! 그래서 무료 반품)</p>
-    <a href="https://layadseoul.com" target="_blank" rel="noopener noreferrer" className="mx-auto mt-6 flex min-h-[56px] max-w-md items-center justify-center rounded-full border-2 border-[#075bac] bg-white text-lg font-extrabold text-[#075bac] hover:bg-[#e8f3ff]">30% 할인 비밀 링크　›</a>
+    <a href="https://layadseoul.com/shop_view?idx=9" target="_blank" rel="noopener noreferrer" className="mx-auto mt-6 flex min-h-[56px] max-w-md items-center justify-center rounded-full border-2 border-[#075bac] bg-white text-lg font-extrabold text-[#075bac] hover:bg-[#e8f3ff]">30% 할인 비밀 링크　›</a>
     <p className="mt-2 text-center text-xs">layadseoul.com</p>
     <p className="mt-3 text-center text-[10px] leading-4 text-[#716c74]">제품 추천도는 이벤트 안내용 예시 수치이며 실제 개인 분석 결과와 다를 수 있습니다. 할인 및 반품 조건은 판매처에서 확인해 주세요.</p>
    </div>
