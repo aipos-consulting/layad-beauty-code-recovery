@@ -142,7 +142,7 @@ export default function TestPage() {
     setAdvancing(true);
     setAnswers((previous) => ({ ...previous, [definition.id]: code }));
     window.setTimeout(() => {
-      if (currentIndex === definitions.length - 1) { setCompleted(true); setEventOpen(true); }
+      if (currentIndex === definitions.length - 1) { setCompleted(true); setEventOpen(false); }
       else setCurrentIndex((index) => index + 1);
       setAdvancing(false);
     }, 180);
@@ -159,7 +159,15 @@ export default function TestPage() {
       <section className="mx-auto max-w-4xl rounded-[2rem] bg-white px-6 py-10 text-center shadow-[0_24px_70px_rgba(120,70,80,0.12)] sm:px-12">
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
         <p className="mt-5 text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
-        <h1 className="mt-5 text-5xl font-semibold tracking-[0.18em] text-[#d88c9c] sm:text-6xl">{finalCode}</h1>
+        <p className="mt-3 text-sm font-semibold tracking-[0.15em] text-[#a85f6e]">{finalCode}</p>
+        <button type="button" onClick={() => setEventOpen(true)}
+          aria-label="HIDDEN EVENT 비밀 혜택 확인하기"
+          className="group relative mx-auto mt-5 block w-full max-w-[430px] overflow-hidden rounded-[24px] bg-[linear-gradient(110deg,#075bac,#e58da1,#075bac)] bg-[length:220%_100%] p-[3px] text-white shadow-[0_12px_35px_rgba(8,83,166,.26)] transition-all duration-500 hover:scale-[1.025] hover:bg-right focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#075bac] motion-safe:animate-pulse motion-reduce:animate-none">
+          <span className="block rounded-[21px] bg-[linear-gradient(110deg,#075bac,#377bc0_45%,#dc8ca4)] px-5 py-5 sm:py-6">
+            <span className="block text-2xl font-extrabold tracking-[.13em] sm:text-3xl">HIDDEN EVENT</span>
+            <span className="mt-2 block text-sm font-semibold">비밀 혜택 확인하기 <span aria-hidden="true">›</span></span>
+          </span>
+        </button>
         <section className="mt-12 border-t border-[#f1dfe2] pt-10 text-left">
           <div className="text-center"><p className="text-xs font-semibold tracking-[0.2em] text-[#b97b88]">PRODUCT FIT ANALYSIS</p><h2 className="mt-3 text-2xl font-semibold">{text.productTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#766767]">{text.productDesc}</p></div>
           <div className="mx-auto mt-8 max-w-2xl text-center"><Link href="/fit" className="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-[#d88c9c] px-8 py-3 text-sm font-semibold text-white hover:bg-[#c8798a]">{locale === "en" ? "View product fit analysis" : locale === "ja" ? "商品適合度分析へ" : "상품 적합도 분석 바로가기"}</Link><p className="mt-3 text-xs text-[#806f72]">{locale === "en" ? "Submit a product and see its results on the product fit analysis page." : locale === "ja" ? "商品申請と結果確認は商品適合度分析ページで行えます。" : "상품 신청과 분석 결과 확인은 적합도 분석 화면에서 진행됩니다."}</p></div>
