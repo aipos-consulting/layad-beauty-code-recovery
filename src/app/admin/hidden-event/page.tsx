@@ -1,0 +1,12 @@
+"use client";
+import {useEffect,useState} from "react";
+type Metrics={ok:boolean;totalOpens:number;totalDiscountClicks:number;todayOpens:number;todayDiscountClicks:number;rate:number;byCode:{code:string;opens:number;discountClicks:number}[];byDay:{day:string;opens:number;discountClicks:number}[]};
+export default function HiddenEventAnalytics(){
+ const [data,setData]=useState<Metrics|null>(null);const [error,setError]=useState("");
+ useEffect(()=>{fetch("/api/admin/hidden-event",{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error("집계 조회 실패");return r.json() as Promise<Metrics>}).then(setData).catch(e=>setError(String(e)));},[]);
+ return <main className="mx-auto max-w-6xl space-y-6 px-4 py-8"><h1 className="text-2xl font-bold">HIDDEN EVENT 클릭 분석</h1><p className="text-sm text-[#766767]">집계 시작 이후 클릭만 표시합니다. 팝업 열기와 할인 링크 클릭을 별도로 기록하며 회원 개인정보는 저장하지 않습니다.</p>{error&&<p className="text-red-600">{error}</p>}
+ {data?<><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["이벤트 열기",data.totalOpens],["할인 링크 클릭",data.totalDiscountClicks],["오늘 이벤트 열기",data.todayOpens],["오늘 할인 클릭",data.todayDiscountClicks],["클릭/열기 비율",data.rate+"%"]].map(([name,value])=><div key={name} className="rounded-2xl border border-[#eadfe1] bg-white p-5"><p className="text-sm text-[#766767]">{name}</p><p className="mt-2 text-2xl font-semibold">{value}</p></div>)}</div>
+ <section className="rounded-2xl bg-white p-5"><h2 className="mb-3 text-lg font-bold">Beauty Code별 클릭 현황</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">유형</th><th className="p-2">이벤트 열기</th><th className="p-2">할인 링크 클릭</th></tr></thead><tbody>{data.byCode.map(x=><tr key={x.code} className="border-t"><td className="p-2">{x.code}</td><td className="p-2">{x.opens}</td><td className="p-2">{x.discountClicks}</td></tr>)}</tbody></table></div></section>
+ <section className="rounded-2xl bg-white p-5"><h2 className="mb-3 text-lg font-bold">최근 30일 일별 추이</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">일자 (KST)</th><th className="p-2">이벤트 열기</th><th className="p-2">할인 링크 클릭</th></tr></thead><tbody>{data.byDay.map(x=><tr key={x.day} className="border-t"><td className="p-2">{x.day}</td><td className="p-2">{x.opens}</td><td className="p-2">{x.discountClicks}</td></tr>)}</tbody></table></div></section></>:!error?<p>통계를 불러오는 중입니다…</p>:null}
+ </main>;
+}
