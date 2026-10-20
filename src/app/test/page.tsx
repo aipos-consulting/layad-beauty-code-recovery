@@ -160,6 +160,8 @@ export default function TestPage() {
         <div className="flex justify-end"><LanguageSwitcher compact /></div>
         <p className="mt-5 text-xs font-semibold tracking-[0.25em] text-[#b97b88]">YOUR BEAUTY CODE</p>
         <p className="mt-3 text-sm font-semibold tracking-[0.15em] text-[#a85f6e]">{finalCode}</p>
+        {/* Character result renderer anchors on an h1 containing the code. Keep it accessible but not duplicated visually. */}
+        <h1 className="sr-only">{finalCode}</h1>
         <button type="button" onClick={() => setEventOpen(true)}
           aria-label="HIDDEN EVENT 비밀 혜택 확인하기"
           className="group relative mx-auto mt-5 block w-full max-w-[430px] overflow-hidden rounded-[24px] bg-[linear-gradient(110deg,#075bac,#e58da1,#075bac)] bg-[length:220%_100%] p-[3px] text-white shadow-[0_12px_35px_rgba(8,83,166,.26)] transition-all duration-500 hover:scale-[1.025] hover:bg-right focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#075bac] motion-safe:animate-pulse motion-reduce:animate-none">
