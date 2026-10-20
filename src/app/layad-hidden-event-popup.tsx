@@ -11,9 +11,9 @@ export default function LayadHiddenEventPopup({onClose}:{onClose:()=>void;beauty
     return ()=>{document.body.style.overflow=previous;window.removeEventListener("keydown",keydown);};
   },[onClose]);
 
-  return <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[#172942]/70 p-2 backdrop-blur-sm sm:p-6"
+  return <div className="fixed inset-0 z-[250] flex items-start justify-center bg-black/10 px-3 pt-[40dvh] pb-3 sm:pt-[35dvh]"
     onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
-    <section role="dialog" aria-modal="true" aria-label="LAYAD HIDDEN EVENT" className="relative max-h-[96dvh] w-full max-w-[380px] overflow-y-auto rounded-xl bg-white shadow-[0_24px_85px_rgba(0,0,0,.35)]">
+    <section role="dialog" aria-modal="true" aria-label="LAYAD HIDDEN EVENT" className="relative max-h-[57dvh] w-full max-w-[330px] overflow-y-auto rounded-xl border border-white/80 bg-white shadow-[0_14px_45px_rgba(0,0,0,.27)] sm:max-h-[60dvh] sm:max-w-[350px]">
       <button type="button" onClick={onClose} aria-label="이벤트 팝업 닫기"
         className="sticky top-2 right-2 z-20 float-right -mb-11 mr-2 mt-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-2xl text-[#17334a] shadow-md">×</button>
       <div className="relative clear-both">
