@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export default function LayadHiddenEventPopup({onClose}:{onClose:()=>void;beautyCode:string}) {
+export default function LayadHiddenEventPopup({onClose,beautyCode}:{onClose:()=>void;beautyCode:string}) {
   useEffect(() => {
     const previous=document.body.style.overflow;
     document.body.style.overflow="hidden";
@@ -19,7 +19,7 @@ export default function LayadHiddenEventPopup({onClose}:{onClose:()=>void;beauty
       <div className="relative clear-both">
         <img src="/layad-hidden-event-original.svg" alt="LAYAD HIDDEN EVENT, 유형별 제품 추천도와 30% 할인 이벤트" width={357} height={2048}
           className="block h-auto w-full" />
-        <a href="https://layadseoul.com/shop_view?idx=9" target="_blank" rel="noopener noreferrer"
+        <a href="https://layadseoul.com/shop_view?idx=9" onClick={() => { void fetch("/api/hidden-event-click",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"discount_click",beautyCode}),keepalive:true}).catch(()=>{}); }} target="_blank" rel="noopener noreferrer"
           aria-label="30% 할인 비밀 링크 - LAYAD 상품 상세 페이지"
           className="absolute left-[25.5%] top-[84.3%] h-[2.5%] w-[52%] cursor-pointer" />
       </div>
