@@ -218,7 +218,7 @@ export default function CeoPage() {
             const warning = metric.percent >= (capacity?.warningThreshold ?? 80);
             return <article key={metric.key} className={`rounded-2xl border p-4 ${warning ? "border-amber-300 bg-amber-50" : "border-[#eadfe1] bg-[#fcfbfb]"}`}>
               <div className="flex items-center justify-between gap-4">
-                <div><p className="font-semibold">{metric.label}</p><p className="mt-1 text-xs text-[#7b6d70]">{metric.basis === "projection" ? "최근 방문 추세 기반 예상" : "실측 기준 + 증가분 추정"}</p></div>
+                <div><p className="font-semibold">{metric.label}</p><p className="mt-1 text-xs text-[#7b6d70]">{metric.basis === "projection" ? "최근 방문 추세 기반 예상" : "현재 실측값"}</p></div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${warning ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>{warning ? "주의" : "정상"}</span>
               </div>
               <div className="mt-4 flex items-end justify-between gap-4"><p className="text-sm text-[#7b6d70]">{capacityValue(metric)}</p><p className={`text-2xl font-semibold ${warning ? "text-amber-800" : "text-[#382d2d]"}`}>{metric.percent.toFixed(1)}%</p></div>
@@ -231,7 +231,7 @@ export default function CeoPage() {
         {capacity?.ok && capacityWarnings.length === 0 ? <p className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">현재 Capacity 사용률은 모두 80% 임계점 미만입니다.</p> : null}
         {capacityWarnings.map(message => <p key={message} className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">⚠ {message}</p>)}
         {capacity && capacity.ok === false ? <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Capacity 데이터를 불러오지 못했습니다. 운영 API 상태를 확인해 주세요.</p> : null}
-        <p className="mt-4 text-[11px] leading-5 text-[#8a7a7d]">Supabase DB는 2026-09-21 실측 23MB를 기준으로 증가분을 추정합니다. Egress와 Vercel은 최근 방문 추세와 보수적 단위 사용량 가정을 적용한 Capacity Planning 값이며 실제 청구 계측값과 차이가 있을 수 있습니다.</p>
+        <p className="mt-4 text-[11px] leading-5 text-[#8a7a7d]">Supabase DB와 파일 저장량은 현재 실측값입니다. Egress와 Vercel은 최근 방문 추세와 보수적 단위 사용량 가정을 적용한 Capacity Planning 값이며 실제 청구 계측값과 차이가 있을 수 있습니다.</p>
       </section>
 
       {costWaiting ? <p className="mt-4 rounded-2xl border border-[#eadfc2] bg-[#fff8e8] px-4 py-3 text-sm text-[#7a5a1e]">OpenAI 비용 API는 연결되어 있으나 공식 비용 집계가 아직 반영되지 않았거나 일시적으로 조회 지연 중입니다. 실시간 사용 여부는 우측 토큰 현황을 기준으로 확인하세요.</p> : null}

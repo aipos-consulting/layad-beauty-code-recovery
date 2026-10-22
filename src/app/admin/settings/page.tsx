@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SupabaseCapacity from "./supabase-capacity";
 import { useEffect, useMemo, useState } from "react";
 
 type TokenDay = { date: string; inputTokens: number; outputTokens: number; totalTokens: number; runs: number };
@@ -98,6 +99,8 @@ export default function Page() {
         <Link href="/admin" className="rounded-full bg-[#382d2d] px-5 py-3 text-sm font-semibold text-white">대시보드</Link>
       </div>
       <p className="mt-3 text-sm text-[#7b6d70]">AI 자동분석의 실시간 토큰 사용량과 실제 비용, 월 한도 및 자동 차단 상태를 확인합니다.</p>
+
+      <SupabaseCapacity />
 
       <section className="mt-7 grid gap-4 md:grid-cols-4">
         <article className="rounded-2xl border border-[#eadfe1] bg-white p-5 shadow-sm"><p className="text-xs font-semibold text-[#9b8d90]">오늘 Input 토큰</p><p className="mt-2 text-2xl font-semibold">{count(today?.inputTokens)}</p></article>
